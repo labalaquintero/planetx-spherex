@@ -1,0 +1,12 @@
+{
+  "schema_version": "1",
+  "status": "no_coverage",
+  "reason": "no_observations",
+  "mode": "fixture",
+  "query": {"ra_deg": 10.25, "dec_deg": -12.5, "frame": "ICRS", "fov_deg": 0.1},
+  "band": null,
+  "checked_at": "2026-11-14T12:00:00Z",
+  "science_version": "v1",
+  "warnings": [],
+  "frames": []
+}
