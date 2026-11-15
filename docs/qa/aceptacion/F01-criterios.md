@@ -94,13 +94,37 @@ Requieren URL pública, SHA publicado por Isaac y datos verificados por César. 
 | F01-R03a | **API directa** (petición de Playwright a `/api/v1/comparisons`, sin UI ni mocks): `422 invalid_coordinates` con parámetro faltante o vacío. |
 | F01-R03b | API directa: `422 invalid_coordinates` con NaN/Infinity. |
 | F01-R03c | API directa: `422 invalid_coordinates` fuera de rango (`ra=360`, `ra=-0.1`, `dec=±90.1`); `ra=0` y `dec=90` no devuelven 422. |
+| F01-R03d | API directa: `422 invalid_coordinates` con parámetro repetido (`ra_deg` o `dec_deg` indicado dos veces, p. ej. `?ra_deg=10.25&ra_deg=11&dec_deg=-12.5`). |
 | F01-R04 | Entrada manual de coordenadas libres y consulta en vivo: el resultado es uno de los estados del contrato, con su razón. |
 | F01-R05 | Imagen inexistente (`/api/v1/images/<id inexistente>`) responde `404 image_not_found`. |
 | F01-R06 | Incógnito y red externa: cargan web, API, PNG y fuentes; sin fixtures visibles; mismo SHA en todas las pruebas. |
 | F01-R07 | Teclado y móvil sobre la demo real. |
 | F01-R08 | Un caso `prepared` real: cada fotograma lleva `release` `dr1` o `qr3` y un `source_url` de IRSA que **abre un registro verificable** y corresponde al `observation_id`. No lo cubre ningún fixture sintético. |
 
-Los casos F01-R03a/b/c no usan mocks: se ejecutan contra la API real (local de Isaac o desplegada, según `E2E_BASE_URL`) con `web/e2e/api.spec.ts`. Se anota la URL y el SHA evaluados en cada ejecución.
+Los casos F01-R03a/b/c/d no usan mocks: se ejecutan contra la API real (local de Isaac o desplegada, según `E2E_BASE_URL`) con `web/e2e/api.spec.ts`. Se anota la URL y el SHA evaluados en cada ejecución.
+
+### Los cinco objetos del reto (REAL)
+
+**Fuente: [docs/qa/datos/matriz_5_casos.md](../datos/matriz_5_casos.md) de César** (solo lectura; aquí no se copian ni se recalculan sus coordenadas, conteos, fechas ni IDs: consúltense allí). Cada caso se prueba contra la API real y se compara con el estado esperado de abajo.
+
+**Estado esperado: PROVISIONAL, por confirmar con César.** La matriz clasifica la **cobertura en el archivo SIA2** (`verificado` o `sin cobertura`) de cada objeto; no registra el estado que devolverá `/api/v1/comparisons`. El esperado de la API es una inferencia mía a partir de esa clasificación.
+
+| ID | Objeto (caso de la matriz) | Qué reporta la matriz | Estado esperado de la API (provisional) | Observaciones |
+| --- | --- | --- | --- | --- |
+| F01-R09 | Estrella de Barnard (a) | `verificado` en `spherex_dr1` y `spherex_qr3`, con varias épocas. | `ready` | |
+| F01-R10 | Epsilon Indi B (b) | `verificado` en `spherex_dr1` y `spherex_qr3`. | `ready` | Esperado para el objeto consultado; la matriz no promete resolver el par. |
+| F01-R11 | WISE 0855 (c) | `verificado` en `spherex_dr1`; `sin cobertura` (`no_observations`) en `spherex_qr3`. | `ready` (la API consulta ambas colecciones y dr1 aporta épocas) | Una consulta **solo** a `qr3` daría `no_coverage` / `no_observations`; no es lo esperado de la API completa. La advertencia de la matriz (§5.3) pide manejar ese estado sin romper el flujo. |
+| F01-R12 | RW Aurigae (d) | `verificado` en `spherex_dr1` y `spherex_qr3`. | `ready` | |
+| F01-R13 | R Draconis (e) | `verificado` en `spherex_dr1` y `spherex_qr3`. | `ready` | La matriz lo recomienda para variabilidad (§5.1). |
+
+Por qué el esperado no es una certeza (y qué otro estado podría aparecer):
+
+- **Cobertura ≠ secuencia comparable.** La matriz cuenta exposiciones y épocas por detector/banda del archivo; la guía pide además banda común por `WCS-WAVE`, recortes y píxeles válidos. `insufficient` con `no_common_band` o `no_usable_frames` no se descarta con lo que reporta la matriz.
+- **Muchas exposiciones.** Con cientos de candidatos por caso, la búsqueda puede acotarse: `ready` con `search_limit_reached` en `warnings`, o `insufficient` / `search_limit_reached` (ver C20 y C21). A confirmar con Isaac y César.
+- **Preparado o en vivo.** Un caso sólo se sirve como preparado si coincide exactamente con un manifiesto; si no, se consulta IRSA en vivo (plazo de 20–25 s) y un fallo externo da `503`, nunca `no_coverage`.
+- **La matriz no dice cuál objeto se usará en la demo.** Eso lo confirma César (véase [guion-demo.md](../../entrega/guion-demo.md)).
+
+Los resultados se registran tal como salgan, también los negativos, y no se promete ningún desplazamiento ni variación visible: la ausencia de un cambio no es un error por sí sola.
 
 ## Fuera de alcance de este documento
 

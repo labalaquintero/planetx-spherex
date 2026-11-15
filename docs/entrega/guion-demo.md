@@ -21,6 +21,8 @@
 | URL de la demo y SHA publicado por Isaac | **TODO** |
 | ¿Es caso preparado o consulta en vivo? | **TODO** (la UI debe rotularlo) |
 
+> **Candidatos para la demo según matriz de César** ([docs/qa/datos/matriz_5_casos.md](../qa/datos/matriz_5_casos.md), §5): **R Draconis** (recomendado por cadencia multi-época y variabilidad) y **Estrella de Barnard** (recomendado por movimiento propio). La matriz clasifica los cinco objetos como `verificado` en cobertura SIA2 con varias épocas, pero **no usa la etiqueta `ready` ni confirma una secuencia ya renderizada en la API**. **César debe confirmar cuál caso se usa**; hasta entonces los TODO de arriba siguen vacíos y no se afirma ningún movimiento ni variación que no esté validado.
+
 ## Guion en castellano
 
 Tiempos acumulados sobre ≈2:45. El orden es: problema → coordenada → dos fechas reales → qué se observa → límites y fuentes.

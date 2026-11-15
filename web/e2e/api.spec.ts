@@ -50,6 +50,17 @@ test.describe("F01 API directa · 422 invalid_coordinates [REAL]", () => {
     });
   }
 
+  // Parámetro repetido: ra_deg (o dec_deg) indicado más de una vez es ambiguo y debe rechazarse.
+  // La API de Isaac ya lo valida (api/planetx/http/coordinates.py); aquí se comprueba desde fuera.
+  for (const query of [
+    "?ra_deg=10.25&ra_deg=11&dec_deg=-12.5",
+    "?ra_deg=10.25&dec_deg=-12.5&dec_deg=-13",
+  ]) {
+    test.fixme(`F01-R03d · 422 parámetro repetido ${query} @real`, async ({ request }) => {
+      await esperar422(request, query);
+    });
+  }
+
   // Límite válido: ra=0 y dec=90 NO deben dar 422 (pueden dar 200 o 503 según el archivo).
   // Nota: puede disparar una consulta real al archivo; ejecutar con criterio.
   test.fixme("F01-R03c · límites válidos ra=0 dec=90 no devuelven 422 @real", async ({ request }) => {
