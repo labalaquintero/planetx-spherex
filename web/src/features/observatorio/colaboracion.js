@@ -1,4 +1,5 @@
-import { articles, featuredObservation } from './datos.js';
+import { articles } from './datos.js';
+import { sampleObservationById } from './ejemplos-blog.js';
 import { readWorkspace } from './workspace.js';
 
 const endpoint = '/api/v1/workspace';
@@ -17,10 +18,10 @@ export function loadForView(view, id, params) {
   if (!sharedViews.has(view) || params.get('local') === '1') return false;
   if (view === 'imagen') {
     const reportId = params.get('ficha');
-    return Boolean(reportId && reportId !== featuredObservation.id && !localReport(reportId));
+    return Boolean(reportId && !sampleObservationById(reportId) && !localReport(reportId));
   }
   if (view === 'confirmacion') return !localReport(id);
-  if (view === 'articulo') return !localReport(id) && !articles.some((article) => article.id === id);
+  if (view === 'articulo') return !localReport(id) && !sampleObservationById(id) && !articles.some((article) => article.id === id);
   return true;
 }
 
