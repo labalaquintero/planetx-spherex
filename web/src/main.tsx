@@ -15,7 +15,7 @@ startObservatory({
     const root = createRoot(host);
     root.render(
       <StrictMode>
-        <Suspense fallback={<p className="explorer-loading" role="status">Cargando Explorar…</p>}>
+      <Suspense fallback={<p className="explorer-loading" role="status">Cargando el mapa…</p>}>
           <Explorar />
         </Suspense>
       </StrictMode>,

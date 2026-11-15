@@ -175,7 +175,7 @@ function galleryMap(targetsToShow, selected) {
   </div>`;
 }
 
-function bindGallery(_id, params) {
+function bindGallery() {
   const input = main.querySelector('#gallery-search');
   const buttons = [...main.querySelectorAll('[data-filter]')];
   const layouts = [...main.querySelectorAll('[data-gallery-layout]')];
@@ -213,12 +213,6 @@ function bindGallery(_id, params) {
   }));
   layouts.forEach((button) => button.addEventListener('click', () => {
     layout = button.dataset.galleryLayout;
-    const isMap = layout === 'map';
-    if (isMap) params.set('vista', 'mapa');
-    else params.delete('vista');
-    const query = params.toString();
-    history.replaceState(history.state, '', query ? `#galeria?${query}` : '#galeria');
-    setCurrentNav(isMap ? 'mapa' : 'galeria');
     layouts.forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
     update();
   }));
@@ -345,13 +339,6 @@ function setMenu(open) {
   nav.classList.toggle('is-open', open);
 }
 
-function setCurrentNav(section) {
-  nav.querySelectorAll('a').forEach((link) => {
-    if (link.dataset.view === section) link.setAttribute('aria-current', 'page');
-    else link.removeAttribute('aria-current');
-  });
-}
-
 function renderSearch() {
   const term = fold(searchInput.value);
   const matches = [
@@ -367,9 +354,9 @@ const views = {
   inicio: { html: homeView, bind: bindHome, nav: 'inicio', title: 'Inicio' },
   visor: { html: viewerView, bind: (id, params) => bindViewer(id, params, runtime.compare), nav: 'visor', title: 'Visor temporal' },
   explorar: {
-    html: () => '<section id="explorer-root" aria-label="Explorar"></section>',
+    html: () => '<section id="explorer-root" aria-label="Mapa"></section>',
     bind: () => { unmountExplorer = runtime.mountExplorer(document.querySelector('#explorer-root')); },
-    nav: 'explorar', title: 'Explorar',
+    nav: 'explorar', title: 'Mapa',
   },
   galeria: { html: (_id, params) => galleryView(params), bind: bindGallery, nav: 'galeria', title: 'Galería' },
   objetivo: { html: targetView, nav: 'galeria', title: 'Objetivo' },
@@ -413,11 +400,13 @@ function renderRoute() {
   if (activeSection) spaceLink.setAttribute('aria-current', 'page');
   else spaceLink.removeAttribute('aria-current');
 
-  const params = new URLSearchParams(query);
-  const isMap = view === 'galeria' && params.get('vista') === 'mapa';
-  setCurrentNav(isMap ? 'mapa' : selected.nav);
+  nav.querySelectorAll('a').forEach((link) => {
+    if (link.dataset.view === selected.nav) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  });
   setMenu(false);
   if (search.open) search.close();
+  const params = new URLSearchParams(query);
   main.innerHTML = selected.html(id, params);
   selected.bind?.(id, params);
   bindEvidenceImages(main);

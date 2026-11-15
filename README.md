@@ -74,4 +74,4 @@ devuelven un `503` reintentable.
 - **Ficha de observación.** Escribe un reporte o adjunta un PDF. Guarda un borrador, recupera las marcas del campo y exporta la evidencia en JSON o Markdown.
 - **Mi espacio → Ajustes.** Crea o recupera tu perfil local, cambia el alias o la foto y abre tus fichas y las comparaciones recientes. El navegador guarda los PNG disponibles para volver a abrir una ficha aunque la API ya no sirva esos recortes. Archivos, perfil, revisión y publicaciones se conservan en el navegador que los creó.
 - **Blog y Revisión local.** Lee las guías o abre la bandeja desde el pie de página para aceptar, devolver con observaciones o publicar una ficha en ese navegador.
-- **Explorar → Sector β.** Selecciona el sector y prueba el vuelo con `W`, `A`, `S` y `D`, o con los controles táctiles.
+- **Mapa → Sector β.** Selecciona el sector y prueba el vuelo con `W`, `A`, `S` y `D`, o con los controles táctiles.

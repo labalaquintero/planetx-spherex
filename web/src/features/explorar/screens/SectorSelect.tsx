@@ -89,7 +89,7 @@ export function SectorSelect({ sectors, onEnter, jump, reduced, quality, forced,
       <Backdrop input={input} layer={layer} animate={!reduced} quality={quality} forced={forced} />
 
       <header className="ex-select-head">
-        <span className="ex-chip">Explorar</span>
+        <span className="ex-chip">Mapa</span>
         <h2 id="ex-select-title" className="ex-select-title">
           Elige un sector
         </h2>

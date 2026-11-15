@@ -20,7 +20,8 @@ it('abre el comparador desde el punto de entrada de Docker y lleva sus datos a l
     })),
   });
   const { startObservatory } = await import('../features/observatorio/app.js');
-  startObservatory({ compare, mountExplorer: vi.fn() });
+  const mountExplorer = vi.fn();
+  startObservatory({ compare, mountExplorer });
 
   await vi.waitFor(() => {
     expect(document.querySelector('[data-testid="comparison-viewer"]')).toBeInTheDocument();
@@ -32,7 +33,7 @@ it('abre el comparador desde el punto de entrada de Docker y lleva sus datos a l
   );
   expect(document.querySelector('[data-testid="provenance-panel"]')).toHaveTextContent('Caso preparado');
   expect([...document.querySelectorAll('#site-nav a')].map((link) => link.textContent))
-    .toEqual(['Inicio', 'Visor', 'Galería', 'Explorar', 'Blog', 'Mapa']);
+    .toEqual(['Inicio', 'Visor', 'Galería', 'Mapa', 'Blog']);
 
   history.replaceState(null, '', '#ficha?ra=133.795129166667&dec=-7.245147222222');
   window.dispatchEvent(new HashChangeEvent('hashchange'));
@@ -41,16 +42,8 @@ it('abre el comparador desde el punto de entrada de Docker y lleva sus datos a l
     'src', `/api/v1/images/${readyFixture.frames[0].id}`,
   );
 
-  const mapLink = document.querySelector('#site-nav [data-view="mapa"]');
-  mapLink.click();
-  await vi.waitFor(() => expect(document.querySelector('.atlas-plot')).toBeInTheDocument());
-  expect(mapLink).toHaveAttribute('aria-current', 'page');
-  expect(location.hash).toBe('#galeria?vista=mapa');
-
-  document.querySelector('[data-gallery-layout="cards"]').click();
-  expect(mapLink).not.toHaveAttribute('aria-current');
-  expect(location.hash).toBe('#galeria');
-
-  mapLink.click();
-  await vi.waitFor(() => expect(document.querySelector('.atlas-plot')).toBeInTheDocument());
+  document.querySelector('#site-nav [data-view="explorar"]').click();
+  await vi.waitFor(() => expect(document.querySelector('#explorer-root')).toHaveAttribute('aria-label', 'Mapa'));
+  expect(location.hash).toBe('#explorar');
+  expect(mountExplorer).toHaveBeenCalledWith(document.querySelector('#explorer-root'));
 });
