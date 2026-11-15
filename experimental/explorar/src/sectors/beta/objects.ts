@@ -96,4 +96,51 @@ function build(id: string, st: Staging): SceneObject {
   }
 }
 
-export const OBJECTS: readonly SceneObject[] = Object.entries(STAGING).map(([id, st]) => build(id, st))
+/**
+ * Planetas añadidos que no están en el boceto. Se colocan fuera de la vista inicial (detrás de la
+ * entrada o muy a los lados), así que la primera vista sigue siendo la del boceto; se descubren al volar.
+ */
+const EXTRA_DEFS: SceneObject[] = [
+  {
+    id: 'tessa',
+    kind: 'planet',
+    label: 'Tessa',
+    position: [-170, 25, 230],
+    radius: 16,
+    seed: 61,
+    palette: ['#d6a59a', '#8a4b3f', '#2e1713'],
+    surface: 'rocky',
+    atmosphere: '#f6c1b4',
+    texture: { map: 'luna-color', mode: 'palette', bump: 'luna-relieve' },
+  },
+  {
+    id: 'calder',
+    kind: 'planet',
+    label: 'Calder',
+    position: [360, -20, -330],
+    radius: 30,
+    seed: 71,
+    palette: ['#a5f3fc', '#2b7a8c', '#0b2a33'],
+    surface: 'bands',
+    atmosphere: '#67e8f9',
+    texture: { map: 'bandas-saturno', mode: 'palette' },
+  },
+  {
+    id: 'sora',
+    kind: 'sphere',
+    label: 'Sora',
+    position: [300, 8, -270],
+    radius: 5,
+    seed: 79,
+    palette: ['#f1f5f9', '#94a3b8', '#334155'],
+    surface: 'rocky',
+    texture: { map: 'luna-color', mode: 'palette', bump: 'luna-relieve' },
+  },
+]
+const EXTRAS: readonly SceneObject[] = EXTRA_DEFS.map((o) => (BETA_INFO[o.id] ? { ...o, info: BETA_INFO[o.id] } : o))
+
+/** Objetos del boceto (medidos) y los ids añadidos fuera de él. */
+export const SKETCH_IDS: readonly string[] = Object.keys(STAGING)
+export const EXTRA_IDS: readonly string[] = EXTRAS.map((o) => o.id)
+
+export const OBJECTS: readonly SceneObject[] = [...Object.entries(STAGING).map(([id, st]) => build(id, st)), ...EXTRAS]
