@@ -48,7 +48,7 @@ El modo `prepared` sirve la secuencia del par numérico exacto y conserva su fec
 | `observation_id` | Cadena con el identificador de la observación de origen. |
 | `source_url` | URL verificable del archivo o registro de IRSA. `null` se permite en los ejemplos sintéticos. |
 | `image_url` | Ruta del mismo origen `/api/v1/images/{frame_id}`. |
-| `quality_flags` | Lista de avisos de calidad del fotograma. Lista vacía cuando no haya avisos. |
+| `quality_flags` | Lista de avisos de calidad del fotograma. `masked_pixels` indica huecos transparentes por la máscara de comparación. Lista vacía cuando no haya avisos. |
 
 ## Errores
 
