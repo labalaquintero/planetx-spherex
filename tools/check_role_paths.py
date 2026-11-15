@@ -64,6 +64,7 @@ OWNERS: dict[str, list[str]] = {
         "api/planetx/irsa/",
         "api/tests/http/",
         "experimental/explorar/",  # extra independiente «Explorar»; fuera de §6 a petición de Isaac
+        "web/src/features/explorar/",  # «Explorar» integrado en el visor (menú de secciones); fuera de §6
     ],
     "devalle": [
         "api/planetx/catalog/",
