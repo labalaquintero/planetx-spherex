@@ -358,6 +358,11 @@ El chunk principal crece por `layout.json` (~10 kB): la selección y los datos d
 
 ## Integración en `web/` (recomendación para Santiago)
 
+> **Ya integrado.** El componente vive en `web/src/features/explorar/` y se entra desde el menú ☰ de secciones
+> del visor (`web/src/app/Shell.tsx`), que también vuelve a «Inicio». Esta carpeta queda como laboratorio
+> (app independiente, herramientas de medición y bocetos). Mientras convivan las dos copias, conviene hacer los
+> cambios de producto en `web/` y retirar `experimental/explorar/src` en un PR posterior.
+
 `<Explorar />` ocupa el 100 % de su contenedor (necesita una altura definida) y es lo único que se exporta:
 
 ```tsx
