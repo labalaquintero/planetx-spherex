@@ -254,6 +254,61 @@ const EXTRA_DEFS: SceneObject[] = [
     surface: 'rocky',
     texture: { map: 'luna-color', mode: 'palette', bump: 'luna-relieve' },
   },
+  // Cuatro planetas del borde exterior (amplían el área del sector). Usan los mapas globales de la NASA
+  // que ya trae α, pero solo por su luminancia y con paletas propias: no se parecen a los de α.
+  {
+    // Superficie: el mapa de Ío (vulcanismo de azufre) en tonos de brasa, con brillo propio.
+    id: 'brasa',
+    kind: 'planet',
+    label: 'Brasa',
+    position: [-780, 20, -480],
+    radius: 30,
+    seed: 127,
+    palette: ['#fca5a5', '#b91c1c', '#1c0702'],
+    surface: 'storms',
+    atmosphere: '#fb923c',
+    glow: '#7c2d12',
+    texture: { map: 'io-galileo', mode: 'palette' },
+  },
+  {
+    // Superficie: el mapa de Ganímedes (surcos de hielo) en verdes jade.
+    id: 'jade',
+    kind: 'planet',
+    label: 'Jade',
+    position: [820, -30, 420],
+    radius: 26,
+    seed: 131,
+    palette: ['#d1fae5', '#059669', '#022c22'],
+    surface: 'rocky',
+    atmosphere: '#6ee7b7',
+    texture: { map: 'ganimedes-voyager', mode: 'palette', bump: 'luna-relieve' },
+  },
+  {
+    // Superficie: el relieve de Venus medido por radar (Magellan) en grises de ceniza.
+    id: 'ceniza',
+    kind: 'planet',
+    label: 'Ceniza',
+    position: [960, 35, -200],
+    radius: 34,
+    seed: 137,
+    palette: ['#f5f5f4', '#78716c', '#1c1917'],
+    surface: 'rocky',
+    atmosphere: '#e7e5e4',
+    texture: { map: 'venus-magellan', mode: 'palette', bump: 'luna-relieve' },
+  },
+  {
+    // Superficie: el mapa de Marte (Viking) en turquesas, como un mar poco profundo.
+    id: 'marea',
+    kind: 'planet',
+    label: 'Marea',
+    position: [-700, -40, 660],
+    radius: 24,
+    seed: 139,
+    palette: ['#ccfbf1', '#0f766e', '#042f2e'],
+    surface: 'rocky',
+    atmosphere: '#5eead4',
+    texture: { map: 'marte-viking', mode: 'palette' },
+  },
 ]
 const EXTRAS: readonly SceneObject[] = EXTRA_DEFS.map((o) => (BETA_INFO[o.id] ? { ...o, info: BETA_INFO[o.id] } : o))
 

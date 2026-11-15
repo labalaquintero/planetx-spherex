@@ -14,7 +14,7 @@ import {
   type MeshStandardMaterial,
 } from 'three'
 import { applyImpact, type FlightState } from '../engine/flight'
-import { initialVisitors, stepVisitors, visitorFade, type Visitor, type VisitorEvent, type VisitorKind, type VisitorState } from '../engine/visitors'
+import { initialVisitors, stepVisitors, streakGrow, visitorFade, type Visitor, type VisitorEvent, type VisitorKind, type VisitorState } from '../engine/visitors'
 import { LIGHT_DIR } from './light'
 import { GLOW_FRAG, GLOW_VERT } from './shaders/glow'
 import { STREAK_FRAG, STREAK_VERT } from './shaders/streak'
@@ -43,6 +43,11 @@ interface StreakOptions {
   flow: number
   /** Movimiento de la cola: ondulación, ancho que respira y pulsos de luz (0 = quieta). */
   wave: number
+  /** Parpadeo del brillo (0..1) y quiebros/nudos que recorren la cola (0..1). */
+  flicker?: number
+  kink?: number
+  /** Segundos que tarda en crecer hasta su largo completo al aparecer. */
+  growSeconds?: number
   seed: number
 }
 
@@ -68,6 +73,9 @@ function makeStreak(o: StreakOptions): ShaderMaterial {
       uFalloff: { value: o.falloff },
       uFlow: { value: o.flow },
       uWave: { value: o.wave },
+      uFlicker: { value: o.flicker ?? 0 },
+      uKink: { value: o.kink ?? 0 },
+      uGrow: { value: 0 },
     },
     transparent: true,
     depthWrite: false,
@@ -78,18 +86,23 @@ function makeStreak(o: StreakOptions): ShaderMaterial {
 
 function useStreak(o: StreakOptions): ShaderMaterial {
   // Las opciones son fijas para cada visitante: el material se crea una vez.
-  const m = useMemo(() => makeStreak(o), [])
+  const m = useMemo(() => {
+    const mat = makeStreak(o)
+    mat.userData.growSeconds = o.growSeconds ?? 1
+    return mat
+  }, [])
   useEffect(() => () => m.dispose(), [m])
   return m
 }
 
-function setStreak(m: ShaderMaterial, head: Vector3, axis: Vector3, bend: Vector3, alpha: number, time: number) {
+function setStreak(m: ShaderMaterial, head: Vector3, axis: Vector3, bend: Vector3, alpha: number, time: number, age: number) {
   const u = m.uniforms
   u.uHead!.value.copy(head)
   u.uAxis!.value.copy(axis)
   u.uBend!.value.copy(bend)
   u.uAlpha!.value = alpha
   u.uTime!.value = shaderTime(time)
+  u.uGrow!.value = streakGrow(age, m.userData.growSeconds as number)
 }
 
 interface GlowOptions {
@@ -186,8 +199,8 @@ function CometView({ id, sim, shared, detail }: ViewProps) {
   const camera = useThree((s) => s.camera)
   const head = useRef<Mesh>(null)
   const glow = useGlow({ mode: 0, color: '#2dd4bf', core: '#f0fdff', stretch: 1.6, seed: id * 1.37 })
-  const dust = useStreak({ core: '#f5f3ff', edge: '#8b5cf6', w0: 1.4, w1: 28, length: 120, curve: 0.12, falloff: 1.2, fil: 1, glitter: 0, flow: 0.18, wave: 0.7, seed: id })
-  const ion = useStreak({ core: '#cffafe', edge: '#3b82f6', w0: 0.6, w1: 9, length: 160, curve: 0, falloff: 1.5, fil: 0.8, glitter: 0, flow: 0.45, wave: 1, seed: id + 7 })
+  const dust = useStreak({ core: '#f5f3ff', edge: '#8b5cf6', w0: 1.4, w1: 28, length: 120, curve: 0.12, falloff: 1.2, fil: 1, glitter: 0, flow: 0.18, wave: 0.9, kink: 0.25, growSeconds: 2.2, seed: id })
+  const ion = useStreak({ core: '#cffafe', edge: '#3b82f6', w0: 0.6, w1: 9, length: 160, curve: 0, falloff: 1.5, fil: 0.8, glitter: 0, flow: 0.45, wave: 1.2, kink: 1, growSeconds: 1.6, seed: id + 7 })
   const emitter = useRef<Emitter>({ origin: new Vector3(), direction: ANTI_SUN.clone(), velocity: new Vector3(), thrust: 1 })
   const tmp = useScratch()
   useFrame((state) => {
@@ -200,9 +213,9 @@ function CometView({ id, sim, shared, detail }: ViewProps) {
     placeGlow(head.current, glow, camera, tmp.pos, tmp.vel, f, time, tmp)
     tmp.back.copy(tmp.vel).multiplyScalar(-1).normalize()
     perpendicular(tmp.bend, ANTI_SUN, tmp.back)
-    setStreak(dust, tmp.pos, tmp.back, tmp.bend, 0.9 * f, time)
+    setStreak(dust, tmp.pos, tmp.back, tmp.bend, 0.9 * f, time, v.age)
     tmp.axis.copy(tmp.back).addScaledVector(tmp.bend, 0.18).normalize()
-    setStreak(ion, tmp.pos, tmp.axis, tmp.zero, 0.7 * f, time)
+    setStreak(ion, tmp.pos, tmp.axis, tmp.zero, 0.7 * f, time, v.age)
     const e = emitter.current
     e.origin.copy(tmp.pos)
     e.direction.copy(tmp.axis)
@@ -224,7 +237,10 @@ function MeteorView({ id, sim, shared, detail }: ViewProps) {
   const camera = useThree((s) => s.camera)
   const head = useRef<Mesh>(null)
   const glow = useGlow({ mode: 1, color: '#fde68a', core: '#fffbeb', stretch: 0.7, seed: id * 2.11 })
-  const trail = useStreak({ core: '#ffffff', edge: '#a5b4fc', w0: 0.3, w1: 3.6, length: 60, curve: 0.12, falloff: 1.1, fil: 0.4, glitter: 1.4, flow: 0.6, wave: 0.5, seed: id })
+  // Rastro brillante: fino, se afila hacia el final, crece al aparecer y parpadea al quemarse.
+  const trail = useStreak({ core: '#ffffff', edge: '#a5b4fc', w0: 0.35, w1: 1.6, length: 70, curve: 0.08, falloff: 1.4, fil: 0.5, glitter: 1.6, flow: 0.9, wave: 0.8, flicker: 0.8, kink: 0.3, growSeconds: 0.7, seed: id })
+  // Estela persistente: más ancha y tenue, queda atrás y se retuerce lentamente.
+  const train = useStreak({ core: '#c7d2fe', edge: '#6366f1', w0: 0.8, w1: 6, length: 110, curve: 0.14, falloff: 0.9, fil: 1, glitter: 0, flow: 0.12, wave: 1.6, kink: 0.8, growSeconds: 1.6, seed: id + 3 })
   const emitter = useRef<Emitter>({ origin: new Vector3(), direction: new Vector3(), velocity: new Vector3(), thrust: 1 })
   const tmp = useScratch()
   useFrame((state) => {
@@ -238,7 +254,8 @@ function MeteorView({ id, sim, shared, detail }: ViewProps) {
     tmp.back.copy(tmp.vel).multiplyScalar(-1).normalize()
     // El rastro se arquea un poco hacia abajo, como en las ilustraciones clásicas.
     perpendicular(tmp.bend, UP, tmp.back).multiplyScalar(-1)
-    setStreak(trail, tmp.pos, tmp.back, tmp.bend, f, time)
+    setStreak(trail, tmp.pos, tmp.back, tmp.bend, f, time, v.age)
+    setStreak(train, tmp.pos, tmp.back, tmp.bend, 0.32 * f, time, v.age)
     const e = emitter.current
     e.origin.copy(tmp.pos)
     e.direction.copy(tmp.back)
@@ -246,6 +263,7 @@ function MeteorView({ id, sim, shared, detail }: ViewProps) {
   return (
     <>
       <mesh ref={head} geometry={shared.quad} material={glow} scale={16} frustumCulled={false} renderOrder={3} />
+      <mesh geometry={shared.ribbon} material={train} frustumCulled={false} renderOrder={1} />
       <mesh geometry={shared.ribbon} material={trail} frustumCulled={false} renderOrder={2} />
       {detail && (
         <Trail count={70} emitter={emitter} animate hot="#ffffff" cool="#c7d2fe" sizeScale={3} lifeScale={1.8} speedScale={0.2} inherit={0} />
@@ -262,7 +280,7 @@ function AsteroidView({ id, sim, shared, detail }: ViewProps) {
   const rock = useRef<Mesh>(null)
   const material = useRef<MeshStandardMaterial>(null)
   const invalidate = useThree((s) => s.invalidate)
-  const dust = useStreak({ core: '#d6c3a5', edge: '#57534e', w0: 1.6, w1: 7, length: 30, curve: 0, falloff: 2.2, fil: 1, glitter: 0, flow: 0.25, wave: 0.6, seed: id })
+  const dust = useStreak({ core: '#d6c3a5', edge: '#57534e', w0: 1.6, w1: 7, length: 30, curve: 0, falloff: 2.2, fil: 1, glitter: 0, flow: 0.25, wave: 0.9, flicker: 0.25, kink: 0.4, growSeconds: 1.2, seed: id })
   const emitter = useRef<Emitter>({ origin: new Vector3(), direction: new Vector3(), velocity: new Vector3(), thrust: 0.4 })
   const tmp = useScratch()
   const v0 = find(sim, id)
@@ -295,7 +313,7 @@ function AsteroidView({ id, sim, shared, detail }: ViewProps) {
     // Brillo tenue que late: la roca no se ve como un recorte plano contra el fondo.
     if (material.current) material.current.emissiveIntensity = 0.05 + 0.04 * Math.sin(state.clock.elapsedTime * 2.3 + seed * 10)
     tmp.back.set(-v.velocity[0], -v.velocity[1], -v.velocity[2]).normalize()
-    setStreak(dust, tmp.pos, tmp.back, tmp.zero, 0.16 * f, state.clock.elapsedTime)
+    setStreak(dust, tmp.pos, tmp.back, tmp.zero, 0.16 * f, state.clock.elapsedTime, v.age)
     const e = emitter.current
     e.origin.copy(tmp.pos)
     e.direction.copy(tmp.back)

@@ -186,114 +186,93 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  /* Paralaje: las esferas se mueven menos que las estrellas cercanas. */
-  transform: translate3d(calc(var(--ex-px, 0) * -12px), calc(var(--ex-py, 0) * -9px), 0);
+  /* Paralaje: el mismo desplazamiento que la galaxia en el fondo (GALAXY.parallax = 0,02 del alto). */
+  transform: translate3d(calc(var(--ex-px, 0) * -2cqh), calc(var(--ex-py, 0) * -2cqh), 0);
 }
+/* Cada sector es una región elíptica de la galaxia: el fondo la dibuja; aquí va la zona que se señala. */
 .ex-sector-item {
-  --ex-d: max(64px, calc(var(--ex-size) * 1cqmin));
+  /* Igual que areaScale() en galaxy.ts: en pantallas estrechas manda el ancho (0,85 × 200 = 170). */
+  --ex-w: min(calc(var(--ex-r) * 200cqh), calc(var(--ex-r) * 170cqw));
+  --ex-h: calc(var(--ex-w) * var(--ex-ratio));
   position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  width: var(--ex-w);
+  height: var(--ex-h);
   transform: translate(-50%, -50%);
   transition: opacity 500ms ease, filter 500ms ease;
 }
-.ex-body {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: var(--ex-d);
-  height: var(--ex-d);
+.ex-area {
+  position: absolute;
+  inset: 0;
   padding: 0;
   background: transparent;
   border: 0;
   border-radius: 50%;
   cursor: pointer;
-  transition: transform 260ms cubic-bezier(0.2, 0.7, 0.2, 1), filter 260ms ease;
+  transform: rotate(var(--ex-tilt));
+  -webkit-tap-highlight-color: transparent;
 }
-.ex-body-halo {
-  position: absolute;
-  inset: -45%;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--ex-glow) 0%, transparent 62%);
-  opacity: 0.55;
-  transition: opacity 260ms ease, transform 260ms ease;
-  pointer-events: none;
+.ex-area:focus {
+  outline: none;
 }
-.ex-body-img {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  /* Atmósfera: borde iluminado del lado de la luz. */
-  box-shadow:
-    inset 3px 4px 10px -4px rgba(255, 255, 255, 0.45),
-    0 0 18px 2px var(--ex-glow);
-  pointer-events: none;
-  user-select: none;
+.ex-area:focus-visible {
+  outline: 2px solid rgba(56, 189, 248, 0.7);
+  outline-offset: 6px;
 }
-.ex-body-placeholder {
-  background: radial-gradient(circle at 35% 30%, var(--ex-border-strong), var(--ex-bg) 75%);
-}
-.ex-orbit {
-  position: absolute;
-  inset: -38%;
-  width: 176%;
-  height: 176%;
-  overflow: visible;
-  transform: rotate(-16deg);
-  pointer-events: none;
-}
-.ex-orbit ellipse {
-  fill: none;
-  stroke: var(--ex-accent);
-  stroke-opacity: 0.32;
-  stroke-width: 0.5;
-  stroke-dasharray: 2 3;
-  vector-effect: non-scaling-stroke;
-  animation: ex-orbit-dash 16s linear infinite;
-}
-.ex-body:hover,
-.ex-body:focus-visible {
-  transform: scale(1.09);
-  filter: brightness(1.15);
-}
-.ex-body:hover .ex-body-halo,
-.ex-body:focus-visible .ex-body-halo {
-  opacity: 1;
-  transform: scale(1.08);
-}
-.ex-body:hover .ex-orbit ellipse,
-.ex-body:focus-visible .ex-orbit ellipse {
-  stroke-opacity: 0.7;
-}
-.ex-body:focus-visible {
-  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.55), 0 0 0 7px rgba(56, 189, 248, 0.15);
-}
-.ex-body[data-soon] {
+.ex-area[data-soon] {
   cursor: default;
-  filter: saturate(0.5) brightness(0.72);
 }
-.ex-body[data-soon]:hover,
-.ex-body[data-soon]:focus-visible {
-  transform: scale(1.04);
-  filter: saturate(0.6) brightness(0.85);
+/* Sin WebGL: la región se ve con un borde y un brillo en CSS. */
+.ex-select[data-flat] .ex-area {
+  background: radial-gradient(closest-side, var(--ex-glow), transparent);
+  border: 1px dashed var(--ex-accent-line);
 }
-.ex-body-label {
-  margin-top: 10px;
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--ex-heading);
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+.ex-area-label {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  white-space: nowrap;
+  transform: translate(-50%, 0);
   pointer-events: none;
+  opacity: 0.72;
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+.ex-area-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ex-heading);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.9);
+}
+.ex-area-state {
+  font-family: var(--ex-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ex-muted);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
+}
+.ex-sector-item:hover .ex-area-label,
+.ex-sector-item:focus-within .ex-area-label {
+  opacity: 1;
+  transform: translate(-50%, -3px);
+}
+.ex-sector-item:hover .ex-area-state,
+.ex-sector-item:focus-within .ex-area-state {
+  color: var(--ex-accent);
+}
+.ex-area[data-soon] ~ .ex-area-label .ex-area-state {
+  color: var(--ex-dim);
 }
 /* Tarjeta = tarjeta del visor (.app-form-section) */
 /* Llamada como en el boceto 1: a la derecha del sector, centrada en vertical, con una línea guía. */
 .ex-card {
   position: absolute;
-  top: calc(var(--ex-d) / 2);
-  left: calc(50% + var(--ex-d) / 2 + 26px);
+  top: 50%;
+  left: calc(100% + 26px);
   z-index: 5;
   width: min(290px, 78cqw);
   padding: 14px 16px;
@@ -325,7 +304,7 @@
 }
 .ex-sector-item[data-callout='left'] .ex-card {
   left: auto;
-  right: calc(50% + var(--ex-d) / 2 + 26px);
+  right: calc(100% + 26px);
   transform: translate(6px, -50%);
 }
 .ex-sector-item[data-callout='left']:hover .ex-card,
@@ -381,7 +360,7 @@
   font-size: 0.78rem;
   color: var(--ex-dim);
 }
-/* Salto: las demás esferas se apagan, la elegida crece y llega el destello. */
+/* Salto: el fondo se acerca a la región elegida, las demás etiquetas se apagan y llega el destello. */
 .ex-select-veil {
   position: absolute;
   inset: 0;
@@ -400,25 +379,12 @@
 .ex-select[data-jumping] .ex-card {
   opacity: 0;
 }
-.ex-select[data-jumping] .ex-sector-item:not([data-target]) {
+.ex-select[data-jumping] .ex-sector-item {
   opacity: 0;
   filter: blur(4px);
 }
-.ex-select[data-jumping] .ex-sector-item[data-target] .ex-body {
-  transform: scale(2.6);
-  filter: brightness(1.4);
-  transition: transform 1100ms cubic-bezier(0.55, 0, 0.9, 0.4), filter 1100ms ease;
-}
-.ex-select[data-jumping] .ex-body-label {
-  opacity: 0;
-}
 .ex-select[data-fading] {
   opacity: 0;
-}
-@keyframes ex-orbit-dash {
-  to {
-    stroke-dashoffset: -50;
-  }
 }
 
 /* ---------- Pantalla 2: navegación en nave ---------- */
@@ -1176,7 +1142,7 @@
   }
   .ex-sector-item .ex-card,
   .ex-sector-item[data-callout='left'] .ex-card {
-    top: calc(100% + 10px);
+    top: calc(100% + 48px);
     left: 50%;
     right: auto;
     transform: translate(-50%, 6px);
@@ -1191,14 +1157,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ex-body,
   .ex-card,
-  .ex-body-halo,
+  .ex-area-label,
   .ex-sector-item {
     transition: none;
-  }
-  .ex-orbit ellipse {
-    animation: none;
   }
   .ex-sector-list {
     transform: none;

@@ -36,6 +36,9 @@
 - **15-11-2026, misma rama** (resincronizaciones con el mismo procedimiento; `rsync` sin `--delete` para no
   borrar el `README.md` propio de la copia del visor): dirigir con clic derecho, HUD reordenado y fichas de
   contexto, acercamiento suave e impactos, Tessa, Calder y Sora, y cometas y meteoritos (hasta `f2c2293`).
+- **15-11-2026, rama `isaac/explorar-galaxia`**: selección como galaxia con regiones, β más amplio con cuatro
+  planetas y estelas animadas (hasta `3367068`). `sectors/alpha/` queda fuera del `rsync`: su copia en el visor
+  adapta la importación de `campo-wise0855.json` a `data/`.
 - **15-11-2026, misma rama, tras fusionar #25** (copia archivo por archivo de lo que cambió, comprobando
   antes que la copia del visor era idéntica): visitantes al azar (cometas, estrellas fugaces y asteroides),
   cielo y nebulosa horneados en cubemaps, tope de píxeles y HUD que no se encima con el zoom. Además, en
