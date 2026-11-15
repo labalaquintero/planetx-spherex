@@ -14,6 +14,7 @@ import type { Waypoint } from '../../engine/types'
 export const WAYPOINTS: readonly Waypoint[] = [
   {
     id: 'entry',
+    focusId: 'esfera',
     name: 'Entrada del sector',
     position: [0, 0, 0],
     yawDeg: 0,
@@ -22,6 +23,7 @@ export const WAYPOINTS: readonly Waypoint[] = [
   },
   {
     id: 'mid',
+    focusId: 'esfera',
     name: 'Corredor central',
     position: [0, 0, -45],
     yawDeg: 0,
@@ -30,6 +32,7 @@ export const WAYPOINTS: readonly Waypoint[] = [
   },
   {
     id: 'izq',
+    focusId: 'ilmara',
     name: 'Mirador de los planetas',
     position: [-34, 4, -45],
     yawDeg: 20,
@@ -38,6 +41,7 @@ export const WAYPOINTS: readonly Waypoint[] = [
   },
   {
     id: 'der',
+    focusId: 'orun',
     name: 'Mirador del anillo',
     position: [34, 3, -45],
     yawDeg: -22,
@@ -46,6 +50,7 @@ export const WAYPOINTS: readonly Waypoint[] = [
   },
   {
     id: 'far',
+    focusId: 'ancla',
     name: 'Fondo del sector',
     position: [0, 0, -90],
     yawDeg: 0,
@@ -54,6 +59,7 @@ export const WAYPOINTS: readonly Waypoint[] = [
   },
   {
     id: 'izq_f',
+    focusId: 'ilmara',
     name: 'Junto a los planetas',
     position: [-34, 4, -90],
     yawDeg: 26,
@@ -62,10 +68,11 @@ export const WAYPOINTS: readonly Waypoint[] = [
   },
   {
     id: 'der_f',
+    focusId: 'ancla',
     name: 'Cerca de la estación',
     position: [34, 3, -90],
-    yawDeg: -28,
-    pitchDeg: -8,
+    yawDeg: -22,
+    pitchDeg: -14,
     links: { back: 'der', left: 'far' },
   },
 ]

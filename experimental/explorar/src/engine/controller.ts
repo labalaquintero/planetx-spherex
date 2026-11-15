@@ -20,13 +20,18 @@ export class NavController {
   private readonly listeners = new Set<() => void>()
 
   readonly graph: RouteGraph
-  private readonly durationMs: number
+  private durationMs: number
 
   constructor(graph: RouteGraph, durationMs: number = MOVE_DURATION_MS) {
     this.graph = graph
     this.durationMs = durationMs
     this.current = initialState(graph)
     this.snap = this.makeSnapshot()
+  }
+
+  /** Cambia la duración de los movimientos siguientes (0 = instantáneo, para prefers-reduced-motion). */
+  setDuration(durationMs: number): void {
+    this.durationMs = durationMs
   }
 
   get state(): NavState {

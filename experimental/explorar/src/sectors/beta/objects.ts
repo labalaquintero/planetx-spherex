@@ -21,7 +21,7 @@ export const OBJECTS: readonly SceneObject[] = [
     id: 'veshta',
     kind: 'planet',
     label: 'Veshta (planeta)',
-    position: fromView(-0.86, 0.9, 250),
+    position: fromView(-0.7, 0.8, 250),
     radius: 17,
     seed: 23,
     palette: ['#9fb4c9', '#5a7392', '#2c3f58'],
@@ -45,10 +45,10 @@ export const OBJECTS: readonly SceneObject[] = [
     kind: 'station',
     label: 'Estación Ancla',
     position: [70, -18, -150],
-    radius: 3.2,
-    length: 16,
+    radius: 4,
+    length: 20,
     seed: 41,
-    palette: ['#b9c2cc', '#7d8895', '#4a5360'],
+    palette: ['#cfd6de', '#a3adb9', '#5d6775'],
   },
   // Esfera pequeña cerca del centro-derecha.
   {

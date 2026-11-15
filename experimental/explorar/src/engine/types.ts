@@ -14,6 +14,8 @@ export interface Waypoint {
   readonly yawDeg: number
   /** Mirar hacia arriba (positivo) o hacia abajo (negativo), en grados. */
   readonly pitchDeg: number
+  /** Objeto que el HUD nombra como «cercano» en este punto. Sin valor, se usa el etiquetado más próximo. */
+  readonly focusId?: string
   /** Vecino al que se llega con cada dirección. Una dirección ausente no tiene punto. */
   readonly links: Readonly<Partial<Record<Direction, string>>>
 }
