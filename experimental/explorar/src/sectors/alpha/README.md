@@ -2,12 +2,17 @@
 
 Hoy α es un marcador «Próximamente»: `index.ts` solo tiene la configuración de la pantalla de
 selección y **no tiene `scene`**. Este documento reúne lo necesario para construir su escena sin depender
-de nadie. Lo marcado como **pendiente de Isaac** todavía no está decidido; pregúntale o propón algo en
-tu PR.
+de nadie.
 
 ## 1. Objetivo y cómo debe sentirse
 
-**Ya decidido (está en el código o en los bocetos):**
+**Decidido:**
+
+- **α se compone a partir de las fuentes reales de WISE 0855:** los dos recortes de SPHEREx de
+  `docs/referencias/wise0855/`. Las fuentes brillantes de esas imágenes marcan dónde y de qué tamaño
+  relativo van los cuerpos.
+- Debe sentirse más tranquilo y «de observación» que β (menos objetos grandes, más campo abierto), sin
+  perder la belleza de β.
 
 - α aparece **arriba a la izquierda** en la pantalla de selección. Su posición y tamaño ya se miden del
   boceto (`selectorFromSketch('alpha')` en `index.ts`); no hay que tocarlos.
@@ -17,14 +22,6 @@ tu PR.
   límites del sector y colisiones. No hay que programar nada de eso.
 - Mismo estilo que el visor: sobrio, azul marino, con el aviso **«Representación ilustrativa, no son
   datos reales de SPHEREx»** (ya lo pone el HUD).
-
-**Propuesta, pendiente de que Isaac la confirme:**
-
-- α es el sector que **parte de datos reales**: su composición se guía por el campo real de WISE 0855 (los
-  dos recortes de SPHEREx en `docs/referencias/wise0855/`). Las fuentes brillantes de esas imágenes marcan
-  dónde y de qué tamaño relativo van los cuerpos.
-- Sensación: más tranquilo y «de observación» que β (menos objetos grandes, más campo abierto), sin
-  perder la belleza de β.
 
 ## 2. Material disponible (todo en el repo)
 
@@ -99,9 +96,9 @@ const alpha: SectorConfig = {
 Si necesitas algo de esa lista, por ejemplo una textura nueva o un tipo de objeto nuevo, déjalo propuesto
 en `docs/referencias/alpha/` y avisa a Isaac.
 
-**Pendiente de Isaac (bloquea activar α):** `src/sectors/sectors.test.ts` comprueba hoy que «solo β es
-navegable» (líneas 14–16). En cuanto α tenga `scene`, esa prueba fallará, y está fuera de tu carpeta.
-Avísale para que la actualice en el mismo PR o en uno previo.
+**Activar α no rompe ninguna prueba.** `src/sectors/sectors.test.ts` no usa listas fijas de sectores:
+valida el grafo y los `focusId` de todo sector con `scene` y comprueba que los demás salgan como
+«Próximamente». En cuanto añadas `scene`, α pasa a validarse solo.
 
 ## 5. Método
 
@@ -135,7 +132,7 @@ En Windows (PowerShell) son los mismos comandos. Antes de abrir el PR: `pnpm typ
 
 ## 7. Entrega
 
-- Un PR desde una rama tuya contra `main`, solo con archivos de las carpetas permitidas (más el cambio de
-  `sectors.test.ts` coordinado con Isaac).
+- Un PR desde una rama tuya contra `main`, solo con archivos de las carpetas permitidas.
 - En la descripción, incluye una captura de la vista al entrar y explica de dónde salió cada posición.
-- Pasar α al visor (`web/`) es un paso aparte: ver `docs/SINCRONIZACION.md`.
+- **No toques `web/`.** Isaac pasa todos los sectores al visor de una vez al final: ver
+  `docs/SINCRONIZACION.md`.
