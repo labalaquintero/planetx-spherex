@@ -21,6 +21,15 @@
       ]
     },
     {
+      "name": "Google Stitch",
+      "uses": [
+        "Creación de la maqueta inicial del visor temporal, usada como referencia de diseño."
+      ],
+      "components": [
+        "docs/decisiones/prototipo-interfaces/"
+      ]
+    },
+    {
       "name": "Claude Opus 5.5",
       "uses": [
         "Desarrollo de las escenas y la interacción del Mapa 3D.",

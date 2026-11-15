@@ -11,7 +11,7 @@ El [contexto general](docs/contexto/00_Contexto_General.md) describe la visión,
 
 ## Uso de SI
 
-OpenAI Codex asistió en la planificación, la consulta de fuentes, el diseño de la interfaz, la implementación y las pruebas del visor, el procesamiento de datos y la documentación. Claude Opus 5.5 asistió en el desarrollo del Mapa 3D y en el código de síntesis de sus efectos sonoros con Web Audio.
+OpenAI Codex asistió en la planificación, la consulta de fuentes, el diseño de la interfaz, la implementación y las pruebas del visor, el procesamiento de datos y la documentación. La maqueta inicial del visor se creó en Google Stitch y sirvió como referencia de diseño. Claude Opus 5.5 asistió en el desarrollo del Mapa 3D y en el código de síntesis de sus efectos sonoros con Web Audio.
 
 Los FITS de la comparación provienen del archivo NASA/IPAC IRSA. Los PNG y las diferencias de WISE 0855 y R Draconis derivan de esas observaciones mediante el procesamiento de Balax. El pie del sitio enlaza a **Uso de SI**, donde se pueden consultar los [metadatos por componente](web/public/si-usage.json).
 

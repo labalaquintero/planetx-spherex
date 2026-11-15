@@ -6,6 +6,7 @@ export function siUsageView() {
       <section aria-labelledby="si-desarrollo">
         <h2 id="si-desarrollo">Diseño, código y documentación</h2>
         <p>OpenAI Codex ayudó a definir el alcance, consultar documentación de SPHEREx e IRSA, diseñar el visor, el Blog y las fichas, y escribir y probar código del comparador y del espacio de observación. También asistió en la documentación y en los artículos de ejemplo.</p>
+        <p>La maqueta inicial del visor se creó en Google Stitch y sirvió como referencia de diseño.</p>
         <p>Claude Opus 5.5 asistió en el desarrollo del Mapa 3D, incluidos el vuelo, el escaneo y los efectos sonoros.</p>
       </section>
       <section aria-labelledby="si-datos">
