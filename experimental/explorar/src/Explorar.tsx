@@ -1,29 +1,87 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './explorar.css'
+import { FADE_MS, JUMP_MS } from './engine/motion'
+import { initialQuality } from './engine/quality'
+import { currentParams } from './params'
 import { NavigationScreen } from './screens/NavigationScreen'
-import { SectorSelect } from './screens/SectorSelect'
+import { loadScene } from './screens/sceneLoader'
+import { SectorSelect, type JumpState } from './screens/SectorSelect'
 import { SECTORS, getSector } from './sectors'
+import { usePrefersReducedMotion } from './usePrefersReducedMotion'
 
 export interface ExplorarProps {
   /** Clase extra para el contenedor (el componente rellena el tamaño de su contenedor). */
   className?: string
 }
 
+type Phase =
+  | { readonly kind: 'select'; readonly returnFocus: string | null }
+  | { readonly kind: 'jump'; readonly jump: JumpState }
+  | { readonly kind: 'nav'; readonly id: string; readonly arrive: boolean }
+
 /**
- * Extra «Explorar»: selección de sector y navegación en nave.
+ * Extra «Explorar»: selección de sector, salto y navegación en nave.
  * Se dimensiona al 100 % de su contenedor y no hace llamadas de red.
  */
 export function Explorar({ className }: ExplorarProps) {
-  const [sectorId, setSectorId] = useState<string | null>(null)
-  const sector = sectorId ? getSector(sectorId) : undefined
-  const exit = useCallback(() => setSectorId(null), [])
+  const reduced = usePrefersReducedMotion()
+  const params = useMemo(currentParams, [])
+  const quality = useMemo(() => initialQuality(params.quality), [params])
+  const [phase, setPhase] = useState<Phase>({ kind: 'select', returnFocus: null })
+  const token = useRef(0)
+
+  useEffect(
+    () => () => {
+      token.current++ // invalida un salto pendiente si el componente se desmonta
+    },
+    [],
+  )
+
+  const enter = useCallback(
+    (id: string, x: number, y: number) => {
+      const sector = getSector(id)
+      if (!sector?.scene) return
+      const my = ++token.current
+      setPhase({ kind: 'jump', jump: { id, start: performance.now(), x, y } })
+      const wait = new Promise((r) => setTimeout(r, reduced ? FADE_MS : JUMP_MS))
+      // Si el chunk falla, igualmente se entra: la pantalla de navegación muestra el error.
+      void Promise.all([wait, loadScene().catch(() => null)]).then(() => {
+        if (token.current === my) setPhase({ kind: 'nav', id, arrive: !reduced })
+      })
+    },
+    [reduced],
+  )
+
+  const exit = useCallback(() => {
+    token.current++
+    setPhase((p) => ({ kind: 'select', returnFocus: p.kind === 'nav' ? p.id : null }))
+  }, [])
+
+  const navSector = phase.kind === 'nav' ? getSector(phase.id) : undefined
 
   return (
     <div className={className ? `explorar ${className}` : 'explorar'}>
-      {sector?.scene ? (
-        <NavigationScreen key={sector.id} sector={{ ...sector, scene: sector.scene }} onExit={exit} />
+      {navSector?.scene && phase.kind === 'nav' ? (
+        <NavigationScreen
+          key={navSector.id}
+          sector={{ ...navSector, scene: navSector.scene }}
+          onExit={exit}
+          arrive={phase.arrive}
+          reduced={reduced}
+          quality={quality.level}
+          forced={quality.forced}
+          debug={params.debug}
+        />
       ) : (
-        <SectorSelect sectors={SECTORS} onEnter={setSectorId} />
+        <SectorSelect
+          sectors={SECTORS}
+          onEnter={enter}
+          jump={phase.kind === 'jump' ? phase.jump : null}
+          reduced={reduced}
+          quality={quality.level}
+          forced={quality.forced}
+          focusId={phase.kind === 'select' ? phase.returnFocus : null}
+        />
       )}
     </div>
   )

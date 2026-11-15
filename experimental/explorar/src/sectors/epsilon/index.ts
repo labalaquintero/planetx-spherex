@@ -7,7 +7,7 @@ const epsilon: SectorConfig = {
   name: 'Sector ε',
   description: 'Un sector del borde de la región. Aún sin explorar en esta demostración.',
   order: 3,
-  selector: { x: 45, y: 65, size: 10, colors: ['#b9f0d0', '#1d5b45'] },
+  selector: { x: 46, y: 70, size: 12, colors: ['#c7e8d4', '#1d4a3c'], surface: 'rocky', seed: 21, glow: 'rgba(134, 239, 172, 0.4)' },
 }
 
 export default epsilon

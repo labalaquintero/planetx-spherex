@@ -4,16 +4,23 @@ import { buildGraph, DIRECTIONS } from '../engine/graph'
 import { MOVE_DURATION_MS } from '../engine/navigation'
 import { nearbyObject } from '../engine/nearest'
 import type { Direction, SectorConfig, SectorScene as SectorSceneData } from '../engine/types'
-import { usePrefersReducedMotion } from '../usePrefersReducedMotion'
 import { DPad } from './DPad'
 import { ErrorBoundary } from './ErrorBoundary'
+import { loadScene } from './sceneLoader'
+import type { QualityLevel } from '../engine/quality'
 
 // three (y react-three-fiber) viven en un chunk aparte: no pesan hasta que se entra a un sector.
-const SectorScene = lazy(() => import('../scene/SectorScene'))
+const SectorScene = lazy(loadScene)
 
 interface Props {
   sector: SectorConfig & { scene: SectorSceneData }
   onExit: () => void
+  /** Llegada con destello y aproximación de cámara (false con movimiento reducido: solo fundido). */
+  arrive: boolean
+  reduced: boolean
+  quality: QualityLevel
+  forced: boolean
+  debug: boolean
 }
 
 const KEYS: Readonly<Record<string, Direction>> = {
@@ -31,9 +38,8 @@ function isTextField(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
 }
 
-export function NavigationScreen({ sector, onExit }: Props) {
+export function NavigationScreen({ sector, onExit, arrive, reduced }: Props) {
   const { scene } = sector
-  const reduced = usePrefersReducedMotion()
   const graph = useMemo(() => buildGraph(scene.waypoints, scene.startId), [scene])
   const controller = useMemo(() => new NavController(graph, reduced ? 0 : MOVE_DURATION_MS), [graph])
   useEffect(() => controller.setDuration(reduced ? 0 : MOVE_DURATION_MS), [controller, reduced])
@@ -66,7 +72,12 @@ export function NavigationScreen({ sector, onExit }: Props) {
   }, [controller, onExit])
 
   return (
-    <section className="ex-nav" aria-label={`Navegación en ${sector.name}`}>
+    <section
+      className="ex-nav"
+      aria-label={`Navegación en ${sector.name}`}
+      data-arrive={arrive ? '' : undefined}
+      data-fade-in={arrive ? undefined : ''}
+    >
       <div className="ex-canvas">
         <ErrorBoundary
           fallback={
