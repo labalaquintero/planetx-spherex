@@ -6,14 +6,15 @@ describe('parseParams', () => {
     expect(parseParams('')).toEqual({ quality: 'auto', debug: false })
   })
 
-  it('?quality=low|high fuerza la calidad (sin distinguir mayúsculas ni espacios)', () => {
+  it('?quality=low|medium|high fuerza la calidad (sin distinguir mayúsculas ni espacios)', () => {
     expect(parseParams('?quality=low').quality).toBe('low')
+    expect(parseParams('?quality=Medium').quality).toBe('medium')
     expect(parseParams('?quality=HIGH').quality).toBe('high')
     expect(parseParams('?quality=%20low%20').quality).toBe('low')
   })
 
   it('valores desconocidos o vacíos vuelven a automático', () => {
-    for (const q of ['?quality=ultra', '?quality=', '?quality=medium', '?quality=1']) {
+    for (const q of ['?quality=ultra', '?quality=', '?quality=med', '?quality=1']) {
       expect(parseParams(q).quality).toBe('auto')
     }
   })

@@ -39,6 +39,7 @@ describe('initialQuality', () => {
     expect(initialQuality('auto')).toEqual({ level: 'high', forced: false })
     expect(initialQuality('low')).toEqual({ level: 'low', forced: true })
     expect(initialQuality('high')).toEqual({ level: 'high', forced: true })
+    expect(initialQuality('medium')).toEqual({ level: 'medium', forced: true })
   })
 })
 

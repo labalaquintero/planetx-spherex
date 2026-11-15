@@ -31,7 +31,7 @@ export function FlightRig({ state, input, bounds, obstacles, animate, arrive, tr
   const aspect = useThree((s) => s.size.width / Math.max(1, s.size.height))
   const fit = useMemo(() => cameraFit(aspect), [aspect])
   const arrivalStart = useRef<number | null>(null)
-  const cam = useRef({ pos: new Vector3(), yaw: 0, ready: false })
+  const cam = useRef({ pos: new Vector3(), yaw: 0, roll: 0, look: 0, ready: false })
   const tmp = useMemo(() => ({ v: new Vector3(), q: new Quaternion(), e: new Euler(0, 0, 0, 'YXZ'), w: new Vector3() }), [])
   // En pantallas verticales la nave se aleja un poco para que quepa.
   const portrait = Math.min(1, Math.max(0, (1.2 - aspect) / 0.7))
@@ -78,7 +78,11 @@ export function FlightRig({ state, input, bounds, obstacles, animate, arrive, tr
       )
       c.yaw = approach(c.yaw, s.yaw, dtMs, CHASE.yawHalfLifeMs)
     }
-    tmp.e.set(CHASE.pitchDeg * DEG, c.yaw, 0, 'YXZ')
+    // Pulido de cámara: se inclina un poco con el alabeo de la nave y mira levemente hacia
+    // donde gira (anticipación). Con movimiento reducido, nada de eso.
+    c.roll = animate ? approach(c.roll, att.bankDeg * 0.3, dtMs, 220) : 0
+    c.look = animate ? approach(c.look, s.yawRate * 0.14, dtMs, 260) : 0
+    tmp.e.set(CHASE.pitchDeg * DEG, c.yaw + c.look, c.roll * DEG, 'YXZ')
     camera.quaternion.setFromEuler(tmp.e)
     camera.position.copy(c.pos)
 
@@ -93,7 +97,9 @@ export function FlightRig({ state, input, bounds, obstacles, animate, arrive, tr
     }
     if (animate) {
       const t = frame.clock.elapsedTime
-      camera.position.y += Math.sin(t * 0.9) * 0.04
+      // Oscilación muy leve, en dos frecuencias (no periódica a simple vista).
+      camera.position.y += Math.sin(t * 0.9) * 0.035 + Math.sin(t * 2.17) * 0.01
+      camera.position.x += Math.sin(t * 0.63) * 0.02
     }
     const speed = speedOf(s)
     const fov = fit.fovDeg + arrivalFov + (animate ? CHASE.speedFovDeg * Math.min(1, speed / FLIGHT.maxSpeed) : 0)

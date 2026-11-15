@@ -35,7 +35,8 @@ pnpm build && pnpm preview  # build de producción: http://localhost:4173
 
 | Parámetro                  | Efecto                                                                         |
 | -------------------------- | ------------------------------------------------------------------------------ |
-| `?quality=low` / `?quality=high` | Fija la calidad y desactiva el ajuste automático. Otro valor = automático. |
+| `?quality=low` / `medium` / `high` | Fija la calidad y desactiva el ajuste automático. Otro valor = automático. |
+| `?punto=<id>`              | Sale desde ese punto de ruta del sector (por ejemplo, `der_f`); sirve para capturas comparables y para la demo. |
 | `?debug`                   | Muestra el contador de FPS y el nivel de calidad en la navegación.            |
 
 Se pueden combinar: `?quality=low&debug`.
@@ -284,6 +285,28 @@ independiente (`main.tsx`) y no viaja con `<Explorar />`.
 | Texturas (diferidas)     | —                     | —                     | 139,9 kB + anillo     | igual                 |
 
 El chunk principal crece por `layout.json` (~10 kB): la selección y los datos de β lo leen.
+
+## Etapa de calidad visual (β)
+
+- **Nave nueva** (procedural, sin modelos externos):
+  - casco PBR con paneles generados y cabina con reflejo;
+  - alas con diedro y aletas;
+  - dos motores con brillo y estela;
+  - luces de navegación.
+- **Ilmara deja de parecer Júpiter:** ahora es un mundo frío inspirado en WISE 0855, con vórtices, brillo
+  propio tenue y atmósfera fina. Se retiró la textura de bandas de Júpiter del paquete y de los créditos.
+- **Render:**
+  - contraluz para la nave, bloom más suave y pase de lente (aberración cromática, grano y viñeta);
+  - estrellas cercanas con paralaje y capas de nebulosa;
+  - polvo sin rayas en reposo;
+  - cámara con inclinación y anticipación.
+- **Calidad:** nuevos campos por nivel (`chromatic`, `grain`, `nebulaLayers`, `nearStars`).
+  - En «baja» no hay bloom, lente ni nebulosa extra.
+  - La degradación automática no cambió.
+- **Sin dependencias nuevas.** El chunk diferido de la escena pasa de 975,56 kB (262,23 kB gzip) a 985,13 kB
+  (265,67 kB gzip), y las texturas bajan de ≈143 KB a ≈107 KB.
+
+Detalle del sector en `src/sectors/beta/README.md`.
 
 ## Decisiones
 
