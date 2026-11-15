@@ -58,6 +58,7 @@ describe('sonido (WebAudio)', () => {
     expect(s.enabled).toBe(false)
     s.move('forward')
     s.jump()
+    s.engine(1)
     expect(made).toBe(0)
   })
 

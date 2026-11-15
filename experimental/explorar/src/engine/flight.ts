@@ -207,7 +207,9 @@ export function nearestNamed(p: Vec3, objects: readonly SceneObject[]): { object
   let best: { object: SceneObject; distance: number } | undefined
   for (const o of objects) {
     if (!o.label) continue
-    const d = Math.max(0, Math.hypot(p[0] - o.position[0], p[1] - o.position[1], p[2] - o.position[2]) - o.radius)
+    // Tamaño envolvente: en la estación cuenta su largo (el cilindro es mucho más largo que ancho).
+    const extent = Math.max(o.radius, (o.length ?? 0) / 2)
+    const d = Math.max(0, Math.hypot(p[0] - o.position[0], p[1] - o.position[1], p[2] - o.position[2]) - extent)
     if (!best || d < best.distance) best = { object: o, distance: d }
   }
   return best

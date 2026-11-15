@@ -18,7 +18,8 @@ export const WAYPOINTS: readonly Waypoint[] = [
     name: 'Entrada del sector',
     position: [0, 0, 0],
     yawDeg: 0,
-    pitchDeg: 4,
+    // Cabeceo de la cámara de persecución (scene/chase.ts): la primera vista es la del boceto.
+    pitchDeg: -6,
     links: { forward: 'mid' },
   },
   {

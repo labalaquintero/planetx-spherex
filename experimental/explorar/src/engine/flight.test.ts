@@ -157,6 +157,12 @@ describe('el sector β como área de vuelo', () => {
     for (const o of obs) expect(Math.hypot(start[0] - o.center[0], start[1] - o.center[1], start[2] - o.center[2])).toBeGreaterThan(o.radius)
   })
 
+  it('nearestNamed mide la estación por su largo, no solo por su radio', () => {
+    const st = scene.objects.find((o) => o.kind === 'station')!
+    const beside: [number, number, number] = [st.position[0] + (st.length ?? 0) / 2 + 1, st.position[1], st.position[2]]
+    expect(nearestNamed(beside, scene.objects)!.object.id).toBe(st.id)
+  })
+
   it('nearestNamed y boundaryProximity', () => {
     const near = nearestNamed([0, 0, 0], scene.objects)!
     expect(near.object.label).toBeTruthy()

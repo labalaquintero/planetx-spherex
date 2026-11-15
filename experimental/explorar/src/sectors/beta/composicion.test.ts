@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { Euler, MathUtils, PerspectiveCamera, Vector3 } from 'three'
-import { NAVE_AJUSTE, OBJETOS_BOCETO, SELECCION_BOCETO } from '../../boceto'
+import { MathUtils, PerspectiveCamera, Vector3 } from 'three'
+import { NAVE_MEDIDA, OBJETOS_BOCETO, SELECCION_BOCETO } from '../../boceto'
 import { cameraFit } from '../../engine/motion'
 import { REFERENCE_ASPECT, screenToWorld, worldToScreen } from '../../engine/projection'
 import { nearbyObject } from '../../engine/nearest'
@@ -8,6 +8,7 @@ import { SHIP, SHIP_KEY_POINTS } from '../../engine/shipSpec'
 import { SECTORS } from '..'
 import beta from '.'
 import { ENTRY_CAMERA } from './objects'
+import { CHASE } from '../../scene/chase'
 
 /**
  * Fidelidad al boceto, sin render: se proyecta la escena con la cámara de three (implementación
@@ -94,27 +95,33 @@ describe('composición de β desde la entrada (boceto 2)', () => {
   })
 })
 
-describe('silueta de la nave (boceto 2)', () => {
-  // La nave cuelga de la cámara: se proyecta en el espacio de la cámara (sin el giro del punto).
-  const shipCam = new PerspectiveCamera(fit.fovDeg, REFERENCE_ASPECT, 0.01, 100)
-  shipCam.updateMatrixWorld()
-  const objetivo = NAVE_AJUSTE.objetivo_16_9 as unknown as Record<string, [number, number]>
-  for (const [name, local] of Object.entries(SHIP_KEY_POINTS)) {
-    const p = new Vector3(...local)
-      .applyEuler(new Euler(SHIP.pitch, 0, 0))
-      .multiplyScalar(fit.shipScale)
-      .add(new Vector3(0, fit.shipY, fit.shipZ))
-      .project(shipCam)
-    const u = (p.x + 1) / 2
-    const v = (1 - p.y) / 2
-    const t = objetivo[name]!
-    const err = Math.hypot(u - t[0], v - t[1])
-    it(`${name} a ${err.toFixed(4)} del boceto (tolerancia ${TOL})`, () => {
-      expect(err).toBeLessThanOrEqual(TOL)
-    })
-  }
+describe('nave en la primera vista (vuelo libre, mirando al frente)', () => {
+  // La nave sale delante de la cámara de entrada (scene/chase.ts), horizontal y con rumbo 0.
+  const shipAt = new Vector3(entry.position[0], entry.position[1] - CHASE.up, entry.position[2] - CHASE.back)
+  const project = (local: readonly [number, number, number]) =>
+    toScreen(new Vector3(...local).multiplyScalar(CHASE.shipScale).add(shipAt))
+  const centro = toScreen(shipAt)
+  const izq = project(SHIP_KEY_POINTS.ala_izquierda!)
+  const der = project(SHIP_KEY_POINTS.ala_derecha!)
+  const nariz = project(SHIP_KEY_POINTS.nariz!)
+  const medida = NAVE_MEDIDA.envergadura_rel_ancho
 
-  it('las proporciones del boceto se conservan: envergadura mayor que el largo visible', () => {
+  it('queda centrada en el tercio inferior, como en el boceto', () => {
+    expect(centro.u).toBeCloseTo(0.5, 3)
+    expect(centro.v).toBeGreaterThan(0.62)
+    expect(centro.v).toBeLessThan(0.8)
+  })
+
+  it(`envergadura en pantalla ${(der.u - izq.u).toFixed(3)} frente a ${medida} del boceto (tolerancia 0.08)`, () => {
+    expect(Math.abs(der.u - izq.u - medida)).toBeLessThan(0.08)
+  })
+
+  it('mira al frente: la nariz queda por encima del centro de la nave y las alas a la misma altura', () => {
+    expect(nariz.v).toBeLessThan(centro.v)
+    expect(Math.abs(izq.v - der.v)).toBeLessThan(1e-6)
+  })
+
+  it('las proporciones de la geometría siguen siendo las medidas (envergadura mayor que el largo)', () => {
     expect(SHIP.tipX * 2).toBeGreaterThan(SHIP.tailZ - SHIP.noseZ)
   })
 })

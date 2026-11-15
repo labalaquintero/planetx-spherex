@@ -11,6 +11,8 @@ export interface SoundEngine {
   move(direction: Direction): void
   /** Salto de la selección al sector. */
   jump(): void
+  /** Nivel continuo del motor 0..1 (vuelo libre): sube el tono y el volumen del zumbido. */
+  engine(level: number): void
   dispose(): void
 }
 
@@ -132,6 +134,12 @@ export function createSound(factory: () => Ctx | null = defaultFactory): SoundEn
       o.connect(g).connect(master)
       o.start(t)
       o.stop(t + 1.2)
+    },
+    engine(level: number) {
+      if (!on || !ctx) return
+      const k = Math.min(1, Math.max(0, Number.isFinite(level) ? level : 0))
+      const t = ctx.currentTime
+      hum.forEach((o, i) => o.frequency.setTargetAtTime((i ? 55.6 : 55) * (1 + 0.6 * k), t, 0.15))
     },
     dispose() {
       on = false
