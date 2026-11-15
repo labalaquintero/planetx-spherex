@@ -24,6 +24,33 @@ function cancelSearch() {
   searchTimer = null;
 }
 
+function comparisonSlider(id, label) {
+  return `<div class="wipe">
+    <div class="wipe-surface">
+      ${prepared.frames.map((frame, index) => `<img class="wipe-image wipe-${epoch(index).toLowerCase()}"
+        src="${frame.src}" width="64" height="64" alt="Época ${epoch(index)}, ${shortDate(frame.observed_at)}">`).join('')}
+      <span class="wipe-divider" aria-hidden="true"></span>
+      <span class="wipe-handle" aria-hidden="true">↔</span>
+      <input class="wipe-input" id="${id}-wipe" type="range" min="0" max="100" step="1" value="50" aria-label="${label}">
+    </div>
+    <div class="wipe-dates">
+      ${prepared.frames.map((frame, index) => `<span><b class="epoch-token">${epoch(index)}</b> ${dateMark(frame.observed_at)}</span>`).join('')}
+    </div>
+  </div>`;
+}
+
+function bindComparisonSlider(wipe) {
+  const surface = wipe.querySelector('.wipe-surface');
+  const input = wipe.querySelector('.wipe-input');
+  function update() {
+    const split = Number(input.value);
+    surface.style.setProperty('--split', `${split}%`);
+    input.setAttribute('aria-valuetext', `Época A ${split} %, época B ${100 - split} %`);
+  }
+  input.addEventListener('input', update);
+  update();
+}
+
 function viewerView(id) {
   const target = targets.find((item) => item.id === id);
   const isExample = Object.hasOwn(viewerExamples, id) && viewerExamples[id].kind === 'Simulación';
@@ -32,10 +59,19 @@ function viewerView(id) {
   const ra = target?.ra ?? (id === 'fallo' ? prepared.query.ra_deg : isExample ? 10.25 : '');
   const dec = target?.dec ?? (id === 'fallo' ? prepared.query.dec_deg : isExample ? -12.5 : '');
 
-  return `${pageHeading('Visor temporal', 'Compara observaciones de una misma región en distintas fechas.', '', true)}
-    <section class="panel coordinate-panel" aria-labelledby="coordinates-title">
-      <div class="row between"><h2 id="coordinates-title">Coordenadas celestes</h2>
-        <a class="text-link" href="#articulo/coordenadas">Ayuda con RA y Dec <span aria-hidden="true">↗</span></a></div>
+  return `<div class="row between viewer-title">
+    ${pageHeading('Visor temporal', 'Elige una región del cielo y explora lo que muestra en dos fechas.', '', true)}
+    <a class="text-link" href="#articulo/leer-epocas">Cómo leer la comparación <span aria-hidden="true">↗</span></a>
+  </div>
+    <details class="panel coordinate-panel" ${status === 'ready' ? '' : 'open'}>
+      <summary class="coordinate-summary">
+        <span><strong>Buscar una región</strong> <span class="coordinate-reference">ICRS</span></span>
+        <span class="coordinate-edit">
+          <span class="coordinate-edit-collapsed">Editar coordenadas</span>
+          <span class="coordinate-edit-expanded">Ocultar búsqueda</span>
+          <span class="coordinate-chevron" aria-hidden="true">⌄</span>
+        </span>
+      </summary>
       <form class="coordinate-form" id="coordinates" novalidate aria-describedby="coordinate-errors">
         <div class="coord-field"><label for="ra">RA (grados)</label>
           <input id="ra" name="ra" inputmode="decimal" value="${ra}" placeholder="0 a menos de 360" maxlength="32" autocomplete="off">
@@ -47,7 +83,8 @@ function viewerView(id) {
         <button class="button secondary" type="button" id="wise-preset">WISE 0855</button>
       </form>
       <p id="coordinate-errors" class="coordinate-error input-error" role="alert" hidden></p>
-    </section>
+      <a class="text-link coordinate-help" href="#articulo/coordenadas">Ayuda con RA y Dec <span aria-hidden="true">↗</span></a>
+    </details>
     <div id="observation-workspace"></div>
     <p id="viewer-announcement" class="sr-only" role="status" aria-live="polite"></p>`;
 }
@@ -76,16 +113,24 @@ function frameData(frame) {
 }
 
 function evidencePanel() {
-  return `<aside class="panel evidence" aria-labelledby="evidence-title">
-    <div class="row between"><h2 id="evidence-title">Procedencia</h2>${badge('Caso preparado', 'success')}</div>
-    ${dataRows([
-      ['Campo ICRS', `<span class="mono">RA ${prepared.query.ra_deg}°<br>Dec ${prepared.query.dec_deg}°</span>`],
-      ['Tamaño del campo', '<span class="mono">0.10° × 0.10°</span>'],
-      ['Banda aproximada', `<span class="mono">${bandLabel}</span>`],
-      ['Preparación del par', dateMark(prepared.checked_at, true)],
-    ])}
-    <h3 id="active-evidence-title">Fotograma A</h3>
+  return `<aside class="panel evidence comparison-evidence" id="comparison-evidence" aria-labelledby="evidence-title">
+    <div class="row between"><h2 id="evidence-title" tabindex="-1">Procedencia</h2>${badge('Caso preparado', 'success')}</div>
+    <div class="evidence-epoch"><span class="epoch-token" id="active-evidence-token" aria-hidden="true">A</span>
+      <h3 id="active-evidence-title">Fotograma A</h3></div>
     <div id="active-evidence"></div>
+    <div class="evidence-field">
+      ${dataRows([
+        ['Campo de visión', '<span class="mono">0.10° × 0.10°</span>'],
+        ['Banda aproximada', `<span class="mono">${bandLabel}</span>`],
+      ])}
+      <details class="evidence-coordinates">
+        <summary>Coordenadas y preparación</summary>
+        ${dataRows([
+          ['Campo ICRS', `<span class="mono">RA ${prepared.query.ra_deg}°<br>Dec ${prepared.query.dec_deg}°</span>`],
+          ['Preparación del par', dateMark(prepared.checked_at, true)],
+        ])}
+      </details>
+    </div>
   </aside>`;
 }
 
@@ -102,43 +147,51 @@ function frameTile(frame, index, preview = false) {
 }
 
 function temporalPlayer() {
-  return `<div class="timeline player" aria-label="Controles del reproductor">
-    <div class="row between">
-      <div class="row">
+  return `<div class="timeline player" role="group" aria-label="Controles del reproductor">
+    <div class="row between playback-row">
+      <div><h3>Línea de tiempo</h3><p>${daysBetween.toFixed(2)} días entre épocas</p></div>
+      <div class="row playback-buttons">
         <button type="button" class="icon-button" data-step="-1" aria-label="Fotograma anterior">←</button>
-        <div class="segmented" role="group" aria-label="Época activa">
-          ${prepared.frames.map((_frame, index) => `<button type="button" data-select="${index}" aria-label="Ver ${epoch(index)}">${epoch(index)}</button>`).join('')}
-        </div>
+        <button type="button" class="button secondary" id="play-toggle"><span aria-hidden="true">▸</span> Reproducir</button>
         <button type="button" class="icon-button" data-step="1" aria-label="Fotograma siguiente">→</button>
       </div>
-      <button type="button" class="button secondary" id="play-toggle"><span aria-hidden="true">▸</span> Reproducir</button>
     </div>
     <label for="epoch-slider" class="sr-only">Elegir época</label>
     <input type="range" id="epoch-slider" min="0" max="${prepared.frames.length - 1}" step="1" value="0">
-    <div class="timeline-labels">
-      ${prepared.frames.map((frame, index) => `<span>${epoch(index)} · ${dateMark(frame.observed_at)}</span>`).join('')}
+    <div class="epoch-choices" role="group" aria-label="Época activa">
+      ${prepared.frames.map((frame, index) => `<button type="button" class="epoch-choice" data-select="${index}" aria-label="Ver ${epoch(index)}">
+        <b class="epoch-token">${epoch(index)}</b><span>${dateMark(frame.observed_at)}</span>
+      </button>`).join('')}
     </div>
   </div>`;
 }
 
 function readyComparison() {
-  return `<div class="observatory">
-    <div class="stack">
-      <section class="panel comparison-panel" aria-label="Comparación">
-        <div class="comparison-head row between">
-          <div><h2>Campo de WISE 0855</h2><p>2 épocas · ${daysBetween.toFixed(2)} días de separación</p></div>
+  return `<div class="observatory comparison-workspace">
+    <section class="panel comparison-panel" aria-label="Comparación">
+      <div class="comparison-head row between">
+        <div><h2>Campo de WISE 0855</h2><p>Dos observaciones de SPHEREx DR1</p></div>
+        <div class="row comparison-tools">
           <div class="segmented" role="group" aria-label="Modo de comparación">
             <button type="button" data-layout="side" aria-pressed="true">Lado a lado</button>
             <button type="button" data-layout="alternate" aria-pressed="false">Alternar</button>
+            <button type="button" data-layout="wipe" aria-pressed="false">Deslizar</button>
           </div>
+          ${document.fullscreenEnabled ? '<button class="icon-button" type="button" id="comparison-fullscreen" aria-pressed="false" aria-label="Pantalla completa" title="Pantalla completa">⤢</button>' : ''}
         </div>
-        <div class="frame-grid" id="live-frames">${prepared.frames.map((frame, index) => frameTile(frame, index)).join('')}</div>
-        ${temporalPlayer()}
-      </section>
-      ${scienceCaveat()}
-      <div class="row"><a class="button secondary" href="#ficha">Preparar ficha de observación <span aria-hidden="true">→</span></a></div>
-    </div>
+      </div>
+      <div class="frame-grid" id="live-frames">${prepared.frames.map((frame, index) => frameTile(frame, index)).join('')}</div>
+      <div class="wipe-stage" id="live-wipe" hidden>
+        ${comparisonSlider('visor', 'Deslizar entre las dos épocas')}
+        <p class="input-hint">Arrastra el divisor. Selecciona A o B en la línea de tiempo para consultar la procedencia.</p>
+      </div>
+      ${temporalPlayer()}
+    </section>
     ${evidencePanel()}
+    <div class="comparison-after">
+      ${scienceCaveat()}
+      <a class="button secondary" href="#ficha">Preparar ficha de observación <span aria-hidden="true">→</span></a>
+    </div>
   </div>`;
 }
 
@@ -153,10 +206,11 @@ function emptyComparison(status) {
     'imagen-no-disponible': ['Imagen no disponible', 'No se pudo obtener el PNG de esta observación.', '!', 'danger'],
   };
   const [title, description, mark, color] = base[status];
-  const action = status === 'fallo' ? '<button class="button primary" id="retry" type="button">Reintentar</button>' :
-    ['idle', 'unavailable', 'imagen-no-disponible'].includes(status)
+  const action = status === 'idle' ? '<a class="button primary" href="#visor/wise-0855">Abrir ejemplo WISE 0855 <span aria-hidden="true">→</span></a>' :
+    status === 'fallo' ? '<button class="button primary" id="retry" type="button">Reintentar</button>' :
+    ['unavailable', 'imagen-no-disponible'].includes(status)
       ? '<a class="button secondary" href="#galeria">Explorar campos <span aria-hidden="true">→</span></a>' : '';
-  return `<section class="panel comparison-empty ${color}" ${color === 'danger' ? 'role="alert"' : 'role="status"'}>
+  return `<section class="panel comparison-empty ${color}" data-state="${status}" ${color === 'danger' ? 'role="alert"' : 'role="status"'}>
     <div>
       <span class="state-mark" aria-hidden="true">${status === 'cargando' ? '<span class="spinner"></span>' : mark}</span>
       <h2>${title}</h2><p>${description}</p>${action}
@@ -172,6 +226,7 @@ function renderObservation() {
   </div>` : '';
   if (status === 'ready') {
     workspace.innerHTML = readyComparison();
+    bindComparisonSlider(workspace.querySelector('#live-wipe .wipe'));
     updateFrame();
   } else if (status === 'insuficiente') {
     workspace.innerHTML = `${exampleTag}<div class="observatory">
@@ -200,7 +255,10 @@ function updateFrame(announce = false) {
   const { index, layout } = viewer;
   const frame = prepared.frames[index];
   const slider = panel.querySelector('#epoch-slider');
-  panel.querySelector('#live-frames').classList.toggle('single', layout === 'alternate');
+  const frames = panel.querySelector('#live-frames');
+  frames.classList.toggle('single', layout === 'alternate');
+  frames.hidden = layout === 'wipe';
+  panel.querySelector('#live-wipe').hidden = layout !== 'wipe';
   panel.querySelectorAll('[data-frame]').forEach((figure) => {
     const active = Number(figure.dataset.frame) === index;
     figure.classList.toggle('is-active', active);
@@ -213,12 +271,14 @@ function updateFrame(announce = false) {
     button.setAttribute('aria-pressed', String(button.dataset.layout === layout));
   });
   slider.value = index;
+  slider.style.setProperty('--epoch-position', `${index / (prepared.frames.length - 1) * 100}%`);
   slider.setAttribute('aria-valuetext', `Época ${epoch(index)}, ${shortDate(frame.observed_at)}`);
   const play = panel.querySelector('#play-toggle');
   play.innerHTML = playTimer ? '<span aria-hidden="true">Ⅱ</span> Pausar' : '<span aria-hidden="true">▸</span> Reproducir';
   const evidence = panel.querySelector('#active-evidence');
   if (evidence.dataset.frameId !== frame.id) {
     panel.querySelector('#active-evidence-title').textContent = `Fotograma ${epoch(index)}`;
+    panel.querySelector('#active-evidence-token').textContent = epoch(index);
     evidence.innerHTML = frameData(frame);
     evidence.dataset.frameId = frame.id;
   }
@@ -293,6 +353,14 @@ function bindViewer() {
       return;
     }
     if (viewer.status !== 'ready') return;
+    if (action.id === 'comparison-fullscreen') {
+      const comparison = action.closest('.comparison-panel');
+      const operation = document.fullscreenElement === comparison
+        ? document.exitFullscreen()
+        : comparison.requestFullscreen();
+      operation.catch(() => toast('El navegador no permitió abrir la pantalla completa.'));
+      return;
+    }
     if (action.id === 'play-toggle') {
       if (playTimer) stopPlayback();
       else {
@@ -329,6 +397,16 @@ function bindViewer() {
   renderObservation();
   if (viewer.status === 'ready') usePrepared();
 }
+
+document.addEventListener('fullscreenchange', () => {
+  const button = document.querySelector('#comparison-fullscreen');
+  if (!button) return;
+  const expanded = document.fullscreenElement === button.closest('.comparison-panel');
+  const label = expanded ? 'Salir de pantalla completa' : 'Pantalla completa';
+  button.setAttribute('aria-pressed', String(expanded));
+  button.setAttribute('aria-label', label);
+  button.title = label;
+});
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && playTimer) {
