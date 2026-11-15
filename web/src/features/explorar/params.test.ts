@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseParams, spawnPointParam } from './params'
+import { parseParams, scanParam, spawnPointParam } from './params'
 
 describe('parseParams', () => {
   it('por defecto: calidad automática y sin depuración', () => {
@@ -40,5 +40,14 @@ describe('spawnPointParam', () => {
     expect(spawnPointParam('?punto=nada', ['entry'])).toBeNull()
     expect(spawnPointParam('', ['entry'])).toBeNull()
     expect(spawnPointParam('?punto=', ['entry'])).toBeNull()
+  })
+})
+
+describe('scanParam', () => {
+  it('abre el escaneo solo de un objeto escaneable existente', () => {
+    expect(scanParam('?escanear=cobalto', ['cobalto', 'orun'])).toBe('cobalto')
+    expect(scanParam('?escanear=nadie', ['cobalto'])).toBeNull()
+    expect(scanParam('?escanear=', ['cobalto'])).toBeNull()
+    expect(scanParam('', ['cobalto'])).toBeNull()
   })
 })

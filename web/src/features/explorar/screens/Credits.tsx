@@ -30,7 +30,7 @@ export function Credits() {
         </p>
         <ul className="ex-credits-list">
           {ASSET_CREDITS.map((c) => (
-            <li key={c.url}>
+            <li key={c.what}>
               <p className="ex-credits-what">{c.what}</p>
               <p className="ex-credits-meta">
                 {c.author} · <span className="ex-chip ex-chip-muted">{c.license}</span>

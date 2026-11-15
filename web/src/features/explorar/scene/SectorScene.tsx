@@ -36,6 +36,8 @@ interface Props {
   onFps?: (fps: number) => void
   /** Cometas y meteoritos: aparición e impactos (para el HUD y el sonido). */
   onVisitorEvent?: (e: VisitorEvent) => void
+  /** En pausa (p. ej., durante un escaneo): no se dibuja ni se simula. */
+  paused?: boolean
 }
 
 /** dpr de la escena según el nivel y el tope de píxeles; se recalcula al cambiar el tamaño o el zoom. */
@@ -74,7 +76,7 @@ function Governor({ quality, onChange, onFps }: { quality: AdaptiveQuality; onCh
 
 /** Escena 3D de un sector con vuelo libre. Es la única parte que importa three (carga diferida). */
 export default function SectorScene(props: Props) {
-  const { scene, flight, input, aim, bounds, obstacles, animate, arrive, settings, quality, onQualityChange, onFps, onVisitorEvent } = props
+  const { scene, flight, input, aim, bounds, obstacles, animate, arrive, settings, quality, onQualityChange, onFps, onVisitorEvent, paused } = props
   const light = LIGHT_DIR.clone().multiplyScalar(200)
   const bodies = useMemo(() => smallBodiesOf(scene, settings.debris), [scene, settings.debris])
   // Las rocas también son obstáculos (con su holgura): no se atraviesan.
@@ -88,7 +90,7 @@ export default function SectorScene(props: Props) {
   return (
     <Canvas
       dpr={dpr}
-      frameloop={animate ? 'always' : 'demand'}
+      frameloop={paused ? 'never' : animate ? 'always' : 'demand'}
       camera={{ fov: 50, near: 0.1, far: 4000, position: [0, 0, 0] }}
       // Sin antialias en el lienzo: el composer ya hace MSAA; en el lienzo solo costaría una
       // resolución extra a pantalla completa en cada cuadro.

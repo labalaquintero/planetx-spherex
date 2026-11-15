@@ -13,9 +13,10 @@ import {
   type FlightState,
 } from '../engine/flight'
 import { STEER_SENSITIVITY } from '../engine/orbit'
+import { canScan } from '../engine/scan'
 import type { VisitorEvent, VisitorKind } from '../engine/visitors'
 import { AdaptiveQuality, adaptiveOptionsFor, detectPlatform, type QualityLevel } from '../engine/quality'
-import { platformParam, spawnPointParam } from '../params'
+import { platformParam, scanParam, spawnPointParam } from '../params'
 import type { SectorConfig, SectorScene as SectorSceneData, Vec3 } from '../engine/types'
 import { CHASE } from '../scene/chase'
 import { Credits } from './Credits'
@@ -24,6 +25,7 @@ import { FlightPad } from './FlightPad'
 import { InfoCard } from './InfoCard'
 import { Minimap } from './Minimap'
 import { NoWebGL } from './NoWebGL'
+import { ScanOverlay } from './ScanOverlay'
 import { loadScene } from './sceneLoader'
 import { detectWebGL } from './webgl'
 
@@ -47,6 +49,8 @@ interface Props {
   onEngine?: (level: number) => void
   /** Impacto de un cometa o meteorito (para el sonido). */
   onImpact?: (strength: number) => void
+  /** Empieza el escaneo de un planeta (para su sonido). */
+  onScan?: () => void
 }
 
 function isTextField(target: EventTarget | null): boolean {
@@ -83,7 +87,7 @@ export const INFO_DISTANCE = 120
 /** Y se oculta solo al alejarse más de esto (histéresis). */
 export const INFO_HIDE_DISTANCE = 140
 
-export function NavigationScreen({ sector, onExit, arrive, reduced, quality: initialLevel, forced, debug, extraControls, onEngine, onImpact, onVisitor }: Props) {
+export function NavigationScreen({ sector, onExit, arrive, reduced, quality: initialLevel, forced, debug, extraControls, onEngine, onImpact, onVisitor, onScan }: Props) {
   const { scene } = sector
   const webgl = useMemo(() => detectWebGL(), [])
   // Perfil de rendimiento: más ligero en Windows (Direct3D vía ANGLE); ?perfil= lo fuerza.
@@ -128,15 +132,50 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
     input.current = inputFrom(held)
   }, [held])
 
-  // Teclado: mantener pulsado = acelerar / girar / subir. Esc sale.
+  // Escaneo (tecla R cerca de un planeta): abre el panel con el modelo 3D. Mientras está abierto, la nave
+  // se queda quieta, la escena deja de dibujarse y R o Esc lo cierran.
+  const [scan, setScan] = useState<{ id: string; distance: number } | null>(() => {
+    // ?escanear=<id>: abre el escaneo de ese objeto al entrar (capturas y demo).
+    const ids = scene.objects.filter((o) => canScan(o)).map((o) => o.id)
+    const id = scanParam(typeof window === 'undefined' ? '' : window.location.search, ids)
+    const o = id ? scene.objects.find((x) => x.id === id) : undefined
+    if (!o) return null
+    const p = flight.current.position
+    return { id: o.id, distance: Math.hypot(o.position[0] - p[0], o.position[1] - p[1], o.position[2] - p[2]) }
+  })
+  const scanRef = useRef(scan)
+  useEffect(() => {
+    scanRef.current = scan
+  }, [scan])
+  const scannable = useRef<{ id: string; distance: number } | null>(null)
+  const openScan = useCallback(() => {
+    const target = scannable.current
+    if (!target || scanRef.current) return
+    setHeld(new Set())
+    aim.current.dYaw = 0
+    aim.current.dPitch = 0
+    setScan(target)
+    onScan?.()
+  }, [onScan])
+  const closeScan = useCallback(() => setScan(null), [])
+
+  // Teclado: mantener pulsado = acelerar / girar / subir. R escanea. Esc cierra el escaneo o sale.
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || isTextField(e.target)) return
       if (e.key === 'Escape') {
         e.preventDefault()
-        onExit()
+        if (scanRef.current) closeScan()
+        else onExit()
         return
       }
+      if (e.code === 'KeyR' && !e.repeat) {
+        e.preventDefault()
+        if (scanRef.current) closeScan()
+        else openScan()
+        return
+      }
+      if (scanRef.current) return
       const a = FLIGHT_KEYS[e.code]
       if (!a) return
       e.preventDefault() // flechas y espacio no desplazan la página
@@ -155,7 +194,7 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
       window.removeEventListener('keyup', onUp)
       window.removeEventListener('blur', clear)
     }
-  }, [hold, onExit])
+  }, [hold, onExit, openScan, closeScan])
 
   // Telemetría del HUD, 10 veces por segundo (la simulación corre en el bucle de render).
   const [tele, setTele] = useState<Telemetry>(() => ({ position: flight.current.position, yaw: flight.current.yaw, speed: 0, edge: 0 }))
@@ -205,6 +244,12 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
   else if (!tele.near || tele.near.id !== shown.current || tele.near.distance > INFO_HIDE_DISTANCE) shown.current = null
   const nearObject = shown.current ? scene.objects.find((o) => o.id === shown.current) : undefined
   const nearInfo = nearObject?.info
+  const scanTarget = nearObject && canScan(nearObject) && tele.near ? nearObject.id : null
+  const scanDistance = tele.near?.distance ?? 0
+  useEffect(() => {
+    scannable.current = scanTarget ? { id: scanTarget, distance: scanDistance } : null
+  }, [scanTarget, scanDistance])
+  const scanObject = scan ? scene.objects.find((o) => o.id === scan.id) : undefined
 
   return (
     <section
@@ -255,6 +300,7 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
                 onQualityChange={() => setSettings(adaptive.settings)}
                 onFps={debug ? setFps : undefined}
                 onVisitorEvent={onVisitorEvent}
+                paused={Boolean(scan)}
               />
             </Suspense>
           </ErrorBoundary>
@@ -285,6 +331,11 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
             <p className="ex-chip ex-chip-warn ex-hud-edge" role="status">
               Límite del sector
             </p>
+          )}
+          {nearObject && canScan(nearObject) && (
+            <button type="button" className="ex-btn ex-scan-btn" onClick={openScan}>
+              Escanear {nearObject.label} <kbd>R</kbd>
+            </button>
           )}
           {nearInfo ? (
             <InfoCard info={nearInfo} />
@@ -328,11 +379,16 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
           <p className="ex-disclaimer-inline">Representación ilustrativa, no son datos reales de SPHEREx.</p>
           <p className="ex-hint" aria-hidden="true">
             <kbd>W</kbd>/<kbd>S</kbd> acelerar y frenar · <kbd>A</kbd>/<kbd>D</kbd> girar · <kbd>E</kbd>/<kbd>Q</kbd> subir y
-            bajar · clic derecho y arrastra: dirigir la nave · <kbd>Esc</kbd> volver
+            bajar · clic derecho y arrastra: dirigir la nave · <kbd>R</kbd> escanear (cerca de un planeta) · <kbd>Esc</kbd> volver
           </p>
         </div>
         {webgl && <FlightPad held={held} onHold={hold} />}
       </div>
+      {scanObject && (
+        <div className="ex-scan-layer" onPointerDown={(e) => e.stopPropagation()} onContextMenu={(e) => e.preventDefault()}>
+          <ScanOverlay object={scanObject} distance={scan!.distance} reduced={reduced} octaves={settings.nebulaOctaves} onClose={closeScan} />
+        </div>
+      )}
     </section>
   )
 }

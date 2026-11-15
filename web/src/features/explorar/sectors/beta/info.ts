@@ -57,7 +57,7 @@ export const BETA_INFO: Readonly<Record<string, ObjectInfo>> = {
       'Su nombre recuerda a Jano, el dios romano de dos caras.',
     ],
     images: [{ src: JAPETO, caption: 'Japeto · Voyager (NASA/JPL/USGS)' }],
-    credit: JPL_COLOR,
+    credit: JPL,
   },
   onix: {
     title: 'Mundo antiguo y oscuro',
