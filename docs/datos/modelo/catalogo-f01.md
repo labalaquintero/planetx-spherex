@@ -1,6 +1,6 @@
 # Catálogo de casos preparados (F01) · Frontera y modelo de datos
 
-**Responsable:** DeValle · **Rama:** `devalle/catalog-hardening-validation` · **Contrato:** Comparación v1 (`schema_version: "1"`).
+**Responsable actual:** Alexis, en relevo de DeValle · **Contrato:** [Comparación v1](../../contratos/comparacion-v1.md) (`schema_version: "1"`).
 
 ## 1. Frontera de integración para API (`Isaac`)
 
@@ -20,7 +20,7 @@ payload = get_prepared(
 * **Diferenciación de errores:**
   * `None`: región ausente o entrada revocada (`"revoked": true` / `"active": false`).
   * `InvalidCatalogQueryError`: parámetros fuera de rango o no finitos (`422` en HTTP).
-  * `CatalogIntegrityError` (`ManifestNotFoundError`, `ManifestCorruptError`, `MissingProductError`): fallo explícito de integridad en despliegue o storage (`500`/`503` interno, nunca falso `no_coverage`).
+  * `CatalogIntegrityError` (`ManifestNotFoundError`, `ManifestCorruptError`, `MissingProductError`): fallo interno de catálogo que la API devuelve como `500 internal_error`. Incluye una banda malformada y un PNG faltante. `503` queda reservado para indisponibilidad o tiempo agotado de la búsqueda.
 
 ## 2. Invariantes de calidad para validación (`César`)
 
@@ -32,11 +32,12 @@ payload = get_prepared(
 6. **Fechas UTC estrictas y coherencia temporal:** tanto `checked_at` como cada `observed_at` deben cumplir la expresión regular estricta `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$` (separador obligatorio `T`, sufijo `Z` y hasta 6 dígitos de microsegundos opcionales; se rechazan separadores con espacio, fechas sin hora u offsets numéricos como `+00:00` o `+02:00`). Asimismo, todo fotograma debe cumplir `observed_at <= checked_at` (no puede haberse observado después de la verificación del catálogo).
 7. **Procedencia estricta (`release`, `source_url`, `observation_id`):**
    * `observation_id`: debe cumplir `^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$` (sin espacios ni símbolos de control).
-   * En fotogramas con `release` oficial (`"dr1"`, `"qr3"`), `source_url` es obligatorio y debe ser una URL `https://` válida con host (netloc) no vacío.
-   * En fotogramas con `release == "fixture"`, `source_url` puede ser `None` o una URL `http://` / `https://` válida (se rechazan esquemas no soportados como `ftp://` o URLs malformadas).
+   * El catálogo preparado acepta `release: "dr1"` o `"qr3"`. Cada fotograma requiere un `source_url` HTTPS de `irsa.ipac.caltech.edu` que apunte al archivo o registro de origen.
+   * Los datos de prueba con `release: "fixture"` se sirven por los stubs de desarrollo y QA en modo `fixture`.
 8. **Versionado estricto (`schema_version`, `science_version`):**
    * `science_version`: debe cumplir `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` (entre 1 y 64 caracteres, sin espacios al inicio/final ni símbolos no permitidos) tanto al consultarse en `get_prepared()` (`InvalidCatalogQueryError` ante valor inválido) como en cada entrada del manifiesto (`ManifestCorruptError`).
    * Si la raíz del manifiesto JSON declara `schema_version`, este debe ser exactamente `"1"`.
+9. **Estados y banda:** `ready` lleva de 2 a 6 fotogramas. `single_epoch` lleva uno. `no_usable_frames` y `no_coverage` llevan una lista vacía. `no_common_band` y `search_limit_reached` admiten 0 o 1. Con fotogramas, el centro y la tolerancia de banda son números finitos y positivos.
 
 ## 3. Ficha técnica oficial — Caso preparado WISE 0855
 

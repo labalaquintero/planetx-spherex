@@ -17,13 +17,14 @@ from .exceptions import (
 )
 
 ALLOWED_STATUSES = {"ready", "insufficient", "no_coverage"}
-INSUFFICIENT_REASONS = {
-    "single_epoch",
-    "no_common_band",
-    "no_usable_frames",
-    "search_limit_reached",
+INSUFFICIENT_FRAME_COUNTS = {
+    "single_epoch": (1, 1),
+    "no_common_band": (0, 1),
+    "no_usable_frames": (0, 0),
+    "search_limit_reached": (0, 1),
 }
-ALLOWED_RELEASES = {"dr1", "qr3", "fixture"}
+ALLOWED_RELEASES = {"dr1", "qr3"}
+IRSA_HOST = "irsa.ipac.caltech.edu"
 
 # Debe coincidir con FRAME_ID_RE de planetx.http.images para que todo frame_id
 # emitido por get_prepared() sea servible por /api/v1/images/<frame_id>.
@@ -38,7 +39,10 @@ UTC_TIMESTAMP_RE = re.compile(
 def _validate_finite_number(value: Any, name: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise InvalidCatalogQueryError(f"El parámetro '{name}' debe ser numérico.")
-    num = float(value)
+    try:
+        num = float(value)
+    except OverflowError:
+        raise InvalidCatalogQueryError(f"El parámetro '{name}' debe ser finito.") from None
     if not math.isfinite(num):
         raise InvalidCatalogQueryError(f"El parámetro '{name}' debe ser finito.")
     return num
@@ -77,36 +81,27 @@ def _validate_safe_frame_id(frame_id: Any) -> str:
     return frame_id
 
 
-def _validate_source_url(source_url: Any, release: str, frame_id: str) -> str | None:
-    if release in {"dr1", "qr3"}:
-        if not isinstance(source_url, str) or not source_url.strip():
-            raise ManifestCorruptError(
-                f"source_url obligatorio para release '{release}' en frame '{frame_id}'."
-            )
+def _validate_source_url(source_url: Any, frame_id: str) -> str:
+    if not isinstance(source_url, str) or not source_url:
+        raise ManifestCorruptError(f"source_url obligatorio en frame '{frame_id}'.")
+    invalid = f"source_url inválido en frame '{frame_id}': se requiere un enlace HTTPS a IRSA."
+    if any(char.isspace() or char == "\\" for char in source_url):
+        raise ManifestCorruptError(invalid)
+    try:
         parsed = urlparse(source_url)
-        if parsed.scheme != "https" or not parsed.netloc:
-            raise ManifestCorruptError(
-                f"source_url inválido para release '{release}' en frame '{frame_id}': '{source_url}'. "
-                "Debe ser una URL https:// con host válido."
-            )
-        return source_url
-
-    if release == "fixture":
-        if source_url is None:
-            return None
-        if not isinstance(source_url, str) or not source_url.strip() or " " in source_url:
-            raise ManifestCorruptError(
-                f"source_url inválido en frame fixture '{frame_id}': '{source_url}'."
-            )
-        parsed = urlparse(source_url)
-        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-            raise ManifestCorruptError(
-                f"source_url inválido en frame fixture '{frame_id}': '{source_url}'. "
-                "Debe ser una URL http:// o https:// con host válido."
-            )
-        return source_url
-
-    raise ManifestCorruptError(f"Release no válido en frame '{frame_id}': {release}")
+        port = parsed.port
+    except ValueError as exc:
+        raise ManifestCorruptError(invalid) from exc
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname != IRSA_HOST
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in (None, 443)
+        or parsed.path in ("", "/")
+    ):
+        raise ManifestCorruptError(invalid)
+    return source_url
 
 
 def _validate_and_normalize_entry(
@@ -120,11 +115,13 @@ def _validate_and_normalize_entry(
 
     status = entry.get("status")
     reason = entry.get("reason")
-    if status not in ALLOWED_STATUSES:
+    if not isinstance(status, str) or status not in ALLOWED_STATUSES:
         raise ManifestCorruptError(f"Estado no permitido en manifiesto: {status}")
     if status == "ready" and reason is not None:
         raise ManifestCorruptError("Un registro 'ready' debe tener reason=null.")
-    if status == "insufficient" and reason not in INSUFFICIENT_REASONS:
+    if status == "insufficient" and (
+        not isinstance(reason, str) or reason not in INSUFFICIENT_FRAME_COUNTS
+    ):
         raise ManifestCorruptError(f"Razón inválida para 'insufficient': {reason}")
     if status == "no_coverage" and reason != "no_observations":
         raise ManifestCorruptError("Un registro 'no_coverage' requiere reason='no_observations'.")
@@ -157,8 +154,12 @@ def _validate_and_normalize_entry(
 
     if status == "ready" and not (2 <= len(raw_frames) <= 6):
         raise ManifestCorruptError("Un registro 'ready' debe contener entre 2 y 6 fotogramas.")
-    if status == "insufficient" and len(raw_frames) > 1:
-        raise ManifestCorruptError("Un registro 'insufficient' admite como máximo 1 fotograma.")
+    if status == "insufficient":
+        minimum, maximum = INSUFFICIENT_FRAME_COUNTS[reason]
+        if not minimum <= len(raw_frames) <= maximum:
+            raise ManifestCorruptError(
+                f"La razón '{reason}' admite entre {minimum} y {maximum} fotogramas."
+            )
     if status == "no_coverage" and len(raw_frames) != 0:
         raise ManifestCorruptError("Un registro 'no_coverage' debe tener frames vacío.")
 
@@ -216,10 +217,10 @@ def _validate_and_normalize_entry(
         prev_observed_at = observed_dt
 
         release = frame.get("release")
-        if release not in ALLOWED_RELEASES:
+        if not isinstance(release, str) or release not in ALLOWED_RELEASES:
             raise ManifestCorruptError(f"Release no válido en frame '{frame_id}': {release}")
 
-        source_url = _validate_source_url(frame.get("source_url"), release, frame_id)
+        source_url = _validate_source_url(frame.get("source_url"), frame_id)
 
         expected_image_url = f"/api/v1/images/{frame_id}"
         if frame.get("image_url") != expected_image_url:
@@ -373,4 +374,8 @@ def get_prepared(
     if matched_entry.get("revoked") is True or matched_entry.get("active") is False:
         return None
 
-    return _validate_and_normalize_entry(matched_entry, resolved_products_dir)
+    try:
+        return _validate_and_normalize_entry(matched_entry, resolved_products_dir)
+    except InvalidCatalogQueryError as exc:
+        # Un número del manifiesto inválido es un error del catálogo, no de la consulta HTTP.
+        raise ManifestCorruptError(str(exc)) from exc

@@ -46,8 +46,8 @@ Necesitas Docker con Compose v2 (`docker compose version`).
    curl -fsS -o /dev/null -w '%{http_code} %{content_type}\n' http://localhost/api/v1/images/<frame_id>
    ```
 
-   La búsqueda debe coincidir **exactamente** con el par de coordenadas del manifiesto. Un par que no esté en el catálogo
-   responde `503 archive_unavailable`, porque la búsqueda en vivo en IRSA todavía no está habilitada.
+   La búsqueda preparada coincide **exactamente** con el par de coordenadas del manifiesto. Con la configuración por
+   defecto, una coordenada que no esté en el catálogo devuelve `503 archive_unavailable`.
 
 5. **Parar.** `docker compose down`.
 
@@ -55,3 +55,14 @@ Necesitas Docker con Compose v2 (`docker compose version`).
 | --- | --- | --- |
 | `api` | `api/Dockerfile` (Python 3.12 slim) | Uvicorn en `0.0.0.0:8000`, usuario sin privilegios, `/api/health` como healthcheck |
 | `web` | `infra/web/Dockerfile` (Node 24, pnpm, nginx) | Compila `web/` y sirve `dist/`; la configuración está en `infra/web/nginx.conf` |
+
+### Activar la búsqueda en vivo
+
+Con el respaldo montado, añade `PLANETX_ENABLE_LIVE=1` a `.env` y vuelve a ejecutar `docker compose up --build`.
+Para arrancar Uvicorn directamente, define la misma variable en el entorno del proceso de la API.
+
+La API consulta primero el catálogo. Si la clave no está preparada, busca exposiciones en IRSA, procesa los recortes
+y publica sus PNG mediante `/api/v1/images/{frame_id}`. Los FITS de trabajo se guardan en un directorio temporal por
+consulta. El plazo HTTP es de 25 segundos y el límite predeterminado es de dos búsquedas en vivo simultáneas.
+`no_coverage` corresponde a una búsqueda completa sin observaciones. Una caída de IRSA o el agotamiento del plazo
+devuelven un `503` reintentable.

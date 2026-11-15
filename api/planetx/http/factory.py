@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager, closing
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -28,6 +30,7 @@ DEFAULT_PRODUCTS_DIR = REPO_ROOT / "data" / "products"
 
 PRODUCTS_DIR_ENV = "PLANETX_PRODUCTS_DIR"
 CATALOG_MANIFEST_ENV = "PLANETX_CATALOG_MANIFEST"
+ENABLE_LIVE_ENV = "PLANETX_ENABLE_LIVE"
 LIVE_CONCURRENCY_ENV = "PLANETX_LIVE_CONCURRENCY"
 DEFAULT_LIVE_CONCURRENCY = 2
 # Plazo total de la ruta en vivo. CloudFront corta a los 30 s por defecto hacia el origen; el
@@ -76,6 +79,29 @@ def _live_concurrency(value: int | None) -> int:
         raise ValueError(f"{LIVE_CONCURRENCY_ENV} debe ser un entero >= 1") from None
 
 
+def _live_enabled(value: bool | None) -> bool:
+    if value is not None:
+        return value
+    raw = os.environ.get(ENABLE_LIVE_ENV, "0")
+    if raw not in ("0", "1"):
+        raise ValueError(f"{ENABLE_LIVE_ENV} debe ser 0 o 1")
+    return raw == "1"
+
+
+@asynccontextmanager
+async def _live_lifespan(app: FastAPI) -> AsyncIterator[None]:
+    from planetx.http.live import IrsaScienceService
+    from planetx.irsa import IrsaAdapter, IrsaConfig
+
+    # El recorte de entrada deja margen para proyectar la rejilla de salida de 0.1°.
+    with closing(IrsaAdapter(IrsaConfig(size_deg=0.15))) as archive:
+        app.state.planetx.science = IrsaScienceService(archive)
+        try:
+            yield
+        finally:
+            app.state.planetx.science = UnconfiguredScience()
+
+
 def create_app(
     *,
     prepared: PreparedCatalog | None = None,
@@ -83,11 +109,12 @@ def create_app(
     image_store: ImageStore | None = None,
     products_dir: str | os.PathLike[str] | None = None,
     catalog_manifest: str | os.PathLike[str] | None = None,
+    enable_live: bool | None = None,
     live_timeout_s: float = DEFAULT_LIVE_TIMEOUT_S,
     live_concurrency: int | None = None,
     allow_fixtures: bool = False,
 ) -> FastAPI:
-    """Crea la API. Sin argumentos usa el catálogo real si existe y stubs para el resto.
+    """Crea la API. ``PLANETX_ENABLE_LIVE=1`` habilita IRSA si no se inyectó ciencia.
 
     ``allow_fixtures`` solo existe para dev/pruebas; con False un payload con
     ``mode: "fixture"`` se rechaza como error interno.
@@ -112,7 +139,8 @@ def create_app(
     live_images = InMemoryImageStore()
     disk_store = image_store if image_store is not None else DirectoryImageStore(products)
 
-    app = FastAPI(title="Planet X / SPHEREx")
+    lifespan = _live_lifespan if science is None and _live_enabled(enable_live) else None
+    app = FastAPI(title="Planet X / SPHEREx", lifespan=lifespan)
     app.state.planetx = AppState(
         prepared=prepared,
         science=science or UnconfiguredScience(),
