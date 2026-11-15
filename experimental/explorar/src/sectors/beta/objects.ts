@@ -16,6 +16,7 @@ export const OBJECTS: readonly SceneObject[] = [
     seed: 11,
     palette: ['#d9b48a', '#a8683c', '#6b3a22'],
     surface: 'bands',
+    atmosphere: '#fdba74',
   },
   {
     id: 'veshta',
@@ -26,6 +27,7 @@ export const OBJECTS: readonly SceneObject[] = [
     seed: 23,
     palette: ['#9fb4c9', '#5a7392', '#2c3f58'],
     surface: 'rocky',
+    atmosphere: '#7dd3fc',
   },
   // Planeta con anillo arriba a la derecha.
   {
@@ -38,6 +40,7 @@ export const OBJECTS: readonly SceneObject[] = [
     palette: ['#e8d9b0', '#c2a56c', '#8a6e3c'],
     surface: 'bands',
     ring: { inner: 1.45, outer: 2.3, tiltDeg: 24 },
+    atmosphere: '#fde68a',
   },
   // Objeto cilíndrico con anillo, a la derecha al medio.
   {

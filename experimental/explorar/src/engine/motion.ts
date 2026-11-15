@@ -80,3 +80,14 @@ export function cameraFit(aspect: number): CameraFit {
     shipZ: -4.6 - 0.6 * t,
   }
 }
+
+/**
+ * Empuje del motor (0..1) para la estela: en reposo, un ralentí; al avanzar, máximo a mitad de
+ * trayecto; laterales y retroceso, intermedios.
+ */
+export function thrust(direction: 'forward' | 'back' | 'left' | 'right' | null, progress: number): number {
+  const IDLE = 0.3
+  if (direction === null) return IDLE
+  const peak = direction === 'forward' ? 1 : direction === 'back' ? 0.45 : 0.7
+  return IDLE + (peak - IDLE) * Math.sin(Math.PI * Math.min(1, Math.max(0, progress)))
+}

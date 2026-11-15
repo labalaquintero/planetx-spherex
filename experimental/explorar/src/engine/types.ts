@@ -41,12 +41,32 @@ export interface SceneObject {
   readonly ring?: { readonly inner: number; readonly outer: number; readonly tiltDeg: number }
   /** Solo estación: longitud del cilindro. */
   readonly length?: number
+  /** Color de la atmósfera (resplandor de borde). Sin valor, sin atmósfera. */
+  readonly atmosphere?: string
+}
+
+/**
+ * Relleno de cuerpos pequeños (mismo tipo que `smallBody`, solo más numerosos). Se generan con una
+ * semilla dentro de una caja, lejos de la ruta; la calidad decide cuántos se dibujan (hasta `count`).
+ */
+export interface SmallBodyField {
+  readonly seed: number
+  readonly count: number
+  readonly center: Vec3
+  /** Semiejes de la caja. */
+  readonly extent: Vec3
+  readonly minRadius: number
+  readonly maxRadius: number
+  /** Distancia mínima a cualquier punto de ruta y a los tramos entre ellos. */
+  readonly clearance: number
+  readonly palette: readonly [string, string, string]
 }
 
 export interface SectorScene {
   readonly startId: string
   readonly waypoints: readonly Waypoint[]
   readonly objects: readonly SceneObject[]
+  readonly field?: SmallBodyField
 }
 
 export interface SectorConfig {
