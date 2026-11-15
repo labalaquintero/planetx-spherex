@@ -177,7 +177,8 @@ const EXTRA_DEFS: SceneObject[] = [
     position: around(-100, 6, 500),
     radius: 34,
     seed: 101,
-    palette: ['#e0e7ff', '#7c3aed', '#1e1b4b'],
+    // El tono más claro es lavanda (no casi blanco): la textura es muy brillante y se veía como una bola blanca.
+    palette: ['#c4b5fd', '#5b21b6', '#1e1b4b'],
     surface: 'bands',
     atmosphere: '#c4b5fd',
     texture: { map: 'plano-galactico', mode: 'palette' },

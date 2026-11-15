@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import * as backdrop from '../../backdrop/shader'
 import * as glow from './glow'
+import { PLANET_FRAG } from './planet'
 import * as streak from './streak'
 
 /**
@@ -17,5 +18,13 @@ describe('shaders sin pow de base negativa', () => {
   it('la estela acota su coordenada a lo largo antes de pow(1 − t)', () => {
     expect(streak.STREAK_FRAG).toMatch(/clamp\(vUv\.y, 0\.0, 1\.0\)/)
     expect(streak.STREAK_FRAG).not.toMatch(/pow\(1\.0 - t/)
+  })
+})
+
+describe('planetas sin corte en la costura', () => {
+  it('el mapa y el relieve se leen con la costura mezclada (los recortes no casan de borde a borde)', () => {
+    expect(PLANET_FRAG).toMatch(/ex_seamless\(uMap, vUv\)/)
+    expect(PLANET_FRAG).toMatch(/ex_seamless\(uBump, vUv\)/)
+    expect(PLANET_FRAG).not.toMatch(/texture2D\(uMap, vUv\)/)
   })
 })

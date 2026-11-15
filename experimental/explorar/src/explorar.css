@@ -396,6 +396,38 @@
 .ex-canvas {
   position: absolute;
   inset: 0;
+  /* Sin selección ni menú táctil del navegador sobre la vista 3D. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.ex-canvas[data-locked] {
+  cursor: none;
+}
+.ex-lock-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 6;
+  margin: 0;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  color: var(--ex-label);
+  pointer-events: none;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid var(--ex-border);
+  border-radius: var(--ex-radius-pill);
+  transform: translate(-50%, 140px);
+  animation: ex-lock-out 2.6s ease forwards;
+}
+@keyframes ex-lock-out {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 /* Llegada: destello que se apaga (con movimiento reducido, solo un fundido). */
 .ex-nav[data-arrive]::after {
@@ -569,6 +601,7 @@
 }
 .ex-info-figure img {
   display: block;
+  -webkit-user-drag: none;
   width: 100%;
   height: auto;
   /* Imagen entera en su proporción (mapas 2:1, el cielo de SPHEREx 16:9, recortes cuadrados): sin recortes raros. */
@@ -1388,7 +1421,8 @@
 @media (prefers-reduced-motion: reduce) {
   .ex-scan,
   .ex-scan-layer,
-  .ex-scan-line {
+  .ex-scan-line,
+  .ex-lock-hint {
     animation: none;
   }
   .ex-scan-readout div {

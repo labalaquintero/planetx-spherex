@@ -159,6 +159,37 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
   }, [onScan])
   const closeScan = useCallback(() => setScan(null), [])
 
+  // Puntero bloqueado (como en los juegos de vuelo): un clic en la vista lo bloquea y el ratón dirige la
+  // nave; Esc lo suelta (el navegador lo hace) y un segundo Esc sale del sector. Las teclas no cambian.
+  const canvasRef = useRef<HTMLDivElement>(null)
+  const [locked, setLocked] = useState(false)
+  const lockedRef = useRef(false)
+  const releasedAt = useRef(0)
+  useEffect(() => {
+    const onChange = () => {
+      const now = document.pointerLockElement === canvasRef.current && canvasRef.current !== null
+      if (lockedRef.current && !now) releasedAt.current = performance.now()
+      lockedRef.current = now
+      setLocked(now)
+    }
+    const onMove = (e: MouseEvent) => {
+      if (!lockedRef.current) return
+      aim.current.dYaw -= e.movementX * STEER_SENSITIVITY
+      aim.current.dPitch -= e.movementY * STEER_SENSITIVITY
+    }
+    document.addEventListener('pointerlockchange', onChange)
+    document.addEventListener('mousemove', onMove)
+    return () => {
+      document.removeEventListener('pointerlockchange', onChange)
+      document.removeEventListener('mousemove', onMove)
+      if (lockedRef.current) document.exitPointerLock?.()
+    }
+  }, [])
+  // Al escanear se suelta: el ratón se usa para girar el modelo.
+  useEffect(() => {
+    if (scan && lockedRef.current) document.exitPointerLock?.()
+  }, [scan])
+
   // Teclado: mantener pulsado = acelerar / girar / subir. R escanea. Esc cierra el escaneo o sale.
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
@@ -166,7 +197,8 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
       if (e.key === 'Escape') {
         e.preventDefault()
         if (scanRef.current) closeScan()
-        else onExit()
+        else if (lockedRef.current) document.exitPointerLock?.()
+        else if (performance.now() - releasedAt.current > 400) onExit()
         return
       }
       if (e.code === 'KeyR' && !e.repeat) {
@@ -259,9 +291,27 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
       data-fade-in={arrive ? undefined : ''}
     >
       <div
+        ref={canvasRef}
         className="ex-canvas"
+        data-locked={locked || undefined}
         onContextMenu={(e) => e.preventDefault()}
+        // Nada de acciones del navegador en la vista: arrastrar (imágenes), autodesplazamiento con la
+        // rueda pulsada ni selección de texto.
+        onDragStart={(e) => e.preventDefault()}
+        onAuxClick={(e) => e.preventDefault()}
+        onMouseDown={(e) => {
+          if (e.button !== 2) e.preventDefault()
+        }}
         onPointerDown={(e) => {
+          if (e.button === 0 && !scanRef.current && !lockedRef.current) {
+            const el = canvasRef.current as (HTMLDivElement & { requestPointerLock(): Promise<void> | void }) | null
+            try {
+              void Promise.resolve(el?.requestPointerLock()).catch(() => {})
+            } catch {
+              // Sin bloqueo de puntero (o denegado): se sigue dirigiendo con clic derecho.
+            }
+            return
+          }
           if (e.button !== 2) return
           e.currentTarget.setPointerCapture?.(e.pointerId)
           drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY }
@@ -357,6 +407,11 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
         </div>
       </div>
 
+      {locked && (
+        <p className="ex-lock-hint" role="status">
+          Dirigiendo con el ratón · <kbd>Esc</kbd> suelta el puntero
+        </p>
+      )}
       {toast && (
         <p key={toast.key} className="ex-toast" data-tone={toast.tone} role="status">
           {toast.text}
@@ -381,7 +436,8 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
           <p className="ex-disclaimer-inline">Representación ilustrativa, no son datos reales de SPHEREx.</p>
           <p className="ex-hint" aria-hidden="true">
             <kbd>W</kbd>/<kbd>S</kbd> acelerar y frenar · <kbd>A</kbd>/<kbd>D</kbd> girar · <kbd>E</kbd>/<kbd>Q</kbd> subir y
-            bajar · clic derecho y arrastra: dirigir la nave · <kbd>Shift</kbd> turbo · <kbd>R</kbd> escanear (cerca de un planeta) · <kbd>Esc</kbd> volver
+            bajar · clic derecho y arrastra: dirigir la nave · <kbd>Shift</kbd> turbo · <kbd>R</kbd> escanear (cerca de un planeta) · clic en la vista: dirigir
+            con el ratón (<kbd>Esc</kbd> lo suelta) · <kbd>Esc</kbd> volver
           </p>
         </div>
         {webgl && <FlightPad held={held} onHold={hold} />}

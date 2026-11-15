@@ -77,6 +77,11 @@ Además, baja de nivel por debajo de 50 FPS en vez de 46. En Linux y macOS no ca
   Con **clic derecho y arrastrar** se dirige la nave: arrastrar a los lados cambia el rumbo y arriba o abajo cambia
   el cabeceo (hasta ±60°). La nave sigue igual en pantalla; lo que cambia es hacia dónde avanza.
 
+  **Clic en la vista** bloquea el puntero, como en los juegos de vuelo: el ratón dirige la nave sin arrastrar.
+  **Esc** suelta el puntero y otro **Esc** sale del sector. Dentro de la vista no hay acciones del navegador:
+  ni arrastrar imágenes («descargar»), ni autodesplazamiento con la rueda pulsada, ni selección de texto.
+  **Shift** es el turbo: el tope pasa de 30 a 48 u/s y al soltarlo baja suave.
+
   La nave mira al frente y la cámara la sigue desde atrás. Se alabea al girar y se inclina al subir o bajar. Los
   controles en pantalla (abajo a la derecha, la cruz del boceto más «Subir» y «Bajar») funcionan igual y sirven en
   pantallas táctiles. `Esc` o «Volver a sectores» regresan a la selección con el foco en el sector visitado.

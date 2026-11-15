@@ -130,7 +130,7 @@ export default function ScanView(props: Props) {
     <Canvas
       dpr={[1, 2]}
       camera={{ fov: 32, near: 0.1, far: 4000, position: [0, 0, 10] }}
-      gl={{ antialias: false, powerPreference: 'high-performance', toneMapping: AgXToneMapping, toneMappingExposure: 1.2 }}
+      gl={{ antialias: false, powerPreference: 'high-performance', toneMapping: AgXToneMapping, toneMappingExposure: 1.0 }}
       frameloop="always"
       // Medir sin transformaciones: el panel se abre con una animación de escala.
       resize={{ offsetSize: true }}
@@ -140,7 +140,7 @@ export default function ScanView(props: Props) {
       <Sky stars={3600} octaves={5} cube={1024} animate={props.animate} />
       <Rig radius={props.object.radius} extent={extent} input={props.input} />
       <Body {...props} />
-      <Bloom strength={0.42} samples={4} chromatic={0} grain={0} />
+      <Bloom strength={0.25} samples={4} chromatic={0} grain={0} />
     </Canvas>
   )
 }
