@@ -9,7 +9,7 @@ import {
 import { back, badge, dataRows, miniPair, missingView, pageHeading } from './ui.js';
 import {
   bindComparisonSlider, bindInspector, bindViewer, cancelSearch, comparisonFor, comparisonSlider,
-  inspectorView, stopPlayback, viewerExamples, viewerView,
+  inspectorView, prefetchPrepared, preparedState, stopPlayback, viewerExamples, viewerView,
 } from './visor.js';
 import { bindReportAnnotations } from './anotaciones.js';
 import { loadForView, readSharedPage, reportById, setSharedPage, sharedPage } from './colaboracion.js';
@@ -105,18 +105,32 @@ function targetComparison({ ra, dec }) {
   return data?.frames.length >= 2 ? data : null;
 }
 
+/** Caso preparado del servidor aún sin cargar (o cargando): se trata como «con secuencia» salvo si falló. */
+function pendingPrepared(target) {
+  return Boolean(target.preparedCase) && preparedState(target) !== 'fallo' && !targetComparison(target);
+}
+
+const compareHref = (target, pair) => pair ? comparisonLink(pair) : `#visor?${new URLSearchParams({ ra: String(target.ra), dec: String(target.dec) })}`;
+
 function targetCard(target) {
   const pair = targetComparison(target);
+  const pending = !pair && pendingPrepared(target);
   const chart = `<div class="sky-marker" role="img" aria-label="Posición aproximada en coordenadas ICRS"
      style="${skyPosition(target)}"><span aria-hidden="true">ICRS</span></div>`;
+  const label = pair ? badge(comparisonMode(pair), pair.mode === 'prepared' ? 'success' : 'info')
+    : pending ? badge('Caso preparado', 'success') : badge('Coordenadas de referencia', 'neutral', false);
   return `<article class="panel target-card${pair ? ' wide' : ''}">
     ${pair ? '' : chart}
     <div>
-      ${pair ? badge(comparisonMode(pair), pair.mode === 'prepared' ? 'success' : 'info') : badge('Coordenadas de referencia', 'neutral', false)}
+      ${label}
       <h2>${target.name}</h2>
       <p>${target.type}</p>
       <p class="mono">${target.ra.toFixed(6)}° / ${target.dec.toFixed(6)}°</p>
-      <a class="text-link" href="#objetivo/${target.id}" aria-label="Ver detalle de ${target.name}">Ver ficha <span aria-hidden="true">→</span></a>
+      ${pending ? '<p class="muted" role="status">Cargando sus épocas…</p>' : ''}
+      <div class="row">
+        ${pair || pending ? `<a class="text-link" href="${escapeHtml(compareHref(target, pair))}" aria-label="Comparar épocas de ${target.name}">Comparar épocas <span aria-hidden="true">→</span></a>` : ''}
+        <a class="text-link" href="#objetivo/${target.id}" aria-label="Ver detalle de ${target.name}">Ver ficha <span aria-hidden="true">→</span></a>
+      </div>
     </div>
     ${pair ? miniPair(true, pair) : ''}
   </article>`;
@@ -190,7 +204,7 @@ function bindGallery() {
   function update() {
     const query = fold(input.value);
     const matching = targets.filter((target) => {
-      const hasPair = Boolean(targetComparison(target));
+      const hasPair = Boolean(targetComparison(target)) || pendingPrepared(target);
       const matchesMode = filter === 'todos' || (filter === 'preparado' ? hasPair : !hasPair);
       return matchesMode && fold(`${target.name} ${target.type}`).includes(query);
     });
@@ -208,6 +222,14 @@ function bindGallery() {
     bindEvidenceImages(results);
   }
   input.addEventListener('input', update);
+  // Casos preparados del servidor: se cargan una vez por visita y la galería se actualiza al llegar.
+  if (runtime?.compare) {
+    for (const target of targets.filter((item) => item.preparedCase && !preparedState(item))) {
+      void prefetchPrepared(target, runtime.compare).then(() => {
+        if (results.isConnected) update();
+      });
+    }
+  }
   buttons.forEach((button) => button.addEventListener('click', () => {
     filter = button.dataset.filter;
     buttons.forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
@@ -238,6 +260,7 @@ function targetView(id) {
   const target = targets.find((item) => item.id === id);
   if (!target) return missingView();
   const pair = targetComparison(target);
+  const pending = !pair && pendingPrepared(target);
 
   return `${back('#galeria', 'Galería')}
     ${pageHeading(target.name, target.description, target.type)}
@@ -246,9 +269,10 @@ function targetView(id) {
         <div class="section-heading"><h2 class="section-title">${pair ? 'Épocas disponibles' : 'Campo de referencia'}</h2>
           ${pair ? badge(comparisonMode(pair), pair.mode === 'prepared' ? 'success' : 'info') : ''}</div>
         ${pair ? `<div class="target-frames">${miniPair(true, pair)}</div>`
-          : '<p class="muted">Usa estas coordenadas en el visor para consultar las observaciones disponibles en IRSA.</p>'}
+          : pending ? '<p class="muted">Caso preparado: el visor carga sus dos épocas y la imagen de diferencia.</p>'
+            : '<p class="muted">Usa estas coordenadas en el visor para consultar las observaciones disponibles en IRSA.</p>'}
         <div class="row">
-          <a class="button primary" href="${escapeHtml(pair ? comparisonLink(pair) : `#visor/${id}`)}">${pair ? 'Comparar épocas' : 'Usar coordenadas'} <span aria-hidden="true">→</span></a>
+          <a class="button primary" href="${escapeHtml(pair || pending ? compareHref(target, pair) : `#visor/${id}`)}">${pair || pending ? 'Comparar épocas' : 'Usar coordenadas'} <span aria-hidden="true">→</span></a>
           ${pair ? `<a class="button secondary" href="#ficha?${escapeHtml(coordinateParams(pair.query))}">Preparar ficha</a>` : ''}
         </div>
       </section>

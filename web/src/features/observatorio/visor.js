@@ -37,6 +37,47 @@ function sameCoordinates(data, ra, dec) {
   return data?.query.ra_deg === ra && data.query.dec_deg === dec;
 }
 
+/*
+ * Casos preparados del catálogo del servidor (además de WISE 0855, que va en el código). La galería
+ * los precarga en memoria al abrirse, solo para los objetivos marcados con `preparedCase`: así nunca
+ * dispara una consulta en vivo a IRSA y no toca la comparación activa ni el historial.
+ * Valor por clave: la comparación lista, 'fallo' o la promesa en curso.
+ */
+const preparedCache = new Map();
+const preparedKey = (ra, dec) => `${ra},${dec}`;
+
+function cachedPrepared(ra, dec) {
+  const value = preparedCache.get(preparedKey(ra, dec));
+  return value && typeof value === 'object' && !(value instanceof Promise) ? value : null;
+}
+
+/** 'listo', 'cargando', 'fallo' o undefined si aún no se pidió. */
+function preparedState(target) {
+  const value = preparedCache.get(preparedKey(target.ra, target.dec));
+  if (value === undefined) return undefined;
+  if (value === 'fallo') return 'fallo';
+  return value instanceof Promise ? 'cargando' : 'listo';
+}
+
+function prefetchPrepared(target, compare) {
+  const key = preparedKey(target.ra, target.dec);
+  if (preparedCache.has(key)) return Promise.resolve(cachedPrepared(target.ra, target.dec));
+  const request = Promise.resolve()
+    .then(() => compare(target.ra, target.dec, AbortSignal.timeout(15000)))
+    .then((payload) => {
+      const data = normalizeComparison(payload);
+      const ok = data.mode === 'prepared' && data.status === 'ready' && data.frames.length >= 2;
+      preparedCache.set(key, ok ? data : 'fallo');
+      return ok ? data : null;
+    })
+    .catch(() => {
+      preparedCache.set(key, 'fallo');
+      return null;
+    });
+  preparedCache.set(key, request);
+  return request;
+}
+
 function savedComparison(ra, dec) {
   if (sameCoordinates(activeComparison, ra, dec)) return activeComparison;
   return readWorkspace().recent.find(({ comparison }) => sameCoordinates(comparison, ra, dec))?.comparison;
@@ -57,7 +98,7 @@ function comparisonFor(params = new URLSearchParams()) {
   const saved = savedComparison(coordinates.ra, coordinates.dec);
   if (saved) return saved;
   if (sameCoordinates(prepared, coordinates.ra, coordinates.dec)) return prepared;
-  return null;
+  return cachedPrepared(coordinates.ra, coordinates.dec);
 }
 
 function storeComparison(data) {
@@ -124,7 +165,8 @@ function viewerView(id, params) {
   const requested = query ?? target;
   const ra = requested?.ra ?? (id === 'fallo' ? prepared.query.ra_deg : isExample ? 10.25 : '');
   const dec = requested?.dec ?? (id === 'fallo' ? prepared.query.dec_deg : isExample ? -12.5 : '');
-  const autoSearch = !isExample && (id === 'wise-0855' || !!query);
+  // Los casos preparados (WISE 0855 y los marcados en datos.js) se consultan solos al abrirse.
+  const autoSearch = !isExample && (id === 'wise-0855' || Boolean(target?.preparedCase) || !!query);
   const data = autoSearch ? savedComparison(ra, dec) : null;
   const status = isExample ? id : data ? comparisonState(data) : 'idle';
   if (data) activeComparison = data;
@@ -799,6 +841,6 @@ function bindInspector(id, params) {
 
 
 export {
-  bindComparisonSlider, bindInspector, bindViewer, cancelSearch, comparisonFor, comparisonSlider,
+  bindComparisonSlider, bindInspector, bindViewer, cancelSearch, comparisonFor, comparisonSlider, prefetchPrepared, preparedState,
   inspectorView, stopPlayback, viewerExamples, viewerView,
 };

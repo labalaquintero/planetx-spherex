@@ -58,4 +58,10 @@ describe('encapsulación de explorar.css', () => {
   it('no hay selectores de elemento sueltos, :root, html, body ni *', () => {
     expect(css).not.toMatch(/(^|[\s,}])(:root|html|body)\s*[{,]/m)
   })
+
+  it('el diálogo de créditos recibe la rueda y el arrastre aunque esté dentro del HUD (pointer-events: none)', () => {
+    const rule = /\.ex-credits\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
+    expect(rule).toMatch(/pointer-events:\s*auto/)
+    expect(rule).toMatch(/overflow-y:\s*auto/)
+  })
 })
