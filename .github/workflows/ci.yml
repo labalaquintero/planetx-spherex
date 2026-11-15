@@ -63,6 +63,8 @@ jobs:
           key: pnpm-web-${{ runner.os }}-${{ hashFiles('web/pnpm-lock.yaml') }}
           restore-keys: pnpm-web-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile
+      # oxlint: hoy pasa con avisos (sin errores); un error de lint sí hace fallar el job.
+      - run: pnpm lint
       - run: pnpm test
       # build = tsc -b && vite build (incluye la comprobación de tipos).
       - run: pnpm build
