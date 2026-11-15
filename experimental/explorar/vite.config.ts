@@ -13,5 +13,7 @@ export default defineConfig({
     // Lógica pura (grafo y navegación): no necesita DOM.
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    // Procesa el CSS para que «?raw» devuelva el texto (lo usa la prueba de encapsulación).
+    css: true,
   },
 })

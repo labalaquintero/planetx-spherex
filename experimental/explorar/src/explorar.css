@@ -1,11 +1,42 @@
 /* Estilos de <Explorar />. Todo cuelga de .explorar y de clases ex-*, para no afectar al visor. */
 .explorar {
-  --ex-bg: #050b1a;
-  --ex-panel: rgb(10 21 48 / 0.86);
-  --ex-border: #28407a;
-  --ex-text: #e6efff;
-  --ex-muted: #9db0d8;
-  --ex-accent: #8fc2ff;
+  /* Tokens del visor (web/src/index.css y web/src/App.css), copiados tal cual: mismo azul
+     marino, acento sky, superficies slate, radios y sombras. No es una paleta nueva. */
+  --ex-bg: #030712;
+  --ex-surface: #0f172a;
+  --ex-surface-2: #111827;
+  --ex-inset: #0b0f19;
+  --ex-raised: #1e293b;
+  --ex-border: #1e293b;
+  --ex-border-strong: #334155;
+  --ex-border-hover: #475569;
+  --ex-text: #e2e8f0;
+  --ex-heading: #f8fafc;
+  --ex-label: #cbd5e1;
+  --ex-muted: #94a3b8;
+  --ex-dim: #64748b;
+  --ex-accent: #38bdf8;
+  --ex-accent-light: #7dd3fc;
+  --ex-accent-pale: #bae6fd;
+  --ex-accent-strong: #0284c7;
+  --ex-accent-hover: #0369a1;
+  --ex-accent-soft: rgba(56, 189, 248, 0.15);
+  --ex-accent-faint: rgba(56, 189, 248, 0.08);
+  --ex-accent-line: rgba(56, 189, 248, 0.3);
+  --ex-focus-ring: 0 0 0 3px rgba(56, 189, 248, 0.4);
+  --ex-warn: #facc15;
+  --ex-warn-soft: rgba(250, 204, 21, 0.15);
+  --ex-warn-line: rgba(250, 204, 21, 0.3);
+  --ex-radius-lg: 12px;
+  --ex-radius-md: 10px;
+  --ex-radius: 8px;
+  --ex-radius-sm: 6px;
+  --ex-radius-pill: 9999px;
+  --ex-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+  --ex-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --ex-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  /* Paneles sobre la escena: la superficie del visor con transparencia. */
+  --ex-panel: rgba(15, 23, 42, 0.86);
 
   position: relative;
   width: 100%;
@@ -13,17 +44,22 @@
   min-height: 320px;
   overflow: hidden;
   color: var(--ex-text);
-  background: radial-gradient(ellipse at 50% 20%, #0b1a3c 0%, var(--ex-bg) 70%);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--ex-bg);
+  font-family: var(--ex-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 .explorar *,
 .explorar *::before,
 .explorar *::after {
   box-sizing: border-box;
 }
+.explorar button {
+  font-family: inherit;
+}
 .explorar button:focus-visible {
-  outline: 2px solid var(--ex-accent);
-  outline-offset: 3px;
+  outline: none;
+  box-shadow: var(--ex-focus-ring);
 }
 .ex-sr-only {
   position: absolute;
@@ -70,13 +106,13 @@
   border: 0;
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 0 28px 4px rgb(120 170 255 / 0.25);
+  box-shadow: 0 0 28px 4px rgba(56, 189, 248, 0.2);
   transition: transform 160ms ease, box-shadow 160ms ease;
 }
 .ex-sector:hover,
 .ex-sector:focus-visible {
   transform: scale(1.1);
-  box-shadow: 0 0 40px 10px rgb(143 194 255 / 0.45);
+  box-shadow: 0 0 40px 10px rgba(56, 189, 248, 0.4);
 }
 .ex-sector[data-soon] {
   cursor: default;
@@ -97,7 +133,7 @@
   padding: 12px 14px;
   background: var(--ex-panel);
   border: 1px solid var(--ex-border);
-  border-radius: 10px;
+  border-radius: var(--ex-radius-lg);
   backdrop-filter: blur(6px);
   transform: translateX(-50%);
   opacity: 0;
@@ -125,9 +161,13 @@
   margin: 8px 0 0;
   padding: 2px 8px;
   font-size: 0.75rem;
-  color: #0a1530;
-  background: var(--ex-accent);
-  border-radius: 999px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ex-warn);
+  background: var(--ex-warn-soft);
+  border: 1px solid var(--ex-warn-line);
+  border-radius: var(--ex-radius-pill);
 }
 .ex-disclaimer {
   position: absolute;
@@ -194,7 +234,7 @@
   padding: 8px 14px;
   background: var(--ex-panel);
   border: 1px solid var(--ex-border);
-  border-radius: 10px;
+  border-radius: var(--ex-radius-lg);
   pointer-events: none;
 }
 .ex-hud-point {
@@ -213,11 +253,11 @@
   font: inherit;
   background: var(--ex-panel);
   border: 1px solid var(--ex-border);
-  border-radius: 10px;
+  border-radius: var(--ex-radius-lg);
   cursor: pointer;
 }
 .ex-back:hover {
-  background: #17306a;
+  background: var(--ex-border-strong);
 }
 .ex-back kbd {
   margin-left: 6px;
@@ -248,18 +288,19 @@
 .ex-dpad-btn {
   display: grid;
   place-items: center;
-  color: #b9d4ff;
+  color: var(--ex-label);
   background: var(--ex-panel);
-  border: 2px solid #3d5bff;
-  border-radius: 8px;
+  border: 1px solid var(--ex-border-strong);
+  border-radius: var(--ex-radius);
   cursor: pointer;
 }
 .ex-dpad-btn:hover:not(:disabled) {
-  background: #1a3170;
+  background: var(--ex-border-strong);
 }
 .ex-dpad-btn:disabled {
-  color: #4a5b86;
-  border-color: #26356a;
+  color: var(--ex-dim);
+  border-color: var(--ex-border);
+  opacity: 0.6;
   cursor: not-allowed;
 }
 .ex-dpad-up {
