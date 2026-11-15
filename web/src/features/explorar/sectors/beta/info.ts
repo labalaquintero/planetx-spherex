@@ -2,6 +2,8 @@ import type { ObjectInfo } from '../../engine/types'
 // «?no-inline»: los PNG son pequeños y Vite los incrustaría en base64 en el chunk principal.
 import WISE_MAYO from './referencias/wise0855-2025-05-06.png?no-inline'
 import WISE_OCTUBRE from './referencias/wise0855-2025-10-31.png?no-inline'
+import CIELO_ORIGINAL from './referencias/cielo-spherex-original.webp?no-inline'
+import VELA_ORIGINAL from './referencias/vela-spherex-original.webp?no-inline'
 
 /**
  * Contexto de los objetos de β para el HUD. Los objetos son ilustrativos; cada ficha dice de qué
@@ -54,13 +56,99 @@ export const BETA_INFO: Readonly<Record<string, ObjectInfo>> = {
     images: [{ src: SATURNO, caption: 'Mapa de Saturno (base de la textura)' }],
     credit: 'Imagen: Solar System Scope, CC BY 4.0.',
   },
-  ancla: {
-    title: 'Estación del boceto',
+  cielo: {
+    title: 'Planeta con el cielo de SPHEREx',
     summary:
-      'Estación ilustrativa tomada del boceto: un cilindro con un anillo de atraque en un extremo. ' +
-      'No representa ninguna estación real.',
-    facts: ['Las luces que parpadean marcan sus extremos.', 'Su posición y su tamaño se midieron en el boceto.'],
-    images: [],
+      'Cielo infrarrojo es un planeta ilustrativo: su superficie es el primer mapa de todo el cielo que hizo ' +
+      'SPHEREx, envuelto sobre la esfera. La franja brillante del ecuador es el plano de la Vía Láctea.',
+    facts: [
+      'El mapa original está en proyección de Mollweide (una elipse); aquí se reproyectó para cubrir la esfera.',
+      'Los colores son longitudes de onda infrarrojas: el naranja, polvo; el azul y blanco, gas caliente y estrellas.',
+      'Ocupa el lugar del boceto donde antes había una estación.',
+    ],
+    images: [{ src: CIELO_ORIGINAL, caption: 'SPHEREx · mapa de todo el cielo (PIA26600)' }],
+    credit: 'Imagen: NASA/JPL-Caltech (SPHEREx).',
+  },
+  vela: {
+    title: 'Planeta con la nube de Vela',
+    summary:
+      'Vela es un planeta ilustrativo: su superficie sale de la imagen de SPHEREx de la región molecular de Vela, ' +
+      'una zona de nubes de gas y polvo donde nacen estrellas. Se quitaron las estrellas y se suavizó en franjas.',
+    facts: [
+      'La mancha naranja es la nebulosa brillante de la imagen; las franjas oscuras, el polvo que tapa la luz.',
+      'La región molecular de Vela está a unos 2000–3000 años luz, en el plano de la Vía Láctea.',
+    ],
+    images: [{ src: VELA_ORIGINAL, caption: 'SPHEREx · región molecular de Vela (PIA26354)' }],
+    credit: 'Imagen: NASA/JPL-Caltech (SPHEREx).',
+  },
+  burbuja: {
+    title: 'Planeta con las burbujas del cielo',
+    summary:
+      'Burbuja es un planeta ilustrativo: su superficie es un recorte del mapa de todo el cielo de SPHEREx donde ' +
+      'se ven burbujas azules de gas caliente sobre nubes de polvo naranja.',
+    facts: [
+      'Las burbujas de gas suelen ser restos de estrellas que explotaron o regiones vaciadas por vientos de estrellas jóvenes.',
+      'El recorte se envolvió sobre la esfera fundiendo sus bordes para que no haya costura.',
+    ],
+    images: [{ src: CIELO_ORIGINAL, caption: 'SPHEREx · mapa de todo el cielo (PIA26600)' }],
+    credit: 'Imagen: NASA/JPL-Caltech (SPHEREx).',
+  },
+  franjas: {
+    title: 'Gigante con el plano galáctico',
+    summary:
+      'Plano galáctico es un planeta ilustrativo: sus franjas siguen el perfil de brillo de la Vía Láctea en el mapa ' +
+      'de SPHEREx, de la franja central muy brillante al polvo de los lados, recoloreadas en violetas.',
+    facts: [
+      'En el mapa, el plano de la galaxia es la franja brillante del centro: ahí se concentran estrellas, gas y polvo.',
+      'Los colores originales del mapa son infrarrojos; aquí solo se usa su brillo.',
+    ],
+    images: [{ src: CIELO_ORIGINAL, caption: 'SPHEREx · mapa de todo el cielo (PIA26600)' }],
+    credit: 'Imagen: NASA/JPL-Caltech (SPHEREx).',
+  },
+  polvo: {
+    title: 'Mundo rocoso del polvo de Vela',
+    summary:
+      'Polvo de Vela es un planeta ilustrativo: sus manchas claras y oscuras salen del brillo de la imagen de SPHEREx ' +
+      'de la región molecular de Vela, en grises azulados, con el relieve de la Luna encima.',
+    facts: ['Las zonas oscuras de la imagen original son nubes de polvo que tapan la luz de las estrellas de detrás.'],
+    images: [{ src: VELA_ORIGINAL, caption: 'SPHEREx · región molecular de Vela (PIA26354)' }],
+    credit: 'Imagen: NASA/JPL-Caltech (SPHEREx).',
+  },
+  lazos: {
+    title: 'Planeta con los lazos del centro galáctico',
+    summary:
+      'Lazos galácticos es un planeta ilustrativo: su superficie es la zona del mapa de SPHEREx que queda sobre el ' +
+      'centro de la Vía Láctea, con dos lazos blancos sobre nubes de polvo naranja.',
+    facts: [
+      'En el mapa infrarrojo, el naranja es polvo templado y el blanco, zonas donde brillan a la vez gas y polvo.',
+      'El recorte se envolvió sobre la esfera fundiendo sus bordes.',
+    ],
+    images: [{ src: CIELO_ORIGINAL, caption: 'SPHEREx · mapa de todo el cielo (PIA26600)' }],
+    credit: 'Imagen: NASA/JPL-Caltech (SPHEREx).',
+  },
+  nebulosa: {
+    title: 'Mundo con la nebulosa de Vela',
+    summary:
+      'Nebulosa de Vela es un planeta ilustrativo: su superficie es la nebulosa naranja de la imagen de SPHEREx de ' +
+      'la región molecular de Vela, sin las estrellas. Las tormentas y el brillo propio son una ilustración.',
+    facts: [
+      'En nebulosas como esta, el gas y el polvo brillan iluminados por estrellas jóvenes que nacen dentro.',
+      'SPHEREx observa en infrarrojo, que atraviesa mejor el polvo que la luz visible.',
+    ],
+    images: [{ src: VELA_ORIGINAL, caption: 'SPHEREx · región molecular de Vela (PIA26354)' }],
+    credit: 'Imagen: NASA/JPL-Caltech (SPHEREx).',
+  },
+  filamentos: {
+    title: 'Planeta de filamentos de polvo',
+    summary:
+      'Filamentos es un planeta ilustrativo: su superficie es una zona del cielo del sur en el mapa de SPHEREx, ' +
+      'llena de filamentos de polvo rojizo y estrellas.',
+    facts: [
+      'Lejos del plano de la galaxia también hay polvo: forma nubes tenues y alargadas que el infrarrojo deja ver.',
+      'Los puntos claros de su superficie son estrellas reales del mapa.',
+    ],
+    images: [{ src: CIELO_ORIGINAL, caption: 'SPHEREx · mapa de todo el cielo (PIA26600)' }],
+    credit: 'Imagen: NASA/JPL-Caltech (SPHEREx).',
   },
   tessa: {
     title: 'Planeta rocoso rojizo',

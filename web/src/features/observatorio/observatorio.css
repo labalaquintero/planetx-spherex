@@ -159,7 +159,14 @@ small { font-size: .83rem; }
   padding: 0;
   flex: 0 0 auto;
 }
-#explorer-root { height: calc(100dvh - 74px); min-height: 360px; }
+/*
+ * Mapa: el área de vuelo ocupa justo lo que queda bajo la cabecera (74 px + 1 px de borde; 63 + 1 en
+ * móvil). La cabecera deja de ser fija en esta vista: si la página se desplaza (rueda, zoom del
+ * navegador), se va con ella en lugar de quedarse encima del HUD del mapa.
+ */
+:root { --site-header-h: 75px; }
+.site-header:has(~ .main-content[data-view="explorar"]) { position: relative; }
+#explorer-root { height: calc(100dvh - var(--site-header-h)); min-height: 360px; }
 .explorer-loading { padding: 24px; }
 .site-footer { border-top: 1px solid var(--line); }
 .footer-inner { display: flex; min-height: 88px; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px 24px; }
@@ -667,6 +674,7 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--gold); }
   .shell { width: calc(100% - 32px); }
   .main-content { padding-block: 25px 48px; }
   .main-content[data-view="visor"] { padding-top: 24px; }
+  :root { --site-header-h: 64px; }
   .header-inner { min-height: 63px; grid-template-columns: 1fr auto; }
   .header-actions { grid-column: 2; grid-row: 1; }
   .menu-button { display: inline-grid; }

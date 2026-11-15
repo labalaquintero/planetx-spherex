@@ -1,4 +1,30 @@
 /**
+ * Limpieza antes del bloom: un píxel NaN o infinito (división entre cero en algún shader, o un
+ * valor que desborda el búfer de media precisión) se extiende con el desenfoque del bloom y deja
+ * bloques negros o blancos en media pantalla, sobre todo en Windows (D3D). Aquí se recorta a un
+ * rango válido; en D3D, clamp devuelve el operando que no es NaN, y además se comprueba isnan.
+ */
+export const SANITIZE_SHADER = {
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    varying vec2 vUv;
+    void main() {
+      vec3 c = clamp(texture2D(tDiffuse, vUv).rgb, vec3(0.0), vec3(48.0));
+      if (any(isnan(c))) c = vec3(0.0);
+      gl_FragColor = vec4(c, 1.0);
+    }
+  `,
+}
+
+/**
  * Pase final de «lente»: aberración cromática radial ligera, grano fino animado y viñeta suave.
  * Va después de OutputPass (espacio de pantalla, sRGB).
  */

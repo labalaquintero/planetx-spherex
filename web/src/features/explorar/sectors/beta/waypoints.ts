@@ -51,7 +51,7 @@ export const WAYPOINTS: readonly Waypoint[] = [
   },
   {
     id: 'far',
-    focusId: 'ancla',
+    focusId: 'cielo',
     name: 'Fondo del sector',
     position: [0, 0, -90],
     yawDeg: 0,
@@ -69,8 +69,8 @@ export const WAYPOINTS: readonly Waypoint[] = [
   },
   {
     id: 'der_f',
-    focusId: 'ancla',
-    name: 'Cerca de la estación',
+    focusId: 'cielo',
+    name: 'Junto al cielo infrarrojo',
     position: [34, 3, -90],
     yawDeg: -22,
     pitchDeg: -14,

@@ -48,7 +48,8 @@ export function Shield({ state, animate }: { state: MutableRefObject<FlightState
   useEffect(() => () => material.dispose(), [material])
   useFrame(() => {
     const s = state.current
-    material.uniforms.uStrength!.value = animate ? Math.min(1.2, s.contact * 0.55 + s.jolt * 1.1) : 0
+    // Leve: con el bloom, un valor alto tapa la nave y medio planeta con un resplandor blanco.
+    material.uniforms.uStrength!.value = animate ? Math.min(0.55, s.contact * 0.22 + s.jolt * 0.5) : 0
   })
   const len = (SHIP.tailZ - SHIP.noseZ) / 2 + 0.3
   return (
