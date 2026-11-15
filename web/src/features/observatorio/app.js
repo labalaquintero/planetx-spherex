@@ -12,6 +12,7 @@ import {
   inspectorView, stopPlayback, viewerExamples, viewerView,
 } from './visor.js';
 import { bindReportAnnotations } from './anotaciones.js';
+import { loadForView, readSharedPage, reportById, setSharedPage, sharedPage } from './colaboracion.js';
 import { bindEvidenceImages, readWorkspace } from './workspace.js';
 
 const main = document.querySelector('main');
@@ -264,9 +265,11 @@ function targetView(id) {
     </div>`;
 }
 
-function blogView() {
+function blogView(_id, params) {
   const [featured, ...guides] = articles;
   const localPublished = readWorkspace().reports.filter((report) => report.status === 'published');
+  const published = sharedPage.publications ?? [];
+  const page = Math.min(1000000, Math.max(0, Number.parseInt(params.get('pagina'), 10) || 0));
   return `${pageHeading('Blog de observación', 'Guías para usar el visor, interpretar las imágenes y documentar una observación.')}
     <article class="panel featured-article">
       <img src="/observatorio/vela-spherex.jpg" alt="" loading="lazy">
@@ -286,6 +289,18 @@ function blogView() {
         <a class="text-link" href="#articulo/${article.id}">Leer guía <span aria-hidden="true">→</span></a>
       </article>`).join('')}
     </div>
+    ${sharedPage.enabled ? `<section class="home-section" aria-labelledby="community-heading">
+      <div class="section-heading"><h2 id="community-heading">Observaciones de la comunidad</h2></div>
+      ${published.length ? `<div class="article-grid">${published.map((report) => `<article class="panel article-tile">
+        <h2>${escapeHtml(report.title)}</h2>
+        <p>Por ${escapeHtml(report.author)} · ${dateMark(report.publishedAt)}</p>
+        <a class="text-link" href="#articulo/${report.id}">Leer ficha <span aria-hidden="true">→</span></a>
+      </article>`).join('')}</div>` : '<p class="muted">Aquí aparecerán las fichas que publique el equipo.</p>'}
+      ${page || published.length === 30 ? `<nav class="row form-actions" aria-label="Páginas de fichas">
+        ${page ? `<a class="button secondary" href="#blog?pagina=${page - 1}">← Anteriores</a>` : ''}
+        ${published.length === 30 ? `<a class="button secondary" href="#blog?pagina=${page + 1}">Siguientes →</a>` : ''}
+      </nav>` : ''}
+    </section>` : ''}
     ${localPublished.length ? `<section class="home-section" aria-label="Reportes publicados en este navegador">
       <div class="section-heading"><h2>Reportes publicados en esta sesión</h2></div>
       <div class="article-grid">${localPublished.map((report) => `<article class="panel article-tile">
@@ -309,11 +324,12 @@ function articleView(id) {
       <a class="button primary" href="#visor/wise-0855">Probar con WISE 0855 <span aria-hidden="true">→</span></a>
     </article>`;
   }
-  const report = readWorkspace().reports.find((item) => item.id === id && item.status === 'published');
-  if (!report) return missingView();
+  const report = reportById(id);
+  if (report?.status !== 'published') return missingView();
   return `<article class="reading">
     ${back('#blog', 'Blog')}
-    ${pageHeading(report.title, `Por ${report.author} · ${fullDate(report.created)}`, 'Publicación local de prueba', true)}
+    ${pageHeading(report.title, `Por ${report.author} · ${fullDate(report.publishedAt ?? report.created)}`,
+      report.shared ? 'Observación de la comunidad' : 'Publicación local de prueba', true)}
     <section class="panel"><h2>Observación</h2>
       <p class="preserve-lines">${escapeHtml(report.notes || `Documento PDF: ${report.fileName}`)}</p>
     </section>
@@ -376,6 +392,21 @@ const views = {
 
 let runtime;
 let unmountExplorer;
+let routeRequest;
+
+function renderAccountLink(view) {
+  const spaceLink = document.querySelector('#space-link');
+  const profile = sharedPage.account ?? (sharedPage.enabled ? null : readWorkspace().profile);
+  const active = profile && (sharedPage.account || profile.active);
+  spaceLink.href = active ? '#perfil' : '#acceso';
+  spaceLink.querySelector('.avatar').outerHTML = active ? avatar(profile, 'small')
+    : '<span class="avatar avatar-small" aria-hidden="true">PX</span>';
+  const activeSection = ['perfil', 'acceso', 'ajustes', 'publico'].includes(view);
+  if (activeSection) spaceLink.setAttribute('aria-current', 'page');
+  else spaceLink.removeAttribute('aria-current');
+  const reviewLink = document.querySelector('#review-link');
+  if (reviewLink) reviewLink.textContent = sharedPage.enabled ? 'Revisión de fichas' : 'Revisión local';
+}
 
 function renderRoute() {
   const [path, query = ''] = location.hash.slice(1).split('?');
@@ -385,21 +416,15 @@ function renderRoute() {
   }
   stopPlayback();
   cancelSearch();
+  routeRequest?.abort();
+  routeRequest = undefined;
   unmountExplorer?.();
   unmountExplorer = undefined;
   const [view = 'inicio', id] = path ? path.split('/') : [];
   main.dataset.view = view;
   const selected = Object.hasOwn(views, view) ? views[view] : { html: missingView, title: 'Vista no encontrada' };
   document.title = `${selected.title} · Planet X`;
-  const spaceLink = document.querySelector('#space-link');
-  const workspace = readWorkspace();
-  spaceLink.href = workspace.profile.active ? '#perfil' : '#acceso';
-  spaceLink.querySelector('.avatar').outerHTML = workspace.profile.active
-    ? avatar(workspace.profile, 'small')
-    : '<span class="avatar avatar-small" aria-hidden="true">PX</span>';
-  const activeSection = ['perfil', 'acceso', 'ajustes', 'publico'].includes(view);
-  if (activeSection) spaceLink.setAttribute('aria-current', 'page');
-  else spaceLink.removeAttribute('aria-current');
+  renderAccountLink(view);
 
   nav.querySelectorAll('a').forEach((link) => {
     if (link.dataset.view === selected.nav) link.setAttribute('aria-current', 'page');
@@ -408,12 +433,39 @@ function renderRoute() {
   setMenu(false);
   if (search.open) search.close();
   const params = new URLSearchParams(query);
-  main.innerHTML = selected.html(id, params);
-  selected.bind?.(id, params);
-  bindEvidenceImages(main);
-  bindReportAnnotations(main);
+  const show = () => {
+    renderAccountLink(view);
+    main.innerHTML = selected.html(id, params);
+    selected.bind?.(id, params);
+    bindEvidenceImages(main);
+    bindReportAnnotations(main);
+    main.focus({ preventScroll: true });
+  };
+  if (runtime.collaboration && loadForView(view, id, params)) {
+    const request = new AbortController();
+    routeRequest = request;
+    main.innerHTML = '<p class="callout info" role="status">Cargando…</p>';
+    readSharedPage(view, id, params, AbortSignal.any([request.signal, AbortSignal.timeout(12000)])).then((page) => {
+      if (request !== routeRequest) return;
+      setSharedPage(page);
+      show();
+    }).catch(() => {
+      if (request !== routeRequest) return;
+      const localParams = new URLSearchParams(params);
+      localParams.set('local', '1');
+      const localRoute = view === 'ficha' ? `#${path}?${localParams}` : '#perfil?local=1';
+      main.innerHTML = `<section class="panel reading">
+        <p role="alert">El espacio compartido no respondió. Puedes reintentar o abrir tus fichas de este navegador.</p>
+        <div class="row form-actions"><button type="button" class="button primary">Reintentar</button>
+          <a class="button secondary" href="${escapeHtml(localRoute)}">${view === 'ficha' ? 'Abrir ficha local' : 'Ver fichas locales'}</a></div>
+      </section>`;
+      main.querySelector('button').addEventListener('click', renderRoute);
+      main.focus({ preventScroll: true });
+    });
+  } else {
+    show();
+  }
   window.scrollTo(0, 0);
-  main.focus({ preventScroll: true });
 }
 
 export function startObservatory(services) {
@@ -447,4 +499,12 @@ export function startObservatory(services) {
   });
   window.addEventListener('hashchange', renderRoute);
   renderRoute();
+  if (runtime.collaboration && !routeRequest) {
+    const firstHash = location.hash;
+    readSharedPage('inicio', '', new URLSearchParams(), AbortSignal.timeout(6000)).then((page) => {
+      if (location.hash !== firstHash || routeRequest) return;
+      setSharedPage(page);
+      renderAccountLink(main.dataset.view);
+    }).catch(() => {});
+  }
 }

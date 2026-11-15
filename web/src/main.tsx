@@ -11,6 +11,7 @@ const Explorar = lazy(async () => {
 
 startObservatory({
   compare: fetchArchiveComparison,
+  collaboration: true,
   mountExplorer(host) {
     const root = createRoot(host);
     root.render(
