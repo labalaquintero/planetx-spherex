@@ -10,7 +10,7 @@ describe('CoordinateForm', () => {
 
     render(<CoordinateForm onSubmit={handleSubmit} isLoading={false} />);
 
-    const submitBtn = screen.getByTestId('submit-btn');
+    const submitBtn = screen.getByRole('button', { name: 'Comparar' });
     await user.click(submitBtn);
 
     expect(handleSubmit).not.toHaveBeenCalled();
@@ -19,7 +19,7 @@ describe('CoordinateForm', () => {
     expect(screen.getByTestId('dec-input')).toHaveAttribute('aria-invalid', 'true');
   });
 
-  it('valida que RA esté en el rango [0, 360)', async () => {
+  it('valida que RA esté en el rango 0 ≤ ra_deg < 360', async () => {
     const user = userEvent.setup();
     const handleSubmit = vi.fn();
 
@@ -27,26 +27,26 @@ describe('CoordinateForm', () => {
 
     const raInput = screen.getByTestId('ra-input');
     const decInput = screen.getByTestId('dec-input');
-    const submitBtn = screen.getByTestId('submit-btn');
+    const submitBtn = screen.getByRole('button', { name: 'Comparar' });
 
-    // RA fuera de rango (> 360)
-    await user.type(raInput, '365');
+    // RA = 360 (inválido)
+    await user.type(raInput, '360');
     await user.type(decInput, '0');
     await user.click(submitBtn);
 
     expect(handleSubmit).not.toHaveBeenCalled();
-    expect(screen.getByText(/RA debe estar entre 0 y 359/)).toBeInTheDocument();
+    expect(screen.getByText(/RA debe estar entre 0° y 359/)).toBeInTheDocument();
 
-    // RA negativo
+    // RA < 0 (inválido)
     await user.clear(raInput);
     await user.type(raInput, '-5');
     await user.click(submitBtn);
 
     expect(handleSubmit).not.toHaveBeenCalled();
-    expect(screen.getByText(/RA debe estar entre 0 y 359/)).toBeInTheDocument();
+    expect(screen.getByText(/RA debe estar entre 0° y 359/)).toBeInTheDocument();
   });
 
-  it('valida que Dec esté en el rango [-90, 90]', async () => {
+  it('valida que Dec esté en el rango -90 ≤ dec_deg ≤ 90', async () => {
     const user = userEvent.setup();
     const handleSubmit = vi.fn();
 
@@ -54,7 +54,7 @@ describe('CoordinateForm', () => {
 
     const raInput = screen.getByTestId('ra-input');
     const decInput = screen.getByTestId('dec-input');
-    const submitBtn = screen.getByTestId('submit-btn');
+    const submitBtn = screen.getByRole('button', { name: 'Comparar' });
 
     await user.type(raInput, '180');
     await user.type(decInput, '95');
@@ -71,6 +71,26 @@ describe('CoordinateForm', () => {
     expect(screen.getByText(/Dec debe estar entre −90° y \+90°/)).toBeInTheDocument();
   });
 
+  it('orienta al usuario sobre conversión si ingresa formato de horas sexagesimal', async () => {
+    const user = userEvent.setup();
+    const handleSubmit = vi.fn();
+
+    render(<CoordinateForm onSubmit={handleSubmit} isLoading={false} />);
+
+    const raInput = screen.getByTestId('ra-input');
+    const decInput = screen.getByTestId('dec-input');
+    const submitBtn = screen.getByRole('button', { name: 'Comparar' });
+
+    await user.type(raInput, '08h55m');
+    await user.type(decInput, '10');
+    await user.click(submitBtn);
+
+    expect(handleSubmit).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(/Para convertir desde horas: grados = \(h \+ m\/60 \+ s\/3600\) × 15/),
+    ).toBeInTheDocument();
+  });
+
   it('acepta coma decimal y envía coordenadas numéricas correctas', async () => {
     const user = userEvent.setup();
     const handleSubmit = vi.fn();
@@ -79,7 +99,7 @@ describe('CoordinateForm', () => {
 
     const raInput = screen.getByTestId('ra-input');
     const decInput = screen.getByTestId('dec-input');
-    const submitBtn = screen.getByTestId('submit-btn');
+    const submitBtn = screen.getByRole('button', { name: 'Comparar' });
 
     await user.type(raInput, '10,25');
     await user.type(decInput, '-12,5');
@@ -89,32 +109,25 @@ describe('CoordinateForm', () => {
     expect(handleSubmit).toHaveBeenCalledWith(10.25, -12.5);
   });
 
-  it('aplica presets de coordenadas correctamente y limpia errores', async () => {
+  it('botón "Usar ejemplo" rellena y ejecuta la misma búsqueda', async () => {
     const user = userEvent.setup();
     const handleSubmit = vi.fn();
 
     render(<CoordinateForm onSubmit={handleSubmit} isLoading={false} />);
 
-    // Provocar error primero
-    await user.click(screen.getByTestId('submit-btn'));
-    expect(screen.getAllByRole('alert').length).toBeGreaterThan(0);
-
-    // Clic en preset
-    await user.click(screen.getByTestId('preset-ready'));
+    // Clic en preset Usar ejemplo
+    const ejemploBtn = screen.getByRole('button', { name: 'Usar ejemplo' });
+    await user.click(ejemploBtn);
 
     expect(screen.getByTestId('ra-input')).toHaveValue('10.25');
     expect(screen.getByTestId('dec-input')).toHaveValue('-12.5');
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-
-    // Enviar tras preset
-    await user.click(screen.getByTestId('submit-btn'));
     expect(handleSubmit).toHaveBeenCalledWith(10.25, -12.5);
   });
 
-  it('deshabilita el botón de envío mientras carga', () => {
+  it('deshabilita el botón de envío mientras carga manteniendo el texto Comparar', () => {
     render(<CoordinateForm onSubmit={vi.fn()} isLoading={true} />);
-    const submitBtn = screen.getByTestId('submit-btn');
+    const submitBtn = screen.getByRole('button', { name: 'Comparar' });
     expect(submitBtn).toBeDisabled();
-    expect(submitBtn).toHaveTextContent('Buscando…');
+    expect(submitBtn).toHaveTextContent('Comparar');
   });
 });

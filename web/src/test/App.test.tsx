@@ -23,27 +23,25 @@ describe('Integración App — Visor F01', () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByTestId('preset-ready'));
-    await user.click(screen.getByTestId('submit-btn'));
+    await user.click(screen.getByRole('button', { name: 'Usar ejemplo' }));
 
-    expect(screen.getByTestId('status-loading')).toBeInTheDocument();
-    expect(screen.getByText('Buscando observaciones…')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.getByText('Cargando…')).toBeInTheDocument();
   });
 
   it('flujo exitoso (ready): muestra visor A/B con procedencia UTC', async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByTestId('preset-ready'));
-    await user.click(screen.getByTestId('submit-btn'));
+    await user.click(screen.getByRole('button', { name: 'Usar ejemplo' }));
 
     // Llega a ready
     await waitFor(() => {
-      expect(screen.getByTestId('comparison-viewer')).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Comparación' })).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/Época A — 1 de 2/)).toBeInTheDocument();
-    expect(screen.getByTestId('btn-play')).toBeInTheDocument();
+    expect(screen.getByText(/Fotograma 1 de 2/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reproducir' })).toBeInTheDocument();
 
     // Metadatos de procedencia
     const provenance = screen.getByTestId('provenance-panel');
@@ -51,14 +49,14 @@ describe('Integración App — Visor F01', () => {
     expect(provenance).toHaveTextContent(/RA 10.25°, Dec -12.5°/);
     expect(provenance).toHaveTextContent(/1.25 ± 0.02 µm/);
     expect(provenance).toHaveTextContent(/UTC/);
+    expect(screen.getByRole('link', { name: 'Fuente (IRSA)' })).toBeInTheDocument();
   });
 
   it('estado insufficient: muestra mensaje claro y fotograma único sin controles de play', async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByTestId('preset-insufficient'));
-    await user.click(screen.getByTestId('submit-btn'));
+    await user.click(screen.getByRole('button', { name: 'Caso preparado: Insuficiente' }));
 
     await waitFor(() => {
       expect(screen.getByTestId('status-insufficient')).toBeInTheDocument();
@@ -71,16 +69,15 @@ describe('Integración App — Visor F01', () => {
     );
 
     // El fotograma único se muestra
-    expect(screen.getByTestId('comparison-viewer')).toBeInTheDocument();
-    expect(screen.queryByTestId('btn-play')).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Comparación' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reproducir' })).not.toBeInTheDocument();
   });
 
   it('estado no_coverage: muestra aviso sin afirmar ausencia global', async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByTestId('preset-no-coverage'));
-    await user.click(screen.getByTestId('submit-btn'));
+    await user.click(screen.getByRole('button', { name: 'Caso preparado: Sin cobertura' }));
 
     await waitFor(() => {
       expect(screen.getByTestId('status-no-coverage')).toBeInTheDocument();
@@ -91,30 +88,29 @@ describe('Integración App — Visor F01', () => {
     expect(statusEl).toHaveTextContent(
       /La ausencia de resultados en esta consulta no implica ausencia global/,
     );
-    expect(screen.queryByTestId('comparison-viewer')).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Comparación' })).not.toBeInTheDocument();
   });
 
-  it('estado error 503 con reintento exitoso', async () => {
+  it('estado fallo temporal (503) con reintento exitoso', async () => {
     const user = userEvent.setup();
     render(<App />);
 
     // Preset de error temporal (0.5, 0.5)
-    await user.click(screen.getByTestId('preset-error'));
-    await user.click(screen.getByTestId('submit-btn'));
+    await user.click(screen.getByRole('button', { name: 'Caso preparado: Fallo temporal' }));
 
     // Primer intento falla con 503
     await waitFor(() => {
-      expect(screen.getByTestId('status-error')).toBeInTheDocument();
+      expect(screen.getByRole('alert')).toBeInTheDocument();
     });
 
-    const errorEl = screen.getByTestId('status-error');
-    expect(errorEl).toHaveTextContent(/Error \(503\)/);
+    const errorEl = screen.getByRole('alert');
+    expect(errorEl).toHaveTextContent(/Fallo temporal/);
     expect(errorEl).toHaveTextContent(
       /El servicio de archivo no está disponible temporalmente/,
     );
 
     // Botón de reintento visible
-    const retryBtn = screen.getByTestId('retry-btn');
+    const retryBtn = screen.getByRole('button', { name: 'Reintentar' });
     expect(retryBtn).toBeInTheDocument();
 
     // Reintentar
@@ -122,8 +118,8 @@ describe('Integración App — Visor F01', () => {
 
     // Segundo intento tiene éxito y muestra ready
     await waitFor(() => {
-      expect(screen.getByTestId('comparison-viewer')).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Comparación' })).toBeInTheDocument();
     });
-    expect(screen.queryByTestId('status-error')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

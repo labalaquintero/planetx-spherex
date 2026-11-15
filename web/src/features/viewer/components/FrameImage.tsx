@@ -4,22 +4,34 @@ import type { Frame, ComparisonMode } from '../types.ts';
 interface FrameImageProps {
   frame: Frame;
   mode: ComparisonMode;
-  label: string;
+  index: number;
+  total: number;
 }
 
-export function FrameImage({ frame, mode, label }: FrameImageProps) {
+function formatUTC(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString('es-MX', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZone: 'UTC',
+      timeZoneName: 'short',
+    });
+  } catch {
+    return iso;
+  }
+}
+
+export function FrameImage({ frame, mode, index, total }: FrameImageProps) {
   const [imgState, setImgState] = useState<'loading' | 'loaded' | 'error'>(
     'loading',
   );
 
-  const dateStr = new Date(frame.observed_at).toLocaleDateString('es-MX', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    timeZone: 'UTC',
-  });
-
-  const altText = `Observación del ${dateStr} — ${label}`;
+  const dateUTC = formatUTC(frame.observed_at);
+  const altText = `Fotograma ${index + 1} de ${total}, observado ${dateUTC}`;
 
   return (
     <div className="frame-container" data-testid="frame-image">
@@ -31,7 +43,7 @@ export function FrameImage({ frame, mode, label }: FrameImageProps) {
         )}
         {imgState === 'error' && (
           <div className="frame-placeholder frame-error" role="alert">
-            No se pudo cargar la imagen.
+            Imagen no disponible
           </div>
         )}
         <img

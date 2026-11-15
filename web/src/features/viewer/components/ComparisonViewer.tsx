@@ -12,9 +12,9 @@ const PLAY_INTERVAL_MS = 1500;
 /**
  * Visor A/B con reproducción manual.
  *
- * - Toggle entre épocas (A, B, …)
- * - Play/Pause (no auto-play al cargar)
- * - Paso anterior/siguiente
+ * - Toggle entre épocas: Ver A, Ver B (modo A/B)
+ * - Play/Pause: "Reproducir" / "Pausar" (sin auto-play al cargar)
+ * - Paso: "Fotograma anterior" / "Fotograma siguiente"
  * - Teclado: ←/→ para pasos, Espacio para play/pause
  */
 export function ComparisonViewer({ data }: ComparisonViewerProps) {
@@ -68,7 +68,7 @@ export function ComparisonViewer({ data }: ComparisonViewerProps) {
     setCurrentIndex(index);
   }, []);
 
-  // Teclado
+  // Teclado accesible
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       switch (e.key) {
@@ -97,34 +97,38 @@ export function ComparisonViewer({ data }: ComparisonViewerProps) {
       ref={viewerRef}
       className="comparison-viewer"
       role="region"
-      aria-label="Comparador de épocas"
+      aria-label="Comparación"
       onKeyDown={handleKeyDown}
       tabIndex={0}
       data-testid="comparison-viewer"
     >
+      <h2 className="sr-only">Resultado</h2>
+
       {/* Imagen */}
       <div className="viewer-display">
         <FrameImage
           frame={currentFrame}
           mode={data.mode}
-          label={`Época ${String.fromCharCode(65 + currentIndex)} — ${currentIndex + 1} de ${frames.length}`}
+          index={currentIndex}
+          total={frames.length}
         />
       </div>
 
-      {/* Controles */}
+      {/* Controles de reproducción */}
       {canPlay && (
         <div
           className="viewer-controls"
           role="toolbar"
-          aria-label="Controles de reproducción"
+          aria-label="Controles del reproductor"
         >
           <button
             type="button"
             onClick={stepPrev}
-            aria-label="Época anterior"
+            aria-label="Fotograma anterior"
+            title="Fotograma anterior (←)"
             data-testid="btn-prev"
           >
-            ◀
+            ◀ Anterior
           </button>
 
           {frames.map((f, i) => (
@@ -133,39 +137,41 @@ export function ComparisonViewer({ data }: ComparisonViewerProps) {
               type="button"
               onClick={() => goToFrame(i)}
               className={i === currentIndex ? 'epoch-btn active' : 'epoch-btn'}
-              aria-label={`Mostrar época ${String.fromCharCode(65 + i)}`}
+              aria-label={`Ver ${String.fromCharCode(65 + i)}`}
               aria-pressed={i === currentIndex}
               data-testid={`btn-epoch-${String.fromCharCode(97 + i)}`}
             >
-              {String.fromCharCode(65 + i)}
+              Ver {String.fromCharCode(65 + i)}
             </button>
           ))}
 
           <button
             type="button"
             onClick={stepNext}
-            aria-label="Época siguiente"
+            aria-label="Fotograma siguiente"
+            title="Fotograma siguiente (→)"
             data-testid="btn-next"
           >
-            ▶
+            Siguiente ▶
           </button>
 
           <button
             type="button"
             onClick={togglePlay}
-            aria-label={isPlaying ? 'Pausar reproducción' : 'Reproducir secuencia'}
+            disabled={!canPlay}
+            aria-label={isPlaying ? 'Pausar' : 'Reproducir'}
+            title={isPlaying ? 'Pausar (Espacio)' : 'Reproducir (Espacio)'}
             className="play-btn"
             data-testid="btn-play"
           >
-            {isPlaying ? '⏸ Pausa' : '▶ Play'}
+            {isPlaying ? '⏸ Pausar' : '▶ Reproducir'}
           </button>
         </div>
       )}
 
-      {/* Indicador de frame */}
+      {/* Región anunciable con información del fotograma */}
       <p className="viewer-frame-info" aria-live="polite">
-        Época {String.fromCharCode(65 + currentIndex)} — {currentIndex + 1} de{' '}
-        {frames.length}
+        Fotograma {currentIndex + 1} de {frames.length} (Época {String.fromCharCode(65 + currentIndex)})
       </p>
 
       {/* Procedencia */}

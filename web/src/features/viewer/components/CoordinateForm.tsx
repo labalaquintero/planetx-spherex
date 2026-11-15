@@ -16,19 +16,31 @@ function parseCoord(raw: string): number {
 
 function validate(ra: string, dec: string): FieldErrors {
   const errs: FieldErrors = {};
-  const raNum = parseCoord(ra);
-  const decNum = parseCoord(dec);
 
-  if (ra.trim() === '' || !Number.isFinite(raNum)) {
-    errs.ra = 'Ingrese un valor numérico finito.';
-  } else if (raNum < 0 || raNum >= 360) {
-    errs.ra = 'RA debe estar entre 0 y 359.999…°';
+  if (ra.trim() === '') {
+    errs.ra = 'Ingrese la coordenada RA en grados decimales.';
+  } else if (/^[0-9]+h/i.test(ra.trim())) {
+    errs.ra = 'Formato no soportado. Para convertir desde horas: grados = (h + m/60 + s/3600) × 15.';
+  } else {
+    const raNum = parseCoord(ra);
+    if (!Number.isFinite(raNum)) {
+      errs.ra = 'RA debe ser un número finito.';
+    } else if (raNum < 0 || raNum >= 360) {
+      errs.ra = 'RA debe estar entre 0° y 359.999…° (0 ≤ ra_deg < 360).';
+    }
   }
 
-  if (dec.trim() === '' || !Number.isFinite(decNum)) {
-    errs.dec = 'Ingrese un valor numérico finito.';
-  } else if (decNum < -90 || decNum > 90) {
-    errs.dec = 'Dec debe estar entre −90° y +90°';
+  if (dec.trim() === '') {
+    errs.dec = 'Ingrese la coordenada Dec en grados decimales.';
+  } else if (/^[+-]?[0-9]+[d°]/i.test(dec.trim())) {
+    errs.dec = 'Formato no soportado. Para convertir desde sexagesimal: grados = d + m/60 + s/3600.';
+  } else {
+    const decNum = parseCoord(dec);
+    if (!Number.isFinite(decNum)) {
+      errs.dec = 'Dec debe ser un número finito.';
+    } else if (decNum < -90 || decNum > 90) {
+      errs.dec = 'Dec debe estar entre −90° y +90° (−90 ≤ dec_deg ≤ 90).';
+    }
   }
 
   return errs;
@@ -61,10 +73,11 @@ export function CoordinateForm({ onSubmit, isLoading }: CoordinateFormProps) {
     }
   }
 
-  function applyPreset(raVal: string, decVal: string) {
+  function applyPresetAndSubmit(raVal: string, decVal: string) {
     setRa(raVal);
     setDec(decVal);
     setErrors({});
+    onSubmit(parseCoord(raVal), parseCoord(decVal));
   }
 
   return (
@@ -73,6 +86,10 @@ export function CoordinateForm({ onSubmit, isLoading }: CoordinateFormProps) {
       aria-label="Búsqueda de coordenadas celestes"
       className="coord-form"
     >
+      <div className="coord-help" id="coord-help">
+        Coordenadas en grados decimales ICRS. Para convertir desde horas: <code>grados = (h + m/60) × 15</code>.
+      </div>
+
       {/* RA */}
       <div className="form-field">
         <label htmlFor="ra-input">RA (grados ICRS)</label>
@@ -86,7 +103,7 @@ export function CoordinateForm({ onSubmit, isLoading }: CoordinateFormProps) {
             setErrors((prev) => ({ ...prev, ra: undefined }));
           }}
           aria-invalid={errors.ra ? true : undefined}
-          aria-describedby={errors.ra ? 'ra-error' : undefined}
+          aria-describedby={errors.ra ? 'ra-error' : 'coord-help'}
           placeholder="Ej: 10.25"
           data-testid="ra-input"
         />
@@ -110,7 +127,7 @@ export function CoordinateForm({ onSubmit, isLoading }: CoordinateFormProps) {
             setErrors((prev) => ({ ...prev, dec: undefined }));
           }}
           aria-invalid={errors.dec ? true : undefined}
-          aria-describedby={errors.dec ? 'dec-error' : undefined}
+          aria-describedby={errors.dec ? 'dec-error' : 'coord-help'}
           placeholder="Ej: −12.5"
           data-testid="dec-input"
         />
@@ -121,43 +138,48 @@ export function CoordinateForm({ onSubmit, isLoading }: CoordinateFormProps) {
         )}
       </div>
 
-      {/* Submit */}
+      {/* Submit con texto accesible exacto "Comparar" */}
       <div className="form-actions">
-        <button type="submit" disabled={isLoading} data-testid="submit-btn">
-          {isLoading ? 'Buscando…' : 'Comparar'}
+        <button
+          type="submit"
+          disabled={isLoading}
+          aria-label="Comparar"
+          data-testid="submit-btn"
+        >
+          Comparar
         </button>
       </div>
 
-      {/* Presets para pruebas con mock */}
+      {/* Presets alineados con QA / Quintero */}
       <div className="presets" role="group" aria-label="Ejemplos de coordenadas">
-        <span className="presets-label">Probar:</span>
+        <span className="presets-label">Acceso rápido:</span>
         <button
           type="button"
-          onClick={() => applyPreset('10.25', '-12.5')}
+          onClick={() => applyPresetAndSubmit('10.25', '-12.5')}
           data-testid="preset-ready"
         >
-          Ejemplo listo
+          Usar ejemplo
         </button>
         <button
           type="button"
-          onClick={() => applyPreset('50', '70')}
+          onClick={() => applyPresetAndSubmit('50', '70')}
           data-testid="preset-insufficient"
         >
-          Insuficiente
+          Caso preparado: Insuficiente
         </button>
         <button
           type="button"
-          onClick={() => applyPreset('200', '89')}
+          onClick={() => applyPresetAndSubmit('200', '89')}
           data-testid="preset-no-coverage"
         >
-          Sin cobertura
+          Caso preparado: Sin cobertura
         </button>
         <button
           type="button"
-          onClick={() => applyPreset('0.5', '0.5')}
+          onClick={() => applyPresetAndSubmit('0.5', '0.5')}
           data-testid="preset-error"
         >
-          Error temporal
+          Caso preparado: Fallo temporal
         </button>
       </div>
     </form>

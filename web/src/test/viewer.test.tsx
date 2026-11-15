@@ -23,12 +23,12 @@ describe('Visor F01 — Pruebas de integración y componentes', () => {
       const user = userEvent.setup();
       render(<App />);
 
-      await user.click(screen.getByTestId('submit-btn'));
+      await user.click(screen.getByRole('button', { name: 'Comparar' }));
 
       expect(screen.getAllByRole('alert')).toHaveLength(2);
       expect(screen.getByTestId('ra-input')).toHaveAttribute('aria-invalid', 'true');
       expect(screen.getByTestId('dec-input')).toHaveAttribute('aria-invalid', 'true');
-      expect(screen.queryByTestId('status-loading')).not.toBeInTheDocument();
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 
     it('valida que RA cumpla 0 ≤ ra_deg < 360', async () => {
@@ -37,22 +37,22 @@ describe('Visor F01 — Pruebas de integración y componentes', () => {
 
       const raInput = screen.getByTestId('ra-input');
       const decInput = screen.getByTestId('dec-input');
-      const submitBtn = screen.getByTestId('submit-btn');
+      const submitBtn = screen.getByRole('button', { name: 'Comparar' });
 
       // RA = 360 (inválido: debe ser estrictamente menor a 360)
       await user.type(raInput, '360');
       await user.type(decInput, '0');
       await user.click(submitBtn);
 
-      expect(screen.getByText(/RA debe estar entre 0 y 359/)).toBeInTheDocument();
-      expect(screen.queryByTestId('status-loading')).not.toBeInTheDocument();
+      expect(screen.getByText(/RA debe estar entre 0° y 359/)).toBeInTheDocument();
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
       // RA = -0.5 (inválido)
       await user.clear(raInput);
       await user.type(raInput, '-0.5');
       await user.click(submitBtn);
 
-      expect(screen.getByText(/RA debe estar entre 0 y 359/)).toBeInTheDocument();
+      expect(screen.getByText(/RA debe estar entre 0° y 359/)).toBeInTheDocument();
 
       // RA = 359.99 (válido)
       await user.clear(raInput);
@@ -70,7 +70,7 @@ describe('Visor F01 — Pruebas de integración y componentes', () => {
 
       const raInput = screen.getByTestId('ra-input');
       const decInput = screen.getByTestId('dec-input');
-      const submitBtn = screen.getByTestId('submit-btn');
+      const submitBtn = screen.getByRole('button', { name: 'Comparar' });
 
       await user.type(raInput, '180');
 
@@ -79,7 +79,7 @@ describe('Visor F01 — Pruebas de integración y componentes', () => {
       await user.click(submitBtn);
 
       expect(screen.getByText(/Dec debe estar entre −90° y \+90°/)).toBeInTheDocument();
-      expect(screen.queryByTestId('status-loading')).not.toBeInTheDocument();
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
       // Dec = -91 (inválido)
       await user.clear(decInput);
@@ -108,64 +108,63 @@ describe('Visor F01 — Pruebas de integración y componentes', () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(<App />);
 
-      // Cargar caso ready
-      await user.click(screen.getByTestId('preset-ready'));
-      await user.click(screen.getByTestId('submit-btn'));
+      // Cargar caso ready con el botón "Usar ejemplo"
+      await user.click(screen.getByRole('button', { name: 'Usar ejemplo' }));
 
       await waitFor(() => {
-        expect(screen.getByTestId('comparison-viewer')).toBeInTheDocument();
+        expect(screen.getByRole('region', { name: 'Comparación' })).toBeInTheDocument();
       });
 
       // 1. Sin reproducción automática al cargar:
-      const playBtn = screen.getByTestId('btn-play');
-      expect(playBtn).toHaveTextContent('Play');
-      expect(screen.getByText(/Época A — 1 de 2/)).toBeInTheDocument();
-      expect(screen.getByTestId('btn-epoch-a')).toHaveAttribute('aria-pressed', 'true');
-      expect(screen.getByTestId('btn-epoch-b')).toHaveAttribute('aria-pressed', 'false');
+      const playBtn = screen.getByRole('button', { name: 'Reproducir' });
+      expect(playBtn).toBeInTheDocument();
+      expect(screen.getByText(/Fotograma 1 de 2/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Ver A' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: 'Ver B' })).toHaveAttribute('aria-pressed', 'false');
 
-      // 2. Alternancia manual mediante botones de época A / B:
-      await user.click(screen.getByTestId('btn-epoch-b'));
-      expect(screen.getByText(/Época B — 2 de 2/)).toBeInTheDocument();
-      expect(screen.getByTestId('btn-epoch-b')).toHaveAttribute('aria-pressed', 'true');
-      expect(screen.getByTestId('btn-epoch-a')).toHaveAttribute('aria-pressed', 'false');
+      // 2. Alternancia manual mediante botones de época Ver A / Ver B:
+      await user.click(screen.getByRole('button', { name: 'Ver B' }));
+      expect(screen.getByText(/Fotograma 2 de 2/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Ver B' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: 'Ver A' })).toHaveAttribute('aria-pressed', 'false');
 
-      await user.click(screen.getByTestId('btn-epoch-a'));
-      expect(screen.getByText(/Época A — 1 de 2/)).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Ver A' }));
+      expect(screen.getByText(/Fotograma 1 de 2/)).toBeInTheDocument();
 
       // 3. Botones Anterior y Siguiente:
-      await user.click(screen.getByTestId('btn-next'));
-      expect(screen.getByText(/Época B — 2 de 2/)).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Fotograma siguiente' }));
+      expect(screen.getByText(/Fotograma 2 de 2/)).toBeInTheDocument();
 
-      await user.click(screen.getByTestId('btn-next'));
-      expect(screen.getByText(/Época A — 1 de 2/)).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Fotograma siguiente' }));
+      expect(screen.getByText(/Fotograma 1 de 2/)).toBeInTheDocument();
 
-      await user.click(screen.getByTestId('btn-prev'));
-      expect(screen.getByText(/Época B — 2 de 2/)).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Fotograma anterior' }));
+      expect(screen.getByText(/Fotograma 2 de 2/)).toBeInTheDocument();
 
       // 4. Reproducir / Pausar:
-      await user.click(playBtn);
-      expect(screen.getByTestId('btn-play')).toHaveTextContent('Pausa');
+      await user.click(screen.getByRole('button', { name: 'Reproducir' }));
+      expect(screen.getByRole('button', { name: 'Pausar' })).toBeInTheDocument();
 
       // Avanzar timer 1500ms
       act(() => {
         vi.advanceTimersByTime(1500);
       });
-      expect(screen.getByText(/Época A — 1 de 2/)).toBeInTheDocument();
+      expect(screen.getByText(/Fotograma 1 de 2/)).toBeInTheDocument();
 
       act(() => {
         vi.advanceTimersByTime(1500);
       });
-      expect(screen.getByText(/Época B — 2 de 2/)).toBeInTheDocument();
+      expect(screen.getByText(/Fotograma 2 de 2/)).toBeInTheDocument();
 
       // Pausar
-      await user.click(screen.getByTestId('btn-play'));
-      expect(screen.getByTestId('btn-play')).toHaveTextContent('Play');
+      await user.click(screen.getByRole('button', { name: 'Pausar' }));
+      expect(screen.getByRole('button', { name: 'Reproducir' })).toBeInTheDocument();
 
       // Al avanzar tiempo, permanece fijo
       act(() => {
         vi.advanceTimersByTime(3000);
       });
-      expect(screen.getByText(/Época B — 2 de 2/)).toBeInTheDocument();
+      expect(screen.getByText(/Fotograma 2 de 2/)).toBeInTheDocument();
     });
   });
 
@@ -173,30 +172,28 @@ describe('Visor F01 — Pruebas de integración y componentes', () => {
   /*  3. Cancelación de consulta previa y detención de reproducción     */
   /* ------------------------------------------------------------------ */
   describe('Cancelación y control de concurrencia', () => {
-    it('cancela la consulta anterior y detiene la reproducción si se inicia una segunda búsqueda', async () => {
+    it('cancela la consulta anterior y detiene la reproducción si se lanza una segunda búsqueda', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(<App />);
 
       // Primera búsqueda (ready)
-      await user.click(screen.getByTestId('preset-ready'));
-      await user.click(screen.getByTestId('submit-btn'));
+      await user.click(screen.getByRole('button', { name: 'Usar ejemplo' }));
 
       await waitFor(() => {
-        expect(screen.getByTestId('comparison-viewer')).toBeInTheDocument();
+        expect(screen.getByRole('region', { name: 'Comparación' })).toBeInTheDocument();
       });
 
       // Iniciar reproducción
-      await user.click(screen.getByTestId('btn-play'));
-      expect(screen.getByTestId('btn-play')).toHaveTextContent('Pausa');
+      await user.click(screen.getByRole('button', { name: 'Reproducir' }));
+      expect(screen.getByRole('button', { name: 'Pausar' })).toBeInTheDocument();
 
       // Segunda búsqueda inmediata con mayor delay simulado
       setMockDelayMs(100);
-      await user.click(screen.getByTestId('preset-no-coverage'));
-      await user.click(screen.getByTestId('submit-btn'));
+      await user.click(screen.getByRole('button', { name: 'Caso preparado: Sin cobertura' }));
 
       // Debe mostrar loading inmediatamente
-      expect(screen.getByTestId('status-loading')).toBeInTheDocument();
+      expect(screen.getByRole('status')).toBeInTheDocument();
 
       // Al completarse la segunda consulta, muestra el resultado de la segunda búsqueda
       await waitFor(() => {
@@ -204,8 +201,9 @@ describe('Visor F01 — Pruebas de integración y componentes', () => {
       });
 
       // El visor previo y su reproducción ya no existen
-      expect(screen.queryByTestId('comparison-viewer')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('btn-play')).not.toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: 'Comparación' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Reproducir' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Pausar' })).not.toBeInTheDocument();
     });
   });
 
@@ -217,11 +215,10 @@ describe('Visor F01 — Pruebas de integración y componentes', () => {
       const user = userEvent.setup();
       render(<App />);
 
-      await user.click(screen.getByTestId('preset-ready'));
-      await user.click(screen.getByTestId('submit-btn'));
+      await user.click(screen.getByRole('button', { name: 'Usar ejemplo' }));
 
       await waitFor(() => {
-        expect(screen.getByTestId('comparison-viewer')).toBeInTheDocument();
+        expect(screen.getByRole('region', { name: 'Comparación' })).toBeInTheDocument();
       });
 
       // Panel de procedencia
@@ -238,18 +235,18 @@ describe('Visor F01 — Pruebas de integración y componentes', () => {
       expect(provenance).toHaveTextContent('fixture-obs-a');
       expect(provenance).toHaveTextContent('fixture-a');
 
-      // Enlace de origen (source_url)
-      const sourceLink = screen.getByRole('link', { name: /Enlace al archivo/i });
+      // Enlace de origen (source_url con nombre accesible Fuente (IRSA))
+      const sourceLink = screen.getByRole('link', { name: 'Fuente (IRSA)' });
       expect(sourceLink).toHaveAttribute(
         'href',
         'https://irsa.ipac.caltech.edu/data/SPHEREx/overview_dr1.html',
       );
       expect(sourceLink).toHaveAttribute('target', '_blank');
 
-      // Aviso de límites científicos
+      // Aviso de límites científicos (un cambio visible no prueba un hallazgo)
       expect(
         screen.getByText(
-          /Un cambio visible entre épocas no constituye por sí solo evidencia de un hallazgo/i,
+          /Un cambio visible no prueba un hallazgo/i,
         ),
       ).toBeInTheDocument();
 
@@ -261,8 +258,7 @@ describe('Visor F01 — Pruebas de integración y componentes', () => {
       const user = userEvent.setup();
       render(<App />);
 
-      await user.click(screen.getByTestId('preset-insufficient'));
-      await user.click(screen.getByTestId('submit-btn'));
+      await user.click(screen.getByRole('button', { name: 'Caso preparado: Insuficiente' }));
 
       await waitFor(() => {
         expect(screen.getByTestId('status-insufficient')).toBeInTheDocument();
@@ -276,21 +272,20 @@ describe('Visor F01 — Pruebas de integración y componentes', () => {
       );
 
       // 1 fotograma fijo mostrado
-      expect(screen.getByTestId('comparison-viewer')).toBeInTheDocument();
-      expect(screen.getByText(/Época A — 1 de 1/)).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Comparación' })).toBeInTheDocument();
+      expect(screen.getByText(/Fotograma 1 de 1/)).toBeInTheDocument();
 
       // Sin controles de reproducción
-      expect(screen.queryByTestId('btn-play')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('btn-prev')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('btn-next')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Reproducir' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Fotograma anterior' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Fotograma siguiente' })).not.toBeInTheDocument();
     });
 
     it('estado no_coverage: explica la ausencia sin afirmar ausencia global', async () => {
       const user = userEvent.setup();
       render(<App />);
 
-      await user.click(screen.getByTestId('preset-no-coverage'));
-      await user.click(screen.getByTestId('submit-btn'));
+      await user.click(screen.getByRole('button', { name: 'Caso preparado: Sin cobertura' }));
 
       await waitFor(() => {
         expect(screen.getByTestId('status-no-coverage')).toBeInTheDocument();
@@ -301,40 +296,39 @@ describe('Visor F01 — Pruebas de integración y componentes', () => {
       expect(statusNoCov).toHaveTextContent(
         /La ausencia de resultados en esta consulta no implica ausencia global de datos/,
       );
-      expect(screen.queryByTestId('comparison-viewer')).not.toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: 'Comparación' })).not.toBeInTheDocument();
     });
 
-    it('estado error 503 con botón Reintentar', async () => {
+    it('estado fallo temporal (503) con botón Reintentar', async () => {
       const user = userEvent.setup();
       render(<App />);
 
       // Preset de error temporal (0.5, 0.5)
-      await user.click(screen.getByTestId('preset-error'));
-      await user.click(screen.getByTestId('submit-btn'));
+      await user.click(screen.getByRole('button', { name: 'Caso preparado: Fallo temporal' }));
 
       // Error 503 inicial
       await waitFor(() => {
-        expect(screen.getByTestId('status-error')).toBeInTheDocument();
+        expect(screen.getByRole('alert')).toBeInTheDocument();
       });
 
-      const statusError = screen.getByTestId('status-error');
-      expect(statusError).toHaveTextContent(/Error \(503\)/);
+      const statusError = screen.getByRole('alert');
+      expect(statusError).toHaveTextContent(/Fallo temporal/);
       expect(statusError).toHaveTextContent(
         /El servicio de archivo no está disponible temporalmente/,
       );
 
       // Botón Reintentar visible y funcional
-      const retryBtn = screen.getByTestId('retry-btn');
-      expect(retryBtn).toHaveTextContent(/Reintentar búsqueda/i);
+      const retryBtn = screen.getByRole('button', { name: 'Reintentar' });
+      expect(retryBtn).toBeInTheDocument();
 
       // Clic en reintentar
       await user.click(retryBtn);
 
       // Segundo intento tiene éxito y muestra estado ready
       await waitFor(() => {
-        expect(screen.getByTestId('comparison-viewer')).toBeInTheDocument();
+        expect(screen.getByRole('region', { name: 'Comparación' })).toBeInTheDocument();
       });
-      expect(screen.queryByTestId('status-error')).not.toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
   });
 });

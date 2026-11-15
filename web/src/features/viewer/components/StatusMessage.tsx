@@ -33,11 +33,12 @@ export function StatusMessage({
           data-testid="status-loading"
         >
           <span className="spinner" aria-hidden="true" />
-          <p>Buscando observaciones…</p>
+          <p>Cargando…</p>
         </div>
       );
 
-    case 'error':
+    case 'error': {
+      const is503 = statusCode === 503 || retryable;
       return (
         <div
           className="status-message status-error"
@@ -45,8 +46,11 @@ export function StatusMessage({
           data-testid="status-error"
         >
           <p>
-            <strong>Error{statusCode ? ` (${statusCode})` : ''}:</strong>{' '}
-            {message ?? 'Ocurrió un error inesperado.'}
+            <strong>{is503 ? 'Fallo temporal.' : 'Error inesperado.'}</strong>{' '}
+            {message ??
+              (is503
+                ? 'El servicio de archivo no está disponible temporalmente. Intente de nuevo.'
+                : 'Ocurrió un error inesperado al procesar la solicitud.')}
           </p>
           {retryable && onRetry && (
             <button
@@ -55,11 +59,12 @@ export function StatusMessage({
               className="retry-btn"
               data-testid="retry-btn"
             >
-              Reintentar búsqueda
+              Reintentar
             </button>
           )}
         </div>
       );
+    }
 
     case 'insufficient':
       return (

@@ -32,6 +32,10 @@ export function ProvenancePanel({ data, currentIndex }: ProvenancePanelProps) {
   const frame = data.frames[currentIndex];
   const { query, band, mode, checked_at, science_version, warnings } = data;
 
+  const hasSearchLimit = warnings.some(
+    (w) => w.toLowerCase().includes('search_limit') || w.toLowerCase().includes('recortada'),
+  );
+
   return (
     <details
       className="provenance"
@@ -61,6 +65,14 @@ export function ProvenancePanel({ data, currentIndex }: ProvenancePanelProps) {
             )}
             <dt>Modo</dt>
             <dd>{MODE_LABELS[mode] ?? mode}</dd>
+            {mode === 'prepared' && (
+              <>
+                <dt>Caso preparado</dt>
+                <dd>
+                  <time dateTime={checked_at}>{formatUTC(checked_at)}</time>
+                </dd>
+              </>
+            )}
             <dt>Versión de procesamiento</dt>
             <dd>{science_version}</dd>
             <dt>Comprobado</dt>
@@ -83,9 +95,9 @@ export function ProvenancePanel({ data, currentIndex }: ProvenancePanelProps) {
                   {formatUTC(frame.observed_at)}
                 </time>
               </dd>
-              <dt>Publicación</dt>
+              <dt>Release</dt>
               <dd>{frame.release}</dd>
-              <dt>ID de observación</dt>
+              <dt>Observación</dt>
               <dd>
                 <code>{frame.observation_id}</code>
               </dd>
@@ -101,7 +113,7 @@ export function ProvenancePanel({ data, currentIndex }: ProvenancePanelProps) {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    Enlace al archivo
+                    Fuente (IRSA)
                   </a>
                 ) : (
                   <span className="text-muted">No disponible (fixture)</span>
@@ -118,9 +130,15 @@ export function ProvenancePanel({ data, currentIndex }: ProvenancePanelProps) {
         )}
       </div>
 
-      {/* Avisos generales */}
-      {warnings.length > 0 && (
-        <div className="provenance-warnings">
+      {/* Avisos generales (ej. búsqueda recortada) */}
+      {hasSearchLimit && (
+        <div className="provenance-warnings" role="note" data-testid="warning-search-limit">
+          <strong>Aviso:</strong> búsqueda recortada al alcanzarse el límite configurado de fotogramas.
+        </div>
+      )}
+
+      {warnings.length > 0 && !hasSearchLimit && (
+        <div className="provenance-warnings" role="note">
           <strong>Avisos:</strong>
           <ul>
             {warnings.map((w) => (
@@ -130,10 +148,11 @@ export function ProvenancePanel({ data, currentIndex }: ProvenancePanelProps) {
         </div>
       )}
 
-      <p className="provenance-disclaimer">
-        Un cambio visible entre épocas no constituye por sí solo evidencia de un
-        hallazgo. Diferencias de brillo, posición o apariencia pueden deberse a
-        ruido, alineación, banda, saturación u otros factores de observación.
+      {/* Aviso de no-hallazgo */}
+      <p className="provenance-disclaimer" role="note">
+        Un cambio visible no prueba un hallazgo. Diferencias de brillo, posición o
+        apariencia pueden deberse a variabilidad intrínseca, movimiento propio, ruido,
+        alineación, banda espectral, saturación u otros factores de observación.
       </p>
     </details>
   );
