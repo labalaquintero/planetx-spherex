@@ -1,6 +1,6 @@
 import {
   archiveNote, comparisonLink, comparisonMode, coordinateParams, coordinatesFromParams, dateMark,
-  epoch, escapeHtml, fieldLabel, fieldName, formatBand, fullDate, imageLink, normalizeComparison,
+  epoch, escapeHtml, featuredObservation, fieldLabel, fieldName, formatBand, fullDate, imageLink, normalizeComparison,
   prepared, shortDate, targets,
 } from './datos.js';
 import { frameMarks, paintMarks } from './anotaciones.js';
@@ -84,7 +84,8 @@ function savedComparison(ra, dec) {
 }
 
 function reportFrom(params) {
-  return reportById(params.get('ficha'));
+  const id = params.get('ficha');
+  return id === featuredObservation.id ? featuredObservation : reportById(id);
 }
 
 function comparisonFor(params = new URLSearchParams()) {

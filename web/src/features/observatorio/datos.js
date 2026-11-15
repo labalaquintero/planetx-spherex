@@ -29,6 +29,24 @@ const prepared = {
   ],
 };
 
+const daysBetween = (new Date(prepared.frames[1].observed_at) - new Date(prepared.frames[0].observed_at)) / 86400000;
+const sampleArea = { type: 'crop', points: [[.43, .50], [.87, .94]] };
+const featuredObservation = {
+  id: 'wise-0855-dos-epocas',
+  title: `El mismo campo, ${Math.floor(daysBetween)} días después`,
+  topic: 'WISE 0855',
+  category: 'Caso de muestra',
+  summary: 'Compara dos épocas del campo de WISE 0855, amplía la zona marcada y consulta las fuentes de cada imagen.',
+  status: 'published',
+  comparison: prepared,
+  annotations: Object.fromEntries(prepared.frames.map(({ id }) => [id, [sampleArea]])),
+  sections: [
+    ['Ubica la misma zona', 'El recuadro delimita la misma región en las dos épocas. Fíjate en el punto brillante cerca de la esquina superior izquierda de ambos acercamientos. Puedes usarlo como referencia al mover el divisor.'],
+    ['Comprueba qué se puede comparar', 'El par se proyectó en la misma cuadrícula de 64 × 64 píxeles y con una escala común de contraste. La trama identifica los píxeles excluidos de la comparación. Cerca del 80 % del campo tiene datos válidos en ambas épocas.'],
+    ['Documenta lo que observas', 'En el visor puedes alternar las épocas, abrir la imagen de diferencia y preparar tu propia ficha. Describe qué zona miraste y conserva las fechas UTC, la banda y los enlaces a los FITS. El ruido y las diferencias de fondo también pueden producir cambios aparentes.'],
+  ],
+};
+
 const targets = [
   {
     id: 'wise-0855', name: 'WISE 0855', type: 'Enana marrón',
@@ -61,6 +79,7 @@ const targets = [
 ];
 
 const articles = [
+  featuredObservation,
   {
     id: 'leer-epocas',
     category: 'Interpretación',
@@ -110,7 +129,6 @@ const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (match) =>
 })[match]);
 const fold = (value) => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
 const epoch = (index) => String.fromCharCode(65 + index);
-const daysBetween = (new Date(prepared.frames[1].observed_at) - new Date(prepared.frames[0].observed_at)) / 86400000;
 const dateFormat = new Intl.DateTimeFormat('es-MX', {
   timeZone: 'UTC', day: '2-digit', month: 'short', year: 'numeric',
 });
@@ -211,7 +229,7 @@ function normalizeComparison(data) {
 }
 
 export {
-  nasaVela, nasaSky, prepared, targets, articles, reportStatuses, archiveNote,
+  nasaVela, nasaSky, prepared, targets, articles, featuredObservation, reportStatuses, archiveNote,
   escapeHtml, fold, epoch, daysBetween, validDate, shortDate, fullDate, dateMark,
   formatBand, fieldLabel, fieldName, comparisonMode, coordinateParams,
   coordinatesFromParams, comparisonLink, imageLink, normalizeComparison, validCoordinates,
