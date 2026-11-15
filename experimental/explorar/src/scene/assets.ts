@@ -4,7 +4,6 @@
  * Fuentes y licencias: ATTRIBUTIONS.md.
  */
 export const TEXTURES = {
-  'bandas-jupiter': new URL('./assets/bandas-jupiter.webp', import.meta.url).href,
   'bandas-saturno': new URL('./assets/bandas-saturno.webp', import.meta.url).href,
   'anillo-saturno': new URL('./assets/anillo-saturno.webp', import.meta.url).href,
   'luna-color': new URL('./assets/luna-color.webp', import.meta.url).href,

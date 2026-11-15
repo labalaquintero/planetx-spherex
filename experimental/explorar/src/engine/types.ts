@@ -35,8 +35,13 @@ export interface SceneObject {
   readonly seed: number
   /** Colores base de la textura procedural (CSS hex). */
   readonly palette: readonly [string, string, string]
-  /** Planeta con bandas (gigante gaseoso) o con superficie moteada (rocoso). */
-  readonly surface?: 'bands' | 'rocky'
+  /**
+   * Superficie procedural: bandas (gigante gaseoso), moteada (rocoso) o mundo frío con tormentas
+   * (enana marrón tipo WISE 0855: zonas muy suaves, vórtices y brillo propio tenue).
+   */
+  readonly surface?: 'bands' | 'rocky' | 'storms'
+  /** Brillo propio tenue (CSS), p. ej. la emisión infrarroja ilustrada de un mundo frío. */
+  readonly glow?: string
   /** Solo planeta con anillo: radios interno y externo en múltiplos del radio. */
   readonly ring?: { readonly inner: number; readonly outer: number; readonly tiltDeg: number }
   /** Solo estación: longitud del cilindro. */

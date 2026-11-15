@@ -74,6 +74,52 @@ describe('registro de sectores', () => {
   })
 })
 
+/** Tono (0–360°), saturación y luminosidad HSL de un color #rrggbb. */
+function hsl(hex: string): { h: number; s: number; l: number } {
+  const n = parseInt(hex.slice(1), 16)
+  const r = ((n >> 16) & 255) / 255
+  const g = ((n >> 8) & 255) / 255
+  const b = (n & 255) / 255
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const l = (max + min) / 2
+  const d = max - min
+  if (d === 0) return { h: 0, s: 0, l }
+  const s = d / (1 - Math.abs(2 * l - 1))
+  const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4
+  return { h: (h * 60 + 360) % 360, s, l }
+}
+
+describe('Ilmara: mundo frío inspirado en WISE 0855 (no un gigante tipo Júpiter)', () => {
+  const ilmara = beta.scene!.objects.find((o) => o.id === 'ilmara')!
+
+  it('superficie procedural de tormentas, sin textura de bandas', () => {
+    expect(ilmara.surface).toBe('storms')
+    expect(ilmara.texture).toBeUndefined()
+  })
+
+  it('paleta oscura y fría: ningún color naranja o crema claro (tono 15–65° con saturación y luz altas)', () => {
+    for (const c of ilmara.palette) {
+      const { h, s, l } = hsl(c)
+      expect(h >= 15 && h <= 65 && s > 0.3 && l > 0.4).toBe(false)
+    }
+    // El tono más claro es violáceo o magenta (frío), no cálido.
+    const light = hsl(ilmara.palette[0])
+    expect(light.h > 250 || light.h < 10).toBe(true)
+    // El más oscuro es casi negro.
+    expect(hsl(ilmara.palette[2]).l).toBeLessThan(0.12)
+  })
+
+  it('tiene brillo propio tenue y atmósfera (borde Fresnel)', () => {
+    expect(ilmara.glow).toBeTruthy()
+    expect(ilmara.atmosphere).toBeTruthy()
+  })
+
+  it('ningún objeto de β usa una textura de bandas tipo Júpiter', () => {
+    for (const o of beta.scene!.objects) expect(o.texture?.map ?? '').not.toMatch(/jupiter/i)
+  })
+})
+
 describe('objetos del sector β', () => {
   const objects = beta.scene!.objects
 

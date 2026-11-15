@@ -191,7 +191,8 @@ para que se puedan señalar con comodidad.
 Se usan cinco texturas de fuentes con licencia verificada en su propia página (detalle en **ATTRIBUTIONS.md**;
 panel «Créditos» en la interfaz):
 
-- Solar System Scope (CC BY 4.0): bandas de Júpiter para Ilmara, Saturno y su anillo con transparencia para Orun.
+- Solar System Scope (CC BY 4.0): Saturno y su anillo con transparencia para Orun.
+- Ilmara no usa textura: es un mundo frío procedural inspirado en WISE 0855 (ver más abajo).
 - NASA SVS, CGI Moon Kit (dominio público): color y relieve lunares para Veshta y la esfera menor, coloreados con
   su propia paleta y con relieve por derivadas.
 
@@ -200,12 +201,11 @@ siendo ilustrativos.
 
 | Recurso | Peso |
 | --- | --- |
-| `bandas-jupiter.webp` | 35,6 KB |
 | `bandas-saturno.webp` | 8,4 KB |
 | `anillo-saturno.webp` | 3,0 KB (va incrustado en el chunk) |
 | `luna-color.webp` | 73,9 KB |
 | `luna-relieve.webp` | 22,1 KB |
-| **Total** | **≈ 143 KB**, solo al entrar en un sector; presupuesto fijado en 300 KB |
+| **Total** | **≈ 107 KB**, solo al entrar en un sector; presupuesto fijado en 300 KB |
 
 **Cielo real de SPHEREx (etapa 4): omitido.** El registro de HiPS del CDS (MocServer) anuncia
 `CDS/P/SPHEREx/QR2/color` en `https://alasky.cds.unistra.fr/SPHEREx/color` con teselas PNG. Sin embargo, el

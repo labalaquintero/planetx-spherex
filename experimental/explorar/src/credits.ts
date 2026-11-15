@@ -14,12 +14,12 @@ export interface Credit {
 
 export const ASSET_CREDITS: readonly Credit[] = [
   {
-    what: 'Texturas de Júpiter, Saturno y del anillo de Saturno',
+    what: 'Texturas de Saturno y de su anillo',
     author: 'Solar System Scope (INOVE)',
     license: 'CC BY 4.0',
     url: 'https://www.solarsystemscope.com/textures/',
-    assets: ['bandas-jupiter', 'bandas-saturno', 'anillo-saturno'],
-    note: 'Reducidas a 1024 px, convertidas a WebP y teñidas hacia la paleta de cada planeta ilustrativo.',
+    assets: ['bandas-saturno', 'anillo-saturno'],
+    note: 'Reducidas a 1024 px, convertidas a WebP y teñidas hacia la paleta de Orun (planeta ilustrativo).',
   },
   {
     what: 'Mapa de color y de relieve de la Luna (CGI Moon Kit)',

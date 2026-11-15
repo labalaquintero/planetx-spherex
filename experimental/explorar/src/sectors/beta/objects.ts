@@ -26,7 +26,8 @@ interface Staging {
   readonly label?: string
   readonly seed: number
   readonly palette: readonly [string, string, string]
-  readonly surface?: 'bands' | 'rocky'
+  readonly surface?: 'bands' | 'rocky' | 'storms'
+  readonly glow?: string
   readonly atmosphere?: string
   readonly texture?: SceneObject['texture']
 }
@@ -35,8 +36,10 @@ const ROCA: readonly [string, string, string] = ['#9a9083', '#6b6358', '#3d3832'
 
 /** Profundidad y aspecto por objeto del boceto (lo único que el dibujo no dice). */
 const STAGING: Readonly<Record<string, Staging>> = {
-  // Gigante de bandas con la textura de Júpiter (Solar System Scope, CC BY 4.0), teñida hacia su paleta.
-  ilmara: { kind: 'planet', depth: 170, label: 'Ilmara', seed: 11, palette: ['#d9b48a', '#a8683c', '#6b3a22'], surface: 'bands', atmosphere: '#fdba74', texture: { map: 'bandas-jupiter', mode: 'color' } },
+  // Mundo oscuro y frío inspirado en WISE 0855 (enana marrón fría, la referencia real del sector):
+  // violetas y magentas apagados sobre marrón profundo, vórtices sutiles, brillo propio tenue y
+  // atmósfera fina. Procedural, sin textura. Ilustrativo.
+  ilmara: { kind: 'planet', depth: 170, label: 'Ilmara', seed: 11, palette: ['#9b7bb0', '#45263a', '#120a14'], surface: 'storms', atmosphere: '#c4a1ff', glow: '#5b1a3d' },
   // Rocoso: color y relieve lunares (NASA SVS, dominio público), con su propia paleta azul grisácea.
   veshta: { kind: 'planet', depth: 260, label: 'Veshta', seed: 23, palette: ['#c9d6e6', '#6f87a6', '#26364d'], surface: 'rocky', atmosphere: '#7dd3fc', texture: { map: 'luna-color', mode: 'palette', bump: 'luna-relieve' } },
   // Con anillo: bandas y anillo de Saturno (Solar System Scope, CC BY 4.0).
@@ -70,6 +73,7 @@ function build(id: string, st: Staging): SceneObject {
     ...(st.label ? { label: st.label } : {}),
     ...(st.surface ? { surface: st.surface } : {}),
     ...(st.atmosphere ? { atmosphere: st.atmosphere } : {}),
+    ...(st.glow ? { glow: st.glow } : {}),
     ...(st.texture ? { texture: st.texture } : {}),
   }
   switch (st.kind) {
