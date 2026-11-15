@@ -78,11 +78,10 @@ void main() {
 }
 `
 
-/** Relámpagos en la parte interior (fracciones de la secuencia), con caída rápida. */
-const FLASHES = [0.34, 0.47, 0.6]
+/** Relámpagos en la parte interior (DIVE.flashes, fracciones de la secuencia), con caída rápida. */
 function lightning(u: number): number {
   let f = 0
-  for (const at of FLASHES) {
+  for (const at of DIVE.flashes) {
     const d = (u - at) * DIVE.seconds
     if (d >= 0 && d < 0.35) f = Math.max(f, Math.exp(-d * 12) * (0.7 + 0.3 * Math.sin(d * 90)))
   }
