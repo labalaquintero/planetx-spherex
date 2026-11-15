@@ -378,6 +378,96 @@ const EXTRA_DEFS: SceneObject[] = [
     atmosphere: '#60a5fa',
     texture: { map: 'cielo-spherex', mode: 'palette' },
   },
+  // Siete planetas más con mapas globales de NASA/JPL (tools/texturas_nasa_beta.py), repartidos en altura.
+  {
+    // Gigante gaseoso azul: el mapa de Neptuno de la Voyager 2, con su color.
+    id: 'cobalto',
+    kind: 'planet',
+    label: 'Cobalto',
+    position: around(200, -8, 1100),
+    radius: 44,
+    seed: 167,
+    palette: ['#c7d2fe', '#3730a3', '#0b0f2e'],
+    surface: 'bands',
+    atmosphere: '#93c5fd',
+    texture: { map: 'neptuno-voyager', mode: 'color' },
+  },
+  {
+    // Luna de hielo brillante: el mapa de Encélado, casi blanco.
+    id: 'nacar',
+    kind: 'sphere',
+    label: 'Nácar',
+    position: around(60, -42, 380),
+    radius: 13,
+    seed: 173,
+    palette: ['#f8fafc', '#94a3b8', '#1e293b'],
+    surface: 'rocky',
+    atmosphere: '#e0f2fe',
+    texture: { map: 'encelado-voyager', mode: 'palette', bump: 'luna-relieve' },
+  },
+  {
+    // Dos caras, una oscura y otra clara: el mapa de Japeto, con su color.
+    id: 'jano',
+    kind: 'planet',
+    label: 'Jano',
+    position: around(-42, 52, 640),
+    radius: 22,
+    seed: 179,
+    palette: ['#f5f5f4', '#44403c', '#0a0a0a'],
+    surface: 'rocky',
+    texture: { map: 'japeto-voyager', mode: 'color', bump: 'luna-relieve' },
+  },
+  {
+    // Oscuro y lleno de cráteres claros: el mapa de Calisto, con su color.
+    id: 'onix',
+    kind: 'planet',
+    label: 'Ónix',
+    position: around(225, 22, 820),
+    radius: 26,
+    seed: 181,
+    palette: ['#e5e7eb', '#4b5563', '#030712'],
+    surface: 'rocky',
+    atmosphere: '#9ca3af',
+    texture: { map: 'calisto-voyager', mode: 'color', bump: 'luna-relieve' },
+  },
+  {
+    // Hielo cruzado por un gran cañón: el mapa de Tetis, en azules.
+    id: 'grieta',
+    kind: 'planet',
+    label: 'Grieta',
+    position: around(-120, -20, 1000),
+    radius: 20,
+    seed: 191,
+    palette: ['#e0f2fe', '#0369a1', '#082f49'],
+    surface: 'rocky',
+    atmosphere: '#7dd3fc',
+    texture: { map: 'tetis-voyager', mode: 'palette', bump: 'luna-relieve' },
+  },
+  {
+    // Luna pequeña con un cráter enorme, casi en la vertical de la entrada: el mapa de Mimas.
+    id: 'vigia',
+    kind: 'sphere',
+    label: 'Vigía',
+    position: around(-14, 80, 520),
+    radius: 12,
+    seed: 193,
+    palette: ['#f1f5f9', '#64748b', '#0f172a'],
+    surface: 'rocky',
+    texture: { map: 'mimas-voyager', mode: 'color', bump: 'luna-relieve' },
+  },
+  {
+    // Continentes y océanos: el relieve de la Tierra, teñido de cian y violeta.
+    id: 'pangea',
+    kind: 'planet',
+    label: 'Pangea',
+    position: around(100, 40, 1050),
+    radius: 32,
+    seed: 197,
+    palette: ['#a5f3fc', '#7c3aed', '#140a2e'],
+    surface: 'rocky',
+    atmosphere: '#a5b4fc',
+    texture: { map: 'tierra-relieve', mode: 'palette' },
+  },
 ]
 const EXTRAS: readonly SceneObject[] = EXTRA_DEFS.map((o) => (BETA_INFO[o.id] ? { ...o, info: BETA_INFO[o.id] } : o))
 

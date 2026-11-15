@@ -196,11 +196,13 @@ describe('fichas de contexto de β (panel izquierdo al acercarse)', () => {
     expect(html).toContain('NASA/JPL-Caltech')
   })
 
-  it('toda ficha con imagen indica su crédito y deja claro que el objeto es inventado o ilustrativo', () => {
+  it('toda ficha con imagen indica su crédito y da solo el contexto: nunca dice que el objeto es inventado', () => {
+    // Decisión del equipo: la ficha cuenta qué es y de qué imagen parte. El aviso general «Representación
+    // ilustrativa, no son datos reales de SPHEREx» ya está en el HUD.
     for (const o of named) {
       const info = o.info!
       if (info.images.length > 0) expect(info.credit, o.id).toBeTruthy()
-      expect(`${info.summary} ${info.facts.join(' ')}`, o.id).toMatch(/inventad|ilustra/i)
+      expect(`${info.title} ${info.summary} ${info.facts.join(' ')}`, o.id).not.toMatch(/inventad|ilustrativ/i)
     }
   })
 })
