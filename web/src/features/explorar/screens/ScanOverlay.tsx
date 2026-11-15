@@ -27,10 +27,30 @@ export function ScanOverlay({ object, distance, reduced, octaves, onClose }: Pro
   const input = useRef<ScanInput>({ dx: 0, dy: 0, dragging: false, zoom: 1 })
   const drag = useRef<{ id: number; x: number; y: number } | null>(null)
   const close = useRef<HTMLButtonElement>(null)
+  const layer = useRef<HTMLDivElement>(null)
   const [progress, setProgress] = useState(reduced ? 1 : 0)
 
   useEffect(() => {
     close.current?.focus()
+  }, [])
+
+  // Rueda: dentro del escaneo nunca desplaza la página. Sobre la lectura la desplaza a ella; en el resto
+  // del panel acerca o aleja el modelo. Escucha nativa (no pasiva) para poder cancelar el desplazamiento.
+  useEffect(() => {
+    const el = layer.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const side = (e.target as Element | null)?.closest?.('.ex-scan-side') as HTMLElement | null
+      if (side) {
+        side.scrollTop += e.deltaY
+        return
+      }
+      const z = input.current.zoom * Math.exp(-e.deltaY * 0.0012)
+      input.current.zoom = Math.min(ZOOM.max, Math.max(ZOOM.min, z))
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
   }, [])
 
   // Progreso del barrido para el HUD (la vista 3D lleva su propio reloj).
@@ -52,6 +72,13 @@ export function ScanOverlay({ object, distance, reduced, octaves, onClose }: Pro
   const name = object.label ?? object.id
 
   return (
+    <div
+      ref={layer}
+      className="ex-scan-layer"
+      // Los clics y el clic derecho dentro del escaneo no llegan a la nave (que se dirige con clic derecho).
+      onPointerDown={(e) => e.stopPropagation()}
+      onContextMenu={(e) => e.preventDefault()}
+    >
     <div className="ex-scan" role="dialog" aria-modal="true" aria-labelledby="ex-scan-title" data-done={done || undefined}>
       <div className="ex-scan-head">
         <span className="ex-chip">Escaneo</span>
@@ -89,10 +116,6 @@ export function ScanOverlay({ object, distance, reduced, octaves, onClose }: Pro
             drag.current = null
             input.current.dragging = false
           }}
-          onWheel={(e) => {
-            const z = input.current.zoom * Math.exp(-e.deltaY * 0.0012)
-            input.current.zoom = Math.min(ZOOM.max, Math.max(ZOOM.min, z))
-          }}
         >
           <ErrorBoundary fallback={<p className="ex-fallback">No se pudo mostrar el modelo 3D.</p>}>
             <Suspense fallback={<p className="ex-fallback">Cargando modelo…</p>}>
@@ -126,6 +149,7 @@ export function ScanOverlay({ object, distance, reduced, octaves, onClose }: Pro
       </div>
 
       <p className="ex-scan-foot">Representación ilustrativa, no son datos reales de SPHEREx.</p>
+    </div>
     </div>
   )
 }

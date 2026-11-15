@@ -62,6 +62,7 @@ export function FlightPad({ held, onHold }: Props) {
   return (
     <div className="ex-pad" role="group" aria-label="Controles de vuelo">
       <div className="ex-pad-vertical">
+        {button('boost', 'ex-pad-boost', <span className="ex-pad-text">Turbo</span>)}
         {button('up', 'ex-pad-up', <span className="ex-pad-text">Subir</span>)}
         {button('down', 'ex-pad-down', <span className="ex-pad-text">Bajar</span>)}
       </div>

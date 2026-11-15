@@ -183,7 +183,8 @@ export function Planet({ o, spin, octaves, segments: detail, bumpScale = 0.9 }: 
     surface.uniforms.uTime!.value = state.clock.elapsedTime
   })
 
-  const segments = detail ?? (o.radius > 6 ? [64, 48] : [32, 24])
+  // Más subdivisiones en los grandes: de cerca la silueta ya no se ve poligonal.
+  const segments = detail ?? (o.radius > 12 ? [96, 64] : o.radius > 6 ? [64, 48] : [32, 24])
   return (
     <group position={[...o.position]}>
       <group ref={spinRef} rotation={[0, 0, (ring ? ring.tiltDeg : 8) * DEG * 0.5]}>

@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useRef, type MutableRefObject } from 'react'
+import { useMemo, useRef, type MutableRefObject } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { AdditiveBlending, AgXToneMapping, BufferGeometry, Float32BufferAttribute, Quaternion, Vector3, type Group, type Mesh, type MeshBasicMaterial } from 'three'
+import { AdditiveBlending, AgXToneMapping, Quaternion, Vector3, type Group, type Mesh, type MeshBasicMaterial } from 'three'
 import { dragTurn, relaxTurn, scanProgress, STILL, type Turn } from '../engine/scan'
 import type { SceneObject } from '../engine/types'
-import { mulberry32 } from '../engine/random'
+import { Bloom } from './Effects'
 import { LIGHT_DIR } from './light'
 import { Planet } from './Planet'
+import { Sky } from './Sky'
 
 /** Entrada del puntero que escribe el HTML (sin renders): arrastre acumulado y zoom. */
 export interface ScanInput {
@@ -26,29 +27,6 @@ interface Props {
 const Y = new Vector3(0, 1, 0)
 /** La cámara mira con la luz de la estrella a unos 50° de lado: se ve la cara de día y el terminador. */
 const VIEW_DIR = LIGHT_DIR.clone().applyAxisAngle(Y, -0.9).normalize()
-
-/** Estrellas de fondo (pocas y fijas). */
-function Stars() {
-  const geo = useMemo(() => {
-    const rnd = mulberry32(99)
-    const pts: number[] = []
-    for (let i = 0; i < 700; i++) {
-      const u = rnd() * 2 - 1
-      const a = rnd() * Math.PI * 2
-      const k = Math.sqrt(1 - u * u)
-      pts.push(Math.cos(a) * k * 900, u * 900, Math.sin(a) * k * 900)
-    }
-    const g = new BufferGeometry()
-    g.setAttribute('position', new Float32BufferAttribute(pts, 3))
-    return g
-  }, [])
-  useEffect(() => () => geo.dispose(), [geo])
-  return (
-    <points geometry={geo}>
-      <pointsMaterial size={1.6} sizeAttenuation={false} color="#cbd5e1" transparent opacity={0.7} depthWrite={false} />
-    </points>
-  )
-}
 
 /** Cámara: en la dirección VIEW_DIR, a una distancia que encuadra el cuerpo (y su anillo). */
 function Rig({ radius, extent, input }: { radius: number; extent: number; input: MutableRefObject<ScanInput> }) {
@@ -113,8 +91,11 @@ function Body({ object, input, animate, octaves }: Props) {
       tmp.q.setFromAxisAngle(tmp.right, pitch)
       g.quaternion.premultiply(tmp.q)
     }
-    // Retícula: marcada durante el barrido y apenas visible después.
-    if (grid.current) grid.current.opacity = 0.05 + 0.4 * (1 - p)
+    // Retícula: solo mientras dura el barrido; al terminar se apaga y el planeta queda limpio.
+    if (grid.current) {
+      grid.current.opacity = 0.3 * (1 - p)
+      grid.current.visible = p < 1
+    }
     // Anillo de barrido: baja de polo a polo y desaparece al terminar.
     if (sweep.current) {
       const y = (1 - 2 * p) * r * 1.02
@@ -128,7 +109,7 @@ function Body({ object, input, animate, octaves }: Props) {
   return (
     <>
       <group ref={group}>
-        <Planet o={o} spin={animate} octaves={octaves} segments={[96, 72]} bumpScale={0.12} />
+        <Planet o={o} spin={animate} octaves={Math.max(octaves, 5)} segments={[128, 96]} bumpScale={0.15} />
         <mesh scale={r * 1.03}>
           <sphereGeometry args={[1, 36, 18]} />
           <meshBasicMaterial ref={grid} wireframe color="#38bdf8" transparent opacity={0.45} depthWrite={false} blending={AdditiveBlending} />
@@ -147,17 +128,19 @@ export default function ScanView(props: Props) {
   const extent = props.object.ring ? props.object.ring.outer : 1.12
   return (
     <Canvas
-      dpr={[1, 1.5]}
+      dpr={[1, 2]}
       camera={{ fov: 32, near: 0.1, far: 4000, position: [0, 0, 10] }}
-      gl={{ antialias: true, alpha: true, powerPreference: 'high-performance', toneMapping: AgXToneMapping, toneMappingExposure: 1.2 }}
+      gl={{ antialias: false, powerPreference: 'high-performance', toneMapping: AgXToneMapping, toneMappingExposure: 1.2 }}
       frameloop="always"
       // Medir sin transformaciones: el panel se abre con una animación de escala.
       resize={{ offsetSize: true }}
       aria-hidden="true"
     >
-      <Stars />
+      {/* El mismo cielo de la escena (nebulosa, estrellas y la estrella del sector) y un brillo suave. */}
+      <Sky stars={3600} octaves={5} cube={1024} animate={props.animate} />
       <Rig radius={props.object.radius} extent={extent} input={props.input} />
       <Body {...props} />
+      <Bloom strength={0.42} samples={4} chromatic={0} grain={0} />
     </Canvas>
   )
 }
