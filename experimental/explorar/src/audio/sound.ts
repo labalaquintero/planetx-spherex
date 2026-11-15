@@ -13,6 +13,8 @@ export interface SoundEngine {
   jump(): void
   /** Nivel continuo del motor 0..1 (vuelo libre): sube el tono y el volumen del zumbido. */
   engine(level: number): void
+  /** Golpe sordo de un impacto (0..1). */
+  impact(strength: number): void
   dispose(): void
 }
 
@@ -140,6 +142,23 @@ export function createSound(factory: () => Ctx | null = defaultFactory): SoundEn
       const k = Math.min(1, Math.max(0, Number.isFinite(level) ? level : 0))
       const t = ctx.currentTime
       hum.forEach((o, i) => o.frequency.setTargetAtTime((i ? 55.6 : 55) * (1 + 0.6 * k), t, 0.15))
+    },
+    impact(strength: number) {
+      if (!on || !ctx || !master) return
+      const k = Math.min(1, Math.max(0, Number.isFinite(strength) ? strength : 0))
+      const t = ctx.currentTime
+      const o = ctx.createOscillator()
+      o.type = 'sine'
+      o.frequency.setValueAtTime(90, t)
+      o.frequency.exponentialRampToValueAtTime(38, t + 0.45)
+      const g = ctx.createGain()
+      g.gain.setValueAtTime(0.0001, t)
+      g.gain.exponentialRampToValueAtTime(0.35 * k + 0.05, t + 0.02)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6)
+      o.connect(g).connect(master)
+      o.start(t)
+      o.stop(t + 0.65)
+      swoosh(0.35, 500, 1800, 0.12 * k + 0.02)
     },
     dispose() {
       on = false

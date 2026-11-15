@@ -15,6 +15,8 @@ import { SkyEnvironment } from './SkyEnvironment'
 import { SmallBodies } from './SmallBodies'
 import { SpaceDust } from './SpaceDust'
 import { Station } from './Station'
+import { Visitors } from './Visitors'
+import type { VisitorEvent } from '../engine/visitors'
 
 interface Props {
   scene: SectorSceneData
@@ -32,6 +34,8 @@ interface Props {
   quality: AdaptiveQuality
   onQualityChange: () => void
   onFps?: (fps: number) => void
+  /** Cometas y meteoritos: aparición e impactos (para el HUD y el sonido). */
+  onVisitorEvent?: (e: VisitorEvent) => void
 }
 
 /** Mide cada cuadro y alimenta la calidad adaptativa. */
@@ -55,7 +59,7 @@ function Governor({ quality, onChange, onFps }: { quality: AdaptiveQuality; onCh
 
 /** Escena 3D de un sector con vuelo libre. Es la única parte que importa three (carga diferida). */
 export default function SectorScene(props: Props) {
-  const { scene, flight, input, aim, bounds, obstacles, animate, arrive, settings, quality, onQualityChange, onFps } = props
+  const { scene, flight, input, aim, bounds, obstacles, animate, arrive, settings, quality, onQualityChange, onFps, onVisitorEvent } = props
   const light = LIGHT_DIR.clone().multiplyScalar(200)
   const bodies = useMemo(() => smallBodiesOf(scene, settings.debris), [scene, settings.debris])
   // Las rocas también son obstáculos (con su holgura): no se atraviesan.
@@ -92,6 +96,7 @@ export default function SectorScene(props: Props) {
       })}
       <SmallBodies bodies={bodies} palette={scene.field?.palette ?? ['#9a9083', '#6b6358', '#3d3832']} spin={animate} />
       <SpaceDust count={settings.level === 'low' ? 160 : settings.level === 'medium' ? 320 : 520} animate={animate} />
+      <Visitors flight={flight} animate={animate} onEvent={onVisitorEvent} />
       <FlightRig
         state={flight}
         input={input}

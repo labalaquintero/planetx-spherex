@@ -85,6 +85,7 @@ export function Explorar({ className }: ExplorarProps) {
           debug={params.debug}
           extraControls={soundButton}
           onEngine={(level) => sound.engine(level)}
+          onImpact={(k) => sound.impact(k)}
         />
       ) : (
         <SectorSelect
