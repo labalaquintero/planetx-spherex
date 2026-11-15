@@ -14,3 +14,9 @@ test-results/
 *.key
 /data/raw/
 /data/processed/
+/data/products/
+/data/**/products/
+/data/**/*.png
+/data/**/*.fits
+/data/**/*.fits.gz
+/data/**/*.local.json
