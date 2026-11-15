@@ -29,9 +29,11 @@ interface Props {
   focusId: string | null
   /** Controles extra arriba a la derecha (p. ej., sonido). */
   extraControls?: ReactNode
+  /** Se llama al señalar una región nueva (para el tic del sonido). */
+  onPoint?: () => void
 }
 
-export function SectorSelect({ sectors, onEnter, jump, reduced, quality, forced, focusId, extraControls }: Props) {
+export function SectorSelect({ sectors, onEnter, jump, reduced, quality, forced, focusId, extraControls, onPoint }: Props) {
   const layer = useRef<HTMLElement | null>(null)
   const input = useRef<BackdropInput>({ pointerX: 0, pointerY: 0, jumpStart: null, jumpX: 0.5, jumpY: 0.5, hover: -1 })
   const buttons = useRef(new Map<string, HTMLButtonElement>())
@@ -41,7 +43,9 @@ export function SectorSelect({ sectors, onEnter, jump, reduced, quality, forced,
     [sectors],
   )
   const point = (i: number) => {
+    if (input.current.hover === i || jump) return
     input.current.hover = i
+    onPoint?.()
   }
   const release = (i: number) => {
     if (input.current.hover === i) input.current.hover = -1

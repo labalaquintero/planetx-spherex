@@ -66,8 +66,9 @@ export function Explorar({ className }: ExplorarProps) {
 
   const exit = useCallback(() => {
     token.current++
+    sound.engine(0)
     setPhase((p) => ({ kind: 'select', returnFocus: p.kind === 'nav' ? p.id : null }))
-  }, [])
+  }, [sound])
 
   const navSector = phase.kind === 'nav' ? getSector(phase.id) : undefined
 
@@ -86,6 +87,7 @@ export function Explorar({ className }: ExplorarProps) {
           extraControls={soundButton}
           onEngine={(level) => sound.engine(level)}
           onImpact={(k) => sound.impact(k)}
+          onVisitor={(k) => sound.visitor(k)}
         />
       ) : (
         <SectorSelect
@@ -97,6 +99,7 @@ export function Explorar({ className }: ExplorarProps) {
           forced={quality.forced}
           focusId={phase.kind === 'select' ? phase.returnFocus : null}
           extraControls={soundButton}
+          onPoint={() => sound.hover()}
         />
       )}
     </div>
