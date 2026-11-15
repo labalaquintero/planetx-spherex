@@ -7,6 +7,7 @@ import {
   canReview, clearSharedMarks, fileDataUrl, reportById, setSharedPage, sharedPage, sharedRequest,
 } from './colaboracion.js';
 import { back, badge, dataRows, missingView, pageHeading, toast } from './ui.js';
+import { badgeShelf, exampleProfile, isoWeek, statsFromReports, weeklyMark } from './insignias.js';
 import { comparisonFor } from './visor.js';
 import { cacheImages, isEditableReport, readWorkspace, reportFile, writeWorkspace } from './workspace.js';
 
@@ -528,7 +529,6 @@ function profileView(_id, params) {
     <a class="button secondary" href="#perfil?local=1">Ver fichas locales</a></div>`;
   const recent = local.recent;
   const myReports = shared ? sharedPage.reports ?? [] : local.reports;
-  const contributions = myReports.filter((report) => ['accepted', 'published'].includes(report.status));
   const suffix = !shared && sharedPage.enabled ? '?local=1' : '';
   return `${pageHeading('Mi espacio', shared
     ? 'Retoma tus fichas y consulta las decisiones del equipo revisor.'
@@ -539,6 +539,7 @@ function profileView(_id, params) {
           <div class="row between"><h2>Mis fichas</h2><a class="button primary" href="#ficha${suffix}">Nueva ficha</a></div>
           ${myReports.length ? `<ul class="item-list">${myReports.map((report) => `<li>
             <div class="row between"><a class="list-title" href="#confirmacion/${report.id}">${escapeHtml(report.title)}</a>${statusBadge(report)}</div>
+            ${weeklyMark(report.weeklyPick)}
             <div class="list-meta">${dateMark(report.created)} · ${escapeHtml(report.author)}</div>
             ${report.reviewNote ? `<p class="muted preserve-lines">${escapeHtml(report.reviewNote)}</p>` : ''}
             ${['draft', 'rejected'].includes(report.status) ? `<a class="text-link" href="${editURL(report)}">Editar ficha →</a>` : ''}
@@ -557,7 +558,9 @@ function profileView(_id, params) {
         <div class="avatar-block">${avatar(profile)}
           <div class="wrap"><h2>${escapeHtml(profile.alias)}</h2><small class="dim">${shared ? escapeHtml(profile.email) : 'Perfil local'}</small></div>
         </div>
-        <p><strong>Insignias</strong><br>${contributions.length ? badge('Primera contribución', 'success', false) : 'Aún no hay insignias.'}</p>
+        <section class="profile-badges" aria-labelledby="badges-title"><h3 id="badges-title">Insignias</h3>
+          ${badgeShelf(statsFromReports(myReports), { own: true })}
+          <a class="text-link" href="#publico/${exampleProfile.id}">Ver un perfil de ejemplo con todas las insignias →</a></section>
         <a class="button secondary" href="#ajustes${suffix}">Editar perfil</a>
         ${profile.public ? `<a class="text-link" href="${shared ? `#publico/${profile.id}` : `#publico${suffix}`}">Ver perfil público →</a>` : ''}
         ${shared && canReview(profile) ? '<a class="text-link" href="#administracion">Bandeja de revisión →</a>' : ''}
@@ -568,19 +571,24 @@ function profileView(_id, params) {
 }
 
 function publicProfileView(id, params) {
-  const publicProfile = id ? sharedPage.publicProfile : readWorkspace();
+  const publicProfile = id === exampleProfile.id ? exampleProfile : id ? sharedPage.publicProfile : readWorkspace();
   if (!publicProfile) return missingView();
   const { profile, reports } = publicProfile;
   const suffix = params.get('local') === '1' ? '?local=1' : '';
   if (!id && !profile.public) return `${pageHeading('Perfil privado', 'Activa la vista pública en Ajustes para previsualizar tu perfil.')}
     <a class="button secondary" href="#ajustes${suffix}">Abrir ajustes</a>`;
   const published = reports.filter((report) => report.status === 'published');
+  // El servidor cuenta también las fichas aceptadas que aún no se publican; en local se cuentan aquí.
+  const stats = publicProfile.stats ?? statsFromReports(reports);
   return `${back(id ? '#blog' : `#perfil${suffix}`, id ? 'Blog' : 'Mi espacio')}
-    ${pageHeading(profile.alias, id ? '' : 'Vista previa del perfil público en este navegador.', '', true)}
+    ${pageHeading(profile.alias, publicProfile.example
+    ? 'Perfil de ejemplo de Planet X: así se ve un perfil con todas las insignias. No es una cuenta real.'
+    : id ? '' : 'Vista previa del perfil público en este navegador.', publicProfile.example ? 'Perfil de ejemplo' : '', true)}
     <section class="panel reading">
       <div class="avatar-block">${avatar(profile)}<div><h2>Contribuciones</h2>
-        ${published.length ? badge('Primera contribución', 'success', false) : '<p class="muted">Aún no hay reportes publicados.</p>'}</div></div>
-      <ul class="item-list">${published.map((report) => `<li><a class="text-link" href="#articulo/${report.id}">${escapeHtml(report.title)}</a></li>`).join('')}</ul>
+        ${badgeShelf(stats)}
+        ${published.length ? '' : '<p class="muted">Aún no hay reportes publicados.</p>'}</div></div>
+      <ul class="item-list">${published.map((report) => `<li><a class="text-link" href="#articulo/${report.id}">${escapeHtml(report.title)}</a> ${weeklyMark(report.weeklyPick)}</li>`).join('')}</ul>
     </section>`;
 }
 
@@ -740,7 +748,19 @@ function reviewPanel(report) {
       </form>`
       : `<button class="button primary" id="publish-local" type="button" data-report="${report.id}">Publicar en la vista local</button>`) : ''}
     ${report.status === 'published' ? `<a class="button secondary" href="#articulo/${report.id}">Ver en el Blog</a>` : ''}
+    ${report.status === 'published' ? weeklyControl(report, canPublish) : ''}
   </section>`;
+}
+
+/** Ficha de la semana: la elige quien puede publicar (admin, o el revisor local), una por semana. */
+function weeklyControl(report, canChoose) {
+  if (report.weeklyPick) return `<p class="callout info">${weeklyMark(report.weeklyPick)} Semana ${escapeHtml(report.weeklyPick)}.</p>`;
+  if (!canChoose) return '';
+  return `<form class="form-grid" id="weekly-pick" data-report="${report.id}">
+    <p class="input-hint">La autora o el autor recibe la insignia «Ficha de la semana». Elegir otra ficha esta semana reemplaza a la anterior.</p>
+    <p class="input-error" id="weekly-error" role="alert" hidden></p>
+    <button class="button secondary" type="submit">Elegir como ficha de la semana</button>
+  </form>`;
 }
 
 function bindModeration(_id, params) {
@@ -797,6 +817,30 @@ function bindModeration(_id, params) {
     writeWorkspace(state);
     reloadView();
     toast('Reporte disponible en el blog de este navegador.');
+  });
+  const weekly = document.querySelector('#weekly-pick');
+  weekly?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (shared) {
+      const report = sharedPage.report;
+      void submitShared(weekly, document.querySelector('#weekly-error'), async () => {
+        await sharedRequest(`/reports/${report.id}/weekly`, { method: 'POST', body: { revision: report.revision } });
+        if (weekly.isConnected) {
+          reloadView();
+          toast('Ficha de la semana elegida.');
+        }
+      });
+      return;
+    }
+    const state = readWorkspace();
+    const report = state.reports.find((item) => item.id === weekly.dataset.report);
+    if (report?.status !== 'published' || report.weeklyPick) return;
+    const week = isoWeek();
+    for (const item of state.reports) if (item.weeklyPick === week) delete item.weeklyPick;
+    report.weeklyPick = week;
+    writeWorkspace(state);
+    reloadView();
+    toast('Ficha de la semana elegida en este navegador.');
   });
   document.querySelector('#demo-user-status')?.addEventListener('change', (event) => {
     const state = readWorkspace();

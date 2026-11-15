@@ -131,3 +131,7 @@ class Decision(Input):
     action: Literal["accepted", "rejected", "published"]
     note: Annotated[str, StringConstraints(strip_whitespace=True, max_length=1200)] = ""
     revision: int = Field(ge=1)
+
+
+class WeeklyPick(Input):
+    revision: int = Field(ge=1)
