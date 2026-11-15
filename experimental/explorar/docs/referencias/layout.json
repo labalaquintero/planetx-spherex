@@ -13,6 +13,18 @@
     "aspecto": 2.3215,
     "objetos": [
       {
+        "hueco_caja": [
+          0.8323,
+          0.6401,
+          0.0318,
+          0.0442
+        ],
+        "cuerpo_caja": [
+          0.7421,
+          0.6165,
+          0.0896,
+          0.1136
+        ],
         "centroide": [
           0.7958,
           0.6735
@@ -36,7 +48,18 @@
         "clase": "station",
         "confianza": "alta",
         "nota": "Cilindro horizontal con un asa (anillo) en el extremo derecho; el asa encierra un hueco.",
-        "id": "ancla"
+        "id": "ancla",
+        "ancla": {
+          "centro": [
+            0.7869,
+            0.6733
+          ],
+          "diametro_v": 0.1136,
+          "largo_v": 0.208,
+          "asa_largo_v": 0.0871,
+          "asa_alto_v": 0.0562,
+          "metodo": "centro del cilindro (sin el asa); el asa sale por el extremo derecho"
+        }
       },
       {
         "centroide": [
@@ -62,7 +85,15 @@
         "clase": "smallBody",
         "confianza": "alta",
         "nota": "",
-        "id": "c1"
+        "id": "c1",
+        "ancla": {
+          "centro": [
+            0.6394,
+            0.3406
+          ],
+          "diametro_v": 0.0619,
+          "metodo": "centro de la caja"
+        }
       },
       {
         "centroide": [
@@ -88,7 +119,15 @@
         "clase": "smallBody",
         "confianza": "alta",
         "nota": "",
-        "id": "c2"
+        "id": "c2",
+        "ancla": {
+          "centro": [
+            0.1979,
+            0.2979
+          ],
+          "diametro_v": 0.0457,
+          "metodo": "centro de la caja"
+        }
       },
       {
         "centroide": [
@@ -114,7 +153,15 @@
         "clase": "smallBody",
         "confianza": "alta",
         "nota": "Forma irregular (triangular o alargada).",
-        "id": "c3"
+        "id": "c3",
+        "ancla": {
+          "centro": [
+            0.3339,
+            0.2588
+          ],
+          "diametro_v": 0.0516,
+          "metodo": "centro de la caja"
+        }
       },
       {
         "centroide": [
@@ -140,7 +187,15 @@
         "clase": "smallBody",
         "confianza": "alta",
         "nota": "",
-        "id": "c4"
+        "id": "c4",
+        "ancla": {
+          "centro": [
+            0.1798,
+            0.2241
+          ],
+          "diametro_v": 0.0236,
+          "metodo": "centro de la caja"
+        }
       },
       {
         "centroide": [
@@ -166,7 +221,15 @@
         "clase": "sphere",
         "confianza": "media",
         "nota": "Hay dos manchas redondas a la derecha; se toma la más cercana al centro-derecha. La otra queda como cuerpo pequeño.",
-        "id": "esfera"
+        "id": "esfera",
+        "ancla": {
+          "centro": [
+            0.7218,
+            0.5619
+          ],
+          "diametro_v": 0.0413,
+          "metodo": "centro de la caja"
+        }
       },
       {
         "centroide": [
@@ -192,7 +255,15 @@
         "clase": "planet",
         "confianza": "alta",
         "nota": "",
-        "id": "ilmara"
+        "id": "ilmara",
+        "ancla": {
+          "centro": [
+            0.0998,
+            0.1431
+          ],
+          "diametro_v": 0.1298,
+          "metodo": "centro de la caja"
+        }
       },
       {
         "centroide": [
@@ -218,7 +289,15 @@
         "clase": "ringedPlanet",
         "confianza": "media",
         "nota": "Mancha irregular con una prolongación inclinada (el anillo) y trazos sueltos; el disco y el anillo se funden. Inclinación del anillo tomada del eje mayor.",
-        "id": "orun"
+        "id": "orun",
+        "ancla": {
+          "centro": [
+            0.818,
+            0.3267
+          ],
+          "diametro_v": 0.205,
+          "metodo": "centro de la caja"
+        }
       },
       {
         "centroide": [
@@ -244,7 +323,15 @@
         "clase": "planet",
         "confianza": "media",
         "nota": "Recortado por el borde superior: solo se ve la mitad inferior. Se completa como esfera del mismo ancho.",
-        "id": "veshta"
+        "id": "veshta",
+        "ancla": {
+          "centro": [
+            0.0896,
+            -0.0103
+          ],
+          "diametro_v": 0.1298,
+          "metodo": "esfera completada desde el borde inferior"
+        }
       }
     ],
     "nave": {
@@ -295,7 +382,56 @@
         "barrido_borde_ataque_deg": 45.8654
       },
       "largo_rel_alto": 0.5324,
-      "envergadura_rel_ancho": 0.2745
+      "envergadura_rel_ancho": 0.2745,
+      "ajuste": {
+        "metodo": "mínimos cuadrados (scipy) sobre 6 puntos de la silueta; pantalla 16:9, FOV 50°, nave a 4,6 u",
+        "parametros": {
+          "nariz_z": -2.8482,
+          "hombro_z": -1.1007,
+          "motor_z": 1.35,
+          "punta_x": 2.6137,
+          "punta_z": 0.9447,
+          "cabeceo": 1.1497,
+          "escala": 0.5028,
+          "y": -0.7687
+        },
+        "cola_z": 1.95,
+        "objetivo_16_9": {
+          "nariz": [
+            0.4809,
+            0.3879
+          ],
+          "ala_izquierda": [
+            0.3208,
+            0.8024
+          ],
+          "ala_derecha": [
+            0.6791,
+            0.7847
+          ],
+          "hombro": [
+            0.4809,
+            0.5457
+          ],
+          "motor_abajo": [
+            0.4809,
+            0.9204
+          ],
+          "motor_arriba": [
+            0.4809,
+            0.8466
+          ]
+        },
+        "error_por_punto": {
+          "nariz": 0.0191,
+          "ala_izquierda": 0.0087,
+          "ala_derecha": 0.0091,
+          "hombro": 0.0191,
+          "motor_abajo": 0.0201,
+          "motor_arriba": 0.0203
+        },
+        "error_max": 0.0203
+      }
     },
     "cruceta": {
       "centro": [

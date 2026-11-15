@@ -70,7 +70,18 @@ def medir(mask: np.ndarray, etiqueta: np.ndarray, idx: int, ancho: int, alto: in
     # Orientación por momentos de segundo orden (ángulo del eje mayor, grados, horario en imagen).
     ang = 0.5 * math.degrees(math.atan2(2 * m["mu11"], m["mu20"] - m["mu02"]))
     ejes = np.sqrt(np.linalg.eigvalsh(np.array([[m["mu20"], m["mu11"]], [m["mu11"], m["mu02"]]]) / m["m00"]))
+    extra = {}
+    if huecos:
+        h_ext = max((c for c, h in zip(contornos, jerarquia[0]) if h[3] >= 0), key=cv2.contourArea)
+        hx, hy, hw, hh = cv2.boundingRect(h_ext)
+        extra["hueco_caja"] = [R4(hx / ancho), R4(hy / alto), R4(hw / ancho), R4(hh / alto)]
+        # Parte de la figura a la izquierda del hueco (en la estación: el cilindro sin el asa).
+        ys, xs = np.nonzero(comp[:, :hx])
+        if len(xs):
+            bx0, bx1, by0, by1 = xs.min(), xs.max(), ys.min(), ys.max()
+            extra["cuerpo_caja"] = [R4(bx0 / ancho), R4(by0 / alto), R4((bx1 - bx0) / ancho), R4((by1 - by0) / alto)]
     return {
+        **extra,
         "centroide": [R4(cx / ancho), R4(cy / alto)],
         "caja": [R4(x / ancho), R4(y / alto), R4(w / ancho), R4(h / alto)],
         "caja_px": [int(x), int(y), int(w), int(h)],
@@ -374,6 +385,91 @@ def analizar_seleccion(img: np.ndarray) -> dict:
     }
 
 
+# ------------------------------------------------------------------------------- anclajes
+def ancla(o: dict, ancho: int, alto: int) -> dict:
+    """Punto de pantalla donde debe caer el centro 3D del objeto y su diámetro aparente (en unidades
+    de alto de pantalla). Completa los puntos ciegos sin cambiar el tipo de objeto."""
+    x, y, w, h = o["caja"]
+    if o["clase"] == "planet" and o["toca_borde"] and y <= 0.001:
+        # Recortado arriba: se completa como esfera del ancho visible, apoyada en su borde inferior.
+        r = (w * ancho / 2) / alto
+        return {"centro": [R4(x + w / 2), R4(y + h - r)], "diametro_v": R4(2 * r), "metodo": "esfera completada desde el borde inferior"}
+    if o["clase"] == "station" and "cuerpo_caja" in o:
+        cx, cy, cw, ch = o["cuerpo_caja"]
+        return {
+            "centro": [R4(cx + cw / 2), R4(cy + ch / 2)],
+            "diametro_v": R4(ch),
+            "largo_v": R4(cw * ancho / alto),
+            "asa_largo_v": R4((x + w - (cx + cw)) * ancho / alto),
+            "asa_alto_v": R4(o["hueco_caja"][3] + 0.012),
+            "metodo": "centro del cilindro (sin el asa); el asa sale por el extremo derecho",
+        }
+    return {"centro": [R4(x + w / 2), R4(y + h / 2)], "diametro_v": o["tamano_rel"], "metodo": "centro de la caja"}
+
+
+# Geometría base de la nave (coordenadas de la nave, mira a -Z) y encuadre de la cámara de la app:
+# FOV vertical 50°, pantalla de referencia 16:9, nave a 4,6 unidades delante de la cámara.
+FOV_V = 50.0
+ASPECTO_REF = 16 / 9
+NAVE_Z = -4.6
+BASE = {"nariz_z": -2.15, "hombro_z": -0.6, "motor_z": 1.15, "punta_x": 2.12, "punta_z": 1.38, "cabeceo": 0.5, "escala": 0.62, "y": -1.1}
+COLA_Z = 1.95
+
+
+def proyectar_nave(p: dict) -> dict[str, tuple[float, float]]:
+    t = math.tan(math.radians(FOV_V / 2))
+    c, s_ = math.cos(p["cabeceo"]), math.sin(p["cabeceo"])
+
+    def pr(x: float, y: float, z: float) -> tuple[float, float]:
+        y2, z2 = y * c - z * s_, y * s_ + z * c  # rotación X (nariz arriba)
+        X, Y, Z = x * p["escala"], y2 * p["escala"] + p["y"], z2 * p["escala"] + NAVE_Z
+        return (0.5 + 0.5 * X / (-Z * t * ASPECTO_REF), 0.5 - 0.5 * Y / (-Z * t))
+
+    return {
+        "nariz": pr(0, 0, p["nariz_z"]),
+        "hombro": pr(0, 0.3, p["hombro_z"]),
+        "ala_izquierda": pr(-p["punta_x"], -0.06, p["punta_z"]),
+        "ala_derecha": pr(p["punta_x"], -0.06, p["punta_z"]),
+        "motor_arriba": pr(0, 0.31, p["motor_z"]),
+        "motor_abajo": pr(0, -0.31, COLA_Z),
+    }
+
+
+def ajustar_nave(nave: dict, aspecto: float) -> dict:
+    """Ajusta geometría y encuadre de la nave para que, en una pantalla 16:9, su silueta reproduzca la
+    del boceto conservando las proporciones del dibujo (isótropo alrededor del centro de la nave)."""
+    from scipy.optimize import least_squares
+
+    uc = nave["caja"][0] + nave["caja"][2] / 2
+    k = aspecto / ASPECTO_REF
+    obj = {n: (0.5 + (u - uc) * k, v) for n, (u, v) in nave["puntos"].items()}
+    claves = list(BASE)
+    x0 = np.array([BASE[c] for c in claves])
+    escala_prior = np.array([1, 1, 1, 1, 1, 0.3, 0.3, 0.5])
+    lo = np.array([-4.0, -2.0, 0.2, 1.0, 0.0, 0.1, 0.3, -3.0])
+    # El motor conserva al menos 0,6 u de largo (es un bloque, no una placa).
+    hi = np.array([-1.0, 0.5, 1.35, 4.0, 3.0, 1.2, 1.6, 0.0])
+
+    def res(x):
+        p = dict(zip(claves, x))
+        pr = proyectar_nave(p)
+        r = [pr[n][i] - obj[n][i] for n in obj for i in (0, 1)]
+        return np.concatenate([r, 0.01 * (x - x0) / escala_prior])
+
+    sol = least_squares(res, x0, bounds=(lo, hi))
+    p = {c: R4(v) for c, v in zip(claves, sol.x)}
+    pr = proyectar_nave(p)
+    errores = {n: R4(math.dist(pr[n], obj[n])) for n in obj}
+    return {
+        "metodo": "mínimos cuadrados (scipy) sobre 6 puntos de la silueta; pantalla 16:9, FOV 50°, nave a 4,6 u",
+        "parametros": p,
+        "cola_z": COLA_Z,
+        "objetivo_16_9": {n: [R4(a), R4(b)] for n, (a, b) in obj.items()},
+        "error_por_punto": errores,
+        "error_max": R4(max(errores.values())),
+    }
+
+
 # --------------------------------------------------------------------------------- principal
 def analizar_navegacion(img: np.ndarray, debug: Path | None) -> dict:
     franja = franja_superior(img)
@@ -393,6 +489,9 @@ def analizar_navegacion(img: np.ndarray, debug: Path | None) -> dict:
         i = contadores.get(o["clase"], 0)
         contadores[o["clase"]] = i + 1
         o["id"] = lista[i] if lista and i < len(lista) else f"c{i + 1}"
+    for o in objs:
+        o["ancla"] = ancla(o, ancho, alto)
+    nave["ajuste"] = ajustar_nave(nave, ancho / alto)
     if debug:
         debug.mkdir(parents=True, exist_ok=True)
         vis = img[..., ::-1].copy()
@@ -435,6 +534,8 @@ def main() -> None:
     }
     args.salida.write_text(json.dumps(datos, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"escrito {args.salida.relative_to(RAIZ) if args.salida.is_relative_to(RAIZ) else args.salida}")
+    aj = nav["nave"]["ajuste"]
+    print(f'  nave: error máx {aj["error_max"]:.3f} · {aj["parametros"]}')
     for o in nav["objetos"]:
         print(f'  {o["id"]:8} {o["clase"]:13} c=({o["centroide"][0]:.3f},{o["centroide"][1]:.3f}) '
               f'tam={o["tamano_rel"]:.3f} red={o["redondez"]:.2f} asp={o["aspecto"]:.2f} huecos={o["huecos"]} '
