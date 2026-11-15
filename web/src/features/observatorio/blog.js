@@ -1,9 +1,9 @@
 import { reportById, sharedPage } from './colaboracion.js';
 import {
-  archiveNote, articles, comparisonLink, dateMark, daysBetween, epoch, escapeHtml, featuredObservation, nasaSky, nasaVela, prepared,
+  archiveNote, articles, dateMark, daysBetween, epoch, escapeHtml, featuredObservation, nasaSky, nasaVela, prepared,
 } from './datos.js';
 import { sampleObservationById, samplePublications } from './ejemplos-blog.js';
-import { pdfButton, reportEvidence } from './espacio.js';
+import { reportDocument, reportEvidence } from './informe.js';
 import { back, missingView } from './ui.js';
 import { exampleProfile, weeklyMark } from './insignias.js';
 import { bindComparisonSlider, comparisonSlider } from './visor.js';
@@ -168,33 +168,7 @@ export function articleView(id) {
   if (guide) return guideArticle(guide);
   const report = sampleObservationById(id) ?? reportById(id);
   if (report?.status !== 'published') return missingView();
-  const comparison = report.comparison ?? prepared;
-  const category = report.example ? `Ejemplo de la comunidad / ${report.topic}`
-    : report.shared ? 'Observación de la comunidad' : 'Publicación de este navegador';
-  const byline = report.example ? escapeHtml(report.author)
-    : `${escapeHtml(report.author)} · ${dateMark(report.publishedAt ?? report.created, true)}`;
-  const difference = report.example ? comparison.difference : null;
-  return `<article class="blog-article">
-    ${back('#blog', 'Volver al Blog')}
-    ${articleHeading(report.title, category)}
-    <p class="blog-report-byline">Por ${byline}</p>
-    ${weeklyMark(report.weeklyPick)}
-    <div class="blog-article-layout">
-      <section class="blog-article-text">
-        <h2>Observación</h2>
-        <p class="preserve-lines">${escapeHtml(report.notes || `Documento PDF: ${report.fileName}`)}</p>
-        ${pdfButton(report)}
-        ${difference ? `<figure class="panel blog-report-difference">
-          <img class="science-image" src="${escapeHtml(difference.image_url)}" data-frame-id="${escapeHtml(difference.id)}"
-            width="64" height="64" alt="Mapa de diferencia con una franja azul alrededor del núcleo enmascarado">
-          <p class="image-error" role="alert" hidden>Imagen de diferencia no disponible.</p>
-          <figcaption>Brillo superficial en B menos A · SPHEREx DR1</figcaption>
-        </figure>` : ''}
-        ${report.example ? `<a class="button primary" href="${escapeHtml(comparisonLink(comparison))}">Abrir ${escapeHtml(report.topic)} en el visor <span aria-hidden="true">↗</span></a>` : ''}
-      </section>
-      ${reportEvidence(comparison, report.annotations, { reportId: report.id, from: 'articulo' })}
-    </div>
-  </article>`;
+  return reportDocument(report, { previous: back('#blog', 'Volver al Blog'), publication: true });
 }
 
 export function bindArticle() {
