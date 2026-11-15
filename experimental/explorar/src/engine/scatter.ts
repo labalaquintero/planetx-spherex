@@ -48,6 +48,8 @@ export function scatterBodies(
   objects: readonly SceneObject[],
   count: number,
   variants = 3,
+  /** Descarta además las posiciones para las que devuelve true (p. ej., la vista inicial del boceto). */
+  reject?: (p: Vec3) => boolean,
 ): ScatteredBody[] {
   const rnd = mulberry32(field.seed)
   const out: ScatteredBody[] = []
@@ -67,7 +69,7 @@ export function scatterBodies(
     const inside = objects.some(
       (o) => o.kind !== 'smallBody' && Math.hypot(p[0] - o.position[0], p[1] - o.position[1], p[2] - o.position[2]) < o.radius * (o.ring?.outer ?? 1.2) + r + 2,
     )
-    if (inside) continue
+    if (inside || reject?.(p)) continue
     out.push({ position: p, radius: r, rotation, spin, tint, variant })
   }
   return out

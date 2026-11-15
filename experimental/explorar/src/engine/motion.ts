@@ -1,4 +1,5 @@
 import { easeInOutCubic } from './easing'
+import { SHIP } from './shipSpec'
 
 /**
  * Acerca `current` a `target` con decaimiento exponencial independiente de los FPS:
@@ -67,7 +68,8 @@ const REF_ASPECT = 16 / 9
 
 export function cameraFit(aspect: number): CameraFit {
   const a = Number.isFinite(aspect) && aspect > 0 ? aspect : REF_ASPECT
-  if (a >= 1.2) return { fovDeg: BASE_FOV_DEG, shipScale: 0.62, shipY: -1.1, shipZ: -4.6 }
+  // Encuadre horizontal de la nave: el ajustado a la silueta del boceto (layout.json).
+  if (a >= 1.2) return { fovDeg: BASE_FOV_DEG, shipScale: SHIP.scale, shipY: SHIP.y, shipZ: SHIP.z }
   // FOV horizontal del encuadre de referencia, convertido al vertical para este aspecto.
   const hfov = 2 * Math.atan(Math.tan((BASE_FOV_DEG * Math.PI) / 360) * REF_ASPECT)
   const vfov = (2 * Math.atan(Math.tan(hfov / 2) / a) * 180) / Math.PI
@@ -75,9 +77,9 @@ export function cameraFit(aspect: number): CameraFit {
   const t = Math.min(1, Math.max(0, (1.2 - a) / 0.7)) // 0 en 1.2 → 1 en 0.5
   return {
     fovDeg,
-    shipScale: 0.62 - 0.2 * t,
-    shipY: -1.1 - 0.9 * t,
-    shipZ: -4.6 - 0.6 * t,
+    shipScale: SHIP.scale * (1 - 0.32 * t),
+    shipY: SHIP.y - 0.9 * t,
+    shipZ: SHIP.z - 0.6 * t,
   }
 }
 

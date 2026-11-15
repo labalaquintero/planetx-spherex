@@ -41,6 +41,10 @@ export interface SceneObject {
   readonly ring?: { readonly inner: number; readonly outer: number; readonly tiltDeg: number }
   /** Solo estación: longitud del cilindro. */
   readonly length?: number
+  /** Solo estación: asa (anillo de atraque) en el extremo +X; largo y alto en unidades de escena. */
+  readonly handle?: { readonly length: number; readonly height: number }
+  /** Giro del objeto (grados, Euler XYZ). */
+  readonly rotationDeg?: Vec3
   /** Color de la atmósfera (resplandor de borde). Sin valor, sin atmósfera. */
   readonly atmosphere?: string
 }

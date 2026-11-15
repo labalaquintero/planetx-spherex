@@ -283,10 +283,11 @@
   pointer-events: none;
 }
 /* Tarjeta = tarjeta del visor (.app-form-section) */
+/* Llamada como en el boceto 1: a la derecha del sector, centrada en vertical, con una línea guía. */
 .ex-card {
   position: absolute;
-  top: calc(100% + 10px);
-  left: 50%;
+  top: calc(var(--ex-d) / 2);
+  left: calc(50% + var(--ex-d) / 2 + 26px);
   z-index: 5;
   width: min(290px, 78cqw);
   padding: 14px 16px;
@@ -296,7 +297,7 @@
   border-radius: var(--ex-radius-lg);
   box-shadow: var(--ex-shadow), 0 18px 40px rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(8px);
-  transform: translate(-50%, 6px);
+  transform: translate(-6px, -50%);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -306,7 +307,28 @@
 .ex-sector-item:focus-within .ex-card {
   opacity: 1;
   visibility: visible;
-  transform: translate(-50%, 0);
+  transform: translate(0, -50%);
+}
+.ex-card::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  width: 22px;
+  border-top: 1px solid var(--ex-accent-line);
+}
+.ex-sector-item[data-callout='left'] .ex-card {
+  left: auto;
+  right: calc(50% + var(--ex-d) / 2 + 26px);
+  transform: translate(6px, -50%);
+}
+.ex-sector-item[data-callout='left']:hover .ex-card,
+.ex-sector-item[data-callout='left']:focus-within .ex-card {
+  transform: translate(0, -50%);
+}
+.ex-sector-item[data-callout='left'] .ex-card::before {
+  right: auto;
+  left: 100%;
 }
 .ex-card-head {
   display: flex;
@@ -805,6 +827,20 @@
     right: 12px;
   }
   .ex-keys {
+    display: none;
+  }
+  .ex-sector-item .ex-card,
+  .ex-sector-item[data-callout='left'] .ex-card {
+    top: calc(100% + 10px);
+    left: 50%;
+    right: auto;
+    transform: translate(-50%, 6px);
+  }
+  .ex-sector-item:hover .ex-card,
+  .ex-sector-item:focus-within .ex-card {
+    transform: translate(-50%, 0);
+  }
+  .ex-card::before {
     display: none;
   }
 }

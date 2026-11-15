@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { ExtrudeGeometry, LatheGeometry, Shape, Vector2 } from 'three'
+import { SHIP } from '../engine/shipSpec'
 
 const HULL = '#cbd5e1'
 const WING = '#64748b'
@@ -9,31 +10,41 @@ const ACCENT = '#38bdf8'
 const GLOW = '#38bdf8'
 
 /** Posición de la tobera en coordenadas de la nave (la usa la estela). */
-export const NOZZLE: readonly [number, number, number] = [0, -0.02, 2.1]
+export const NOZZLE: readonly [number, number, number] = [0, -0.02, SHIP.tailZ + 0.15]
+
+const R_BODY = SHIP.bodyWidth / 2
+const NOSE = SHIP.noseZ - SHIP.shoulderZ // < 0
+/** Borde de ataque del ala: de la raíz (junto al hombro) a la punta. */
+const LE = { x0: R_BODY * 0.7, z0: SHIP.shoulderZ + 0.15, x1: SHIP.tipX - 0.07, z1: SHIP.tipZ - 0.33 }
+const LE_LEN = Math.hypot(LE.x1 - LE.x0, LE.z1 - LE.z0)
+const LE_ANGLE = Math.atan2(LE.z1 - LE.z0, LE.x1 - LE.x0)
 
 function useGeometries() {
   const g = useMemo(() => {
-    // Fuselaje torneado: de la cola a la punta de la nariz, a lo largo de +Y; luego hacia -Z.
-    const profile = [
-      [0.0, -1.62],
-      [0.34, -1.6],
-      [0.43, -1.05],
-      [0.42, -0.2],
-      [0.33, 0.6],
-      [0.2, 1.3],
-      [0.08, 1.85],
-      [0.0, 2.15],
-    ].map(([r, y]) => new Vector2(r, y))
-    const fuselage = new LatheGeometry(profile, 18)
+    // Fuselaje torneado (perfil en r, y = -z), con las cotas ajustadas al boceto (shipSpec).
+    const profile: [number, number][] = [
+      [0.0, SHIP.tailZ - 0.05],
+      [R_BODY * 0.8, SHIP.tailZ - 0.05],
+      [R_BODY, SHIP.engineZ],
+      [R_BODY * 0.97, (SHIP.engineZ + SHIP.shoulderZ) / 2],
+      [R_BODY * 0.85, SHIP.shoulderZ],
+      [R_BODY * 0.5, SHIP.shoulderZ + NOSE * 0.5],
+      [R_BODY * 0.18, SHIP.shoulderZ + NOSE * 0.88],
+      [0.0, SHIP.noseZ],
+    ]
+    const fuselage = new LatheGeometry(
+      profile.map(([r, z]) => new Vector2(r, -z)),
+      18,
+    )
     fuselage.rotateX(-Math.PI / 2)
     fuselage.scale(1, 0.72, 1)
 
-    // Ala derecha barrida: (x, y) del dibujo; al acostarla, y → -Z (adelante).
+    // Ala derecha barrida: (x, y) del dibujo con y = -z; al acostarla, y → -Z.
     const s = new Shape()
-    s.moveTo(0.28, 0.45)
-    s.lineTo(2.05, -1.05)
-    s.lineTo(2.12, -1.38)
-    s.lineTo(0.28, -1.32)
+    s.moveTo(LE.x0, -LE.z0)
+    s.lineTo(LE.x1, -LE.z1)
+    s.lineTo(SHIP.tipX, -SHIP.tipZ)
+    s.lineTo(LE.x0, -(SHIP.engineZ - 0.05))
     s.closePath()
     const wing = new ExtrudeGeometry(s, { depth: 0.05, bevelEnabled: true, bevelSize: 0.025, bevelThickness: 0.02, bevelSegments: 1 })
     wing.rotateX(-Math.PI / 2)
@@ -49,34 +60,24 @@ function useGeometries() {
   return g
 }
 
-/** Ángulo y longitud del borde de ataque del ala (para la franja de acento). */
-const LE = { x0: 0.28, z0: -0.45, x1: 2.05, z1: 1.05 }
-const LE_LEN = Math.hypot(LE.x1 - LE.x0, LE.z1 - LE.z0)
-const LE_ANGLE = Math.atan2(LE.z1 - LE.z0, LE.x1 - LE.x0)
-
 /**
- * Nave genérica procedural, vista desde atrás: fuselaje torneado con nariz puntiaguda, cabina,
- * alas barridas con franja luminosa en el borde de ataque, bloque de motor con tobera brillante.
- * Mira hacia -Z. Unos mil triángulos.
+ * Nave genérica procedural, vista desde atrás y arriba: fuselaje torneado con nariz puntiaguda,
+ * cabina, alas barridas con franja luminosa y bloque de motor con tobera. Las cotas (nariz, hombro,
+ * envergadura, punta de ala, motor) salen del ajuste a la silueta del boceto. Unos mil triángulos.
  */
 export function Ship() {
   const { fuselage, wing } = useGeometries()
+  const engineLen = SHIP.tailZ - SHIP.engineZ
   return (
     <group>
       <mesh geometry={fuselage}>
         <meshStandardMaterial color={HULL} metalness={0.2} roughness={0.6} />
       </mesh>
-      {/* Cabina */}
-      <mesh position={[0, 0.2, -0.45]} scale={[0.2, 0.13, 0.5]}>
+      {/* Cabina, justo detrás del hombro */}
+      <mesh position={[0, R_BODY * 0.5, SHIP.shoulderZ + 0.55]} scale={[R_BODY * 0.42, R_BODY * 0.28, 0.55]}>
         <sphereGeometry args={[1, 20, 12]} />
         <meshStandardMaterial color="#0c4a6e" emissive={ACCENT} emissiveIntensity={0.35} metalness={0.7} roughness={0.12} />
       </mesh>
-      {/* Lomo */}
-      <mesh position={[0, 0.27, 0.55]}>
-        <boxGeometry args={[0.1, 0.06, 1.5]} />
-        <meshStandardMaterial color={DARK} metalness={0.3} roughness={0.5} />
-      </mesh>
-      {/* Alas */}
       {[1, -1].map((side) => (
         <group key={side} scale={[side, 1, 1]} position={[0, -0.06, 0]}>
           <mesh geometry={wing}>
@@ -86,27 +87,19 @@ export function Ship() {
             <boxGeometry args={[LE_LEN, 0.02, 0.05]} />
             <meshBasicMaterial color={ACCENT} toneMapped={false} />
           </mesh>
-          {/* Luz de punta de ala */}
-          <mesh position={[2.1, 0.03, 1.2]}>
+          <mesh position={[SHIP.tipX, 0.03, SHIP.tipZ - 0.16]}>
             <boxGeometry args={[0.06, 0.08, 0.32]} />
             <meshBasicMaterial color={ACCENT} toneMapped={false} />
           </mesh>
         </group>
       ))}
-      {/* Bloque de motor */}
-      <mesh position={[0, -0.02, 1.55]}>
-        <boxGeometry args={[0.92, 0.62, 0.8]} />
+      {/* Bloque de motor: caja del ancho del cuerpo, como en el boceto */}
+      <mesh position={[0, -0.02, SHIP.engineZ + engineLen / 2]}>
+        <boxGeometry args={[SHIP.bodyWidth * 0.95, 0.62, engineLen]} />
         <meshStandardMaterial color={DARK} metalness={0.45} roughness={0.45} />
       </mesh>
-      {[1, -1].map((side) => (
-        <mesh key={`v${side}`} position={[side * 0.47, -0.02, 1.5]}>
-          <boxGeometry args={[0.04, 0.4, 0.55]} />
-          <meshStandardMaterial color="#1e293b" metalness={0.4} roughness={0.6} />
-        </mesh>
-      ))}
-      {/* Tobera y su brillo */}
-      <mesh position={[0, -0.02, 2.0]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.3, 0.26, 0.24, 20, 1, true]} />
+      <mesh position={[0, -0.02, SHIP.tailZ + 0.05]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.3, 0.26, 0.2, 20, 1, true]} />
         <meshStandardMaterial color="#475569" metalness={0.6} roughness={0.35} side={2} />
       </mesh>
       <mesh position={[0, -0.02, NOZZLE[2] - 0.02]}>

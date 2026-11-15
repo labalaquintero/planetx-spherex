@@ -5,12 +5,13 @@ import type { NavController } from '../engine/controller'
 import { arrivalOffset, cameraFit, fovKick, thrust as thrustFor } from '../engine/motion'
 import { progress } from '../engine/navigation'
 import { poseFor } from '../engine/pose'
+import { SHIP } from '../engine/shipSpec'
 import { NOZZLE, Ship } from './Ship'
 import { Trail } from './Trail'
 
 const DEG = Math.PI / 180
-/** Cabeceo de la nave (nariz arriba) para que se vea su silueta desde atrás. */
-const SHIP_PITCH = 0.5
+/** Cabeceo de la nave (nariz arriba), ajustado a la silueta del boceto (layout.json). */
+const SHIP_PITCH = SHIP.pitch
 
 interface Props {
   controller: NavController

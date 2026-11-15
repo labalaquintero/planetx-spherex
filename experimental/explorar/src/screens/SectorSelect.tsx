@@ -3,6 +3,7 @@ import { Backdrop, type BackdropInput } from '../backdrop/Backdrop'
 import { sphereSprite } from '../backdrop/sphereSprite'
 import type { QualityLevel } from '../engine/quality'
 import type { SectorConfig } from '../engine/types'
+import { calloutSide } from '../sectors/selector'
 import { loadScene } from './sceneLoader'
 
 export interface JumpState {
@@ -107,7 +108,13 @@ export function SectorSelect({ sectors, onEnter, jump, reduced, quality, forced,
             '--ex-glow': s.selector.glow,
           } as CSSProperties
           return (
-            <li key={s.id} className="ex-sector-item" style={style} data-target={jump?.id === s.id ? '' : undefined}>
+            <li
+              key={s.id}
+              className="ex-sector-item"
+              style={style}
+              data-target={jump?.id === s.id ? '' : undefined}
+              data-callout={calloutSide(s.selector.x)}
+            >
               <button
                 ref={(el) => {
                   if (el) buttons.current.set(s.id, el)

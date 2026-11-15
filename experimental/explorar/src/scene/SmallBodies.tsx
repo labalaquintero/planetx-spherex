@@ -3,6 +3,8 @@ import { useFrame } from '@react-three/fiber'
 import { Color, DynamicDrawUsage, Euler, IcosahedronGeometry, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three'
 import { mulberry32 } from '../engine/random'
 import { scatterBodies, type ScatteredBody } from '../engine/scatter'
+import { BASE_FOV_DEG } from '../engine/motion'
+import { REFERENCE_ASPECT, worldToScreen } from '../engine/projection'
 import type { SceneObject, SectorScene } from '../engine/types'
 
 const VARIANTS = 3
@@ -52,7 +54,16 @@ export function SmallBodies({ scene, debris, spin }: Props) {
           variant: i % VARIANTS,
         }
       })
-    const extra = scene.field ? scatterBodies(scene.field, scene.waypoints, scene.objects, debris, VARIANTS) : []
+    // La vista inicial reproduce el boceto: el relleno no aparece en ella (salvo muy lejos);
+    // se descubre al moverse.
+    const start = scene.waypoints.find((w) => w.id === scene.startId)
+    const cam = start && { position: start.position, yawDeg: start.yawDeg, pitchDeg: start.pitchDeg, fovDeg: BASE_FOV_DEG, aspect: REFERENCE_ASPECT }
+    const inView = (p: readonly [number, number, number]) => {
+      if (!cam) return false
+      const s = worldToScreen(p, cam)
+      return s.depth > 0 && s.depth < 320 && s.u > -0.08 && s.u < 1.08 && s.v > -0.08 && s.v < 1.08
+    }
+    const extra = scene.field ? scatterBodies(scene.field, scene.waypoints, scene.objects, debris, VARIANTS, inView) : []
     return [...listed, ...extra]
   }, [scene, debris])
 
