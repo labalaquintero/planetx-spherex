@@ -1,0 +1,148 @@
+# Despliegue de la demo a una EC2 por SSH. Solo ssh en el runner: sin acciones de terceros.
+# Secretos del environment «demo» (no se escriben aquí):
+#   EC2_HOST, EC2_USER, EC2_SSH_KEY  y  EC2_KNOWN_HOSTS (línea(s) de known_hosts del servidor,
+#   p. ej. la salida de «ssh-keyscan -t ed25519 <host>» verificada por una persona; fija la huella).
+# Variable opcional del environment: EC2_APP_DIR (por defecto ~/planetx-spherex en la EC2).
+# En la EC2 NO se toca data/ (manifest y PNG preparados) ni el archivo de entorno (.env, donde vive
+# PLANETX_ENABLE_LIVE): solo git checkout del SHA y «docker compose build / up -d».
+name: Deploy demo
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "SHA (40 hex) a desplegar; vacío = SHA de la rama desde la que se lanza"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+# Dos despliegues nunca se cruzan: el segundo espera al primero.
+concurrency:
+  group: deploy-demo
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy (EC2 por SSH)
+    # Solo tras un CI exitoso de un push a main; el disparo manual siempre se permite.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    environment: demo
+    timeout-minutes: 30
+    env:
+      TARGET_SHA: ${{ github.event_name == 'workflow_dispatch' && (inputs.sha || github.sha) || github.event.workflow_run.head_sha }}
+      APP_DIR: ${{ vars.EC2_APP_DIR || '~/planetx-spherex' }}
+      EC2_HOST: ${{ secrets.EC2_HOST }}
+      EC2_USER: ${{ secrets.EC2_USER }}
+      EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+      EC2_KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
+    steps:
+      - name: Validar entradas
+        run: |
+          set -euo pipefail
+          [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::SHA inválido (se esperan 40 caracteres hexadecimales)."; exit 1; }
+          [[ "$APP_DIR" =~ ^[A-Za-z0-9_./~-]+$ ]] || { echo "::error::EC2_APP_DIR contiene caracteres no permitidos."; exit 1; }
+          for v in EC2_HOST EC2_USER EC2_SSH_KEY EC2_KNOWN_HOSTS; do
+            [ -n "${!v}" ] || { echo "::error::Falta el secreto $v en el environment demo."; exit 1; }
+          done
+
+      - name: Preparar SSH (huella verificada con known_hosts)
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$HOME/.ssh"
+          printf '%s\n' "$EC2_SSH_KEY" > "$HOME/.ssh/deploy_key"
+          printf '%s\n' "$EC2_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+
+      - name: Script remoto
+        run: |
+          cat > "$RUNNER_TEMP/remote.sh" <<'REMOTE'
+          set -uo pipefail
+          TARGET="$1"; APP_DIR="$2"
+          cd "$APP_DIR" || { echo "ERROR=no existe $APP_DIR"; exit 1; }
+          PREV="$(git rev-parse HEAD)" || exit 1
+          echo "PREV_SHA=$PREV"
+
+          # Antes del checkout no hay nada que revertir.
+          git fetch --prune origin || { echo "ERROR=git fetch falló"; exit 1; }
+          git cat-file -e "${TARGET}^{commit}" || { echo "ERROR=el SHA no existe en el remoto"; exit 1; }
+          git checkout --detach "$TARGET" || { echo "ERROR=checkout falló (cambios locales en el servidor?)"; exit 1; }
+
+          aplicar() {  # build + up; data/ y .env no se tocan
+            docker compose build && docker compose up -d
+          }
+          salud() {  # reintentos sobre /api/health, por el puerto que publica el servicio web
+            local addr i
+            for i in $(seq 1 30); do
+              addr="$(docker compose port web 80 2>/dev/null | head -n1)"
+              if [ -n "$addr" ] && curl -fsS --max-time 5 "http://${addr}/api/health" >/dev/null 2>&1; then
+                return 0
+              fi
+              sleep 4
+            done
+            return 1
+          }
+
+          if aplicar && salud; then
+            echo "DEPLOYED_SHA=$TARGET"
+            echo "ROLLBACK=no"
+            exit 0
+          fi
+
+          echo "ERROR=el despliegue o /api/health fallaron; volviendo a $PREV"
+          git checkout --detach "$PREV" || { echo "ROLLBACK=fallido (checkout)"; exit 11; }
+          if aplicar && salud; then
+            echo "DEPLOYED_SHA=$PREV"
+            echo "ROLLBACK=si"
+            exit 10
+          fi
+          echo "ROLLBACK=fallido (el SHA previo tampoco responde)"
+          exit 11
+          REMOTE
+
+      - name: Desplegar por SSH
+        run: |
+          set +e
+          ssh -i "$HOME/.ssh/deploy_key" \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -o BatchMode=yes -o ConnectTimeout=15 \
+            "$EC2_USER@$EC2_HOST" bash -s -- "$TARGET_SHA" "$APP_DIR" \
+            < "$RUNNER_TEMP/remote.sh" 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+          rc="${PIPESTATUS[0]}"
+          echo "SSH_RC=$rc" >> "$RUNNER_TEMP/deploy.log"
+          exit "$rc"
+
+      - name: Resumen
+        if: always()
+        run: |
+          log="$RUNNER_TEMP/deploy.log"
+          get() { grep -h "^$1=" "$log" 2>/dev/null | tail -n1 | cut -d= -f2-; }
+          {
+            echo "## Despliegue de la demo"
+            echo
+            echo "| Dato | Valor |"
+            echo "| --- | --- |"
+            echo "| SHA objetivo | \`$TARGET_SHA\` |"
+            echo "| SHA desplegado | \`$(get DEPLOYED_SHA)\` |"
+            echo "| SHA previo | \`$(get PREV_SHA)\` |"
+            echo "| Hora UTC | $(date -u +%Y-%m-%dT%H:%M:%SZ) |"
+            echo "| Rollback | $(get ROLLBACK) |"
+            echo "| Resultado SSH | $(get SSH_RC) |"
+            err="$(get ERROR)"
+            [ -z "$err" ] || echo "| Error | $err |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Limpiar claves
+        if: always()
+        run: rm -f "$HOME/.ssh/deploy_key" "$HOME/.ssh/known_hosts"
