@@ -4,7 +4,7 @@ import { Euler, MathUtils, Quaternion, Vector3, type Group, type PerspectiveCame
 import { attitudeOf, speedOf, stepFlight, FLIGHT, type Bounds, type FlightInput, type FlightState, type Obstacle } from '../engine/flight'
 import { approach, arrivalOffset, cameraFit } from '../engine/motion'
 import { CHASE } from './chase'
-import { NOZZLE, Ship } from './Ship'
+import { NOZZLES, Ship } from './Ship'
 import { Trail, type Emitter } from './Trail'
 
 const DEG = Math.PI / 180
@@ -38,7 +38,10 @@ export function FlightRig({ state, input, bounds, obstacles, animate, arrive, tr
   const back = CHASE.back * (1 + 0.45 * portrait)
   const up = CHASE.up * (1 + 0.3 * portrait)
 
-  const emitter = useRef<Emitter>({ origin: new Vector3(), direction: new Vector3(0, 0, 1), velocity: new Vector3(), thrust: 0.3 })
+  // Una estela por tobera (dos motores).
+  const makeEmitter = (): Emitter => ({ origin: new Vector3(), direction: new Vector3(0, 0, 1), velocity: new Vector3(), thrust: 0.3 })
+  const emitterL = useRef<Emitter>(makeEmitter())
+  const emitterR = useRef<Emitter>(makeEmitter())
 
   // Con movimiento reducido el render es «bajo demanda»: se pide cuadro mientras haya entrada o velocidad.
   useEffect(() => {
@@ -100,24 +103,28 @@ export function FlightRig({ state, input, bounds, obstacles, animate, arrive, tr
     }
 
     // Emisor de la estela: tobera en el mundo, hacia atrás de la nave.
-    const e = emitter.current
     g.updateMatrixWorld()
-    e.origin.set(NOZZLE[0], NOZZLE[1], NOZZLE[2]).applyMatrix4(g.matrixWorld)
-    e.direction.set(0, 0, 1).applyQuaternion(g.quaternion).normalize()
-    e.velocity.set(...s.velocity)
     const i = input.current
-    e.thrust = MathUtils.clamp(0.25 + 0.75 * Math.max(0, i.thrust) * (0.5 + 0.5 * speed / FLIGHT.maxSpeed) + 0.2 * Math.abs(i.lift), 0, 1)
+    const k = MathUtils.clamp(0.25 + 0.75 * Math.max(0, i.thrust) * (0.5 + 0.5 * speed / FLIGHT.maxSpeed) + 0.2 * Math.abs(i.lift), 0, 1)
+    ;[emitterL.current, emitterR.current].forEach((e, n) => {
+      const nz = NOZZLES[n]!
+      e.origin.set(nz[0], nz[1], nz[2]).applyMatrix4(g.matrixWorld)
+      e.direction.set(0, 0, 1).applyQuaternion(g.quaternion).normalize()
+      e.velocity.set(...s.velocity)
+      e.thrust = k
+    })
     if (speed > 0.05 || i.thrust || i.turn || i.lift) frame.invalidate()
   })
 
   return (
     <>
       <group ref={ship} scale={CHASE.shipScale}>
-        <Ship thrust={emitter} />
+        <Ship thrust={emitterL} />
         {/* Relleno suave desde arriba y detrás: la nave se ve a contraluz de la estrella. */}
         <pointLight position={[0, 4, 5]} intensity={6} distance={18} decay={1} color="#bae6fd" />
       </group>
-      <Trail count={trailParticles} emitter={emitter} animate={animate} />
+      <Trail count={Math.ceil(trailParticles / 2)} emitter={emitterL} animate={animate} />
+      <Trail count={Math.ceil(trailParticles / 2)} emitter={emitterR} animate={animate} />
     </>
   )
 }
