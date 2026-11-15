@@ -406,16 +406,17 @@ const EXTRA_DEFS: SceneObject[] = [
     texture: { map: 'encelado-voyager', mode: 'palette', bump: 'luna-relieve' },
   },
   {
-    // Dos caras, una oscura y otra clara: el mapa de Japeto, con su color.
+    // Dos caras, una oscura y otra clara: el mapa de Japeto.
     id: 'jano',
     kind: 'planet',
     label: 'Jano',
     position: around(-42, 52, 640),
     radius: 22,
     seed: 179,
-    palette: ['#f5f5f4', '#44403c', '#0a0a0a'],
+    // En paleta: la cara oscura queda en café muy oscuro (como el material de Japeto), no en negro puro.
+    palette: ['#f5f5f4', '#8a7f75', '#3a2a22'],
     surface: 'rocky',
-    texture: { map: 'japeto-voyager', mode: 'color', bump: 'luna-relieve' },
+    texture: { map: 'japeto-voyager', mode: 'palette', bump: 'luna-relieve' },
   },
   {
     // Oscuro y lleno de cráteres claros: el mapa de Calisto, con su color.

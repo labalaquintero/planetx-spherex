@@ -98,6 +98,15 @@ Además, baja de nivel por debajo de 50 FPS en vez de 46. En Linux y macOS no ca
   efecto: no hay daño ni puntuación.
 - **Ficha del objeto:** a menos de 120 u de un objeto con nombre, el panel izquierdo muestra su contexto y, si la
   hay, la imagen de la que se sacó (por ejemplo, las dos épocas de WISE 0855 para Ilmara).
+- **Escaneo (tecla R):** cerca de un planeta, luna o planeta con anillo (cuando aparece su ficha), **R** o el
+  botón «Escanear» abren un panel que crece hasta casi toda la pantalla. En el centro está el modelo 3D del
+  cuerpo, con las mismas texturas, colores, atmósfera y anillo que en la escena, iluminado por la estrella del
+  sector. Se gira arrastrando con el ratón (con inercia) y la rueda acerca o aleja. Primero, una retícula y un
+  anillo barren el cuerpo de polo a polo. Después se muestran la lectura (tipo, diámetro, distancia,
+  superficie, atmósfera, anillo y mapa de origen) y la ficha con su imagen. **R**, **Esc** o «Cerrar» lo
+  cierran. Mientras está abierto, la nave se queda quieta y la escena deja de dibujarse. `?escanear=<id>`
+  abre el escaneo de ese objeto al entrar (capturas y demo). La lógica está en `engine/scan.ts` y la vista en
+  `scene/ScanView.tsx`, en un chunk aparte que solo se descarga al escanear.
 - **HUD:** muestra el sector, el objeto con nombre más cercano (tipo y distancia) y la velocidad. El **mapa del
   área** (200 px; 120 px en pantallas estrechas) es una vista cenital del rectángulo visitable con los objetos a
   escala y con nombre, la nave como flecha con su cono de visión, y una barra de altura.

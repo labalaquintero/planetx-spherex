@@ -122,6 +122,7 @@ describe('sonido (WebAudio)', () => {
     const s = createSound(() => fake.ctx as unknown as AudioContext)
     s.hover()
     s.visitor('meteor')
+    s.scan()
     expect(fake.created).toHaveLength(0)
     s.setEnabled(true)
     for (const k of ['comet', 'meteor', 'asteroid'] as const) {
@@ -132,6 +133,9 @@ describe('sonido (WebAudio)', () => {
     const before = fake.created.length
     s.hover()
     expect(fake.created.length).toBeGreaterThan(before)
+    const beforeScan = fake.created.length
+    s.scan()
+    expect(fake.created.length).toBeGreaterThan(beforeScan)
   })
 })
 
