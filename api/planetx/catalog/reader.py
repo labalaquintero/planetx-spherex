@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,10 @@ INSUFFICIENT_REASONS = {
     "search_limit_reached",
 }
 ALLOWED_RELEASES = {"dr1", "qr3", "fixture"}
+
+# Debe coincidir con FRAME_ID_RE de planetx.http.images para que todo frame_id
+# emitido por get_prepared() sea servible por /api/v1/images/<frame_id>.
+FRAME_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z", re.ASCII)
 
 
 def _validate_finite_number(value: Any, name: str) -> float:
@@ -53,8 +58,11 @@ def _parse_utc_iso(timestamp_str: Any, field_name: str) -> datetime:
 def _validate_safe_frame_id(frame_id: Any) -> str:
     if not isinstance(frame_id, str) or not frame_id.strip():
         raise ManifestCorruptError("Cada fotograma debe tener un 'id' no vacío.")
-    if "/" in frame_id or "\\" in frame_id or ".." in frame_id:
-        raise ManifestCorruptError(f"Identificador de fotograma inseguro: {frame_id}")
+    if not FRAME_ID_RE.match(frame_id):
+        raise ManifestCorruptError(
+            f"Identificador de fotograma inválido: '{frame_id}'. "
+            f"Debe cumplir ^[A-Za-z0-9][A-Za-z0-9._-]{{0,127}}$"
+        )
     return frame_id
 
 
