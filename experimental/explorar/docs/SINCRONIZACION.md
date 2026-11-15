@@ -26,6 +26,14 @@
 4. **Registro automático en las dos copias.** `src/sectors/index.ts` usa
    `import.meta.glob('./*/index.ts')`: una carpeta de sector nueva aparece sola.
 
+## Sincronizaciones hechas
+
+- **15-11-2026, rama `isaac/explorar-sync`** (a petición de Isaac, para ver la versión nueva dentro de la app
+  completa): se copió `experimental/explorar/src/` a `web/src/features/explorar/` con las mismas
+  exclusiones que en `9c8bf95`. Solo se adaptaron tres importaciones (`boceto.ts`, `sectors/beta/boceto.ts`
+  → `data/layout`; `credits.test.ts` → `./ATTRIBUTIONS.md`). Se retiró `bandas-jupiter.webp` y se copió
+  `ATTRIBUTIONS.md`. Incluye `176bd0e`, `59ee9cb` y la etapa de calidad visual de β.
+
 ## Qué habrá que portar en la sincronización final
 
 Todo lo que cambie en `experimental/explorar/src/` desde `9c8bf95`. A hoy:

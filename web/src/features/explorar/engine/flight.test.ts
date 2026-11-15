@@ -10,6 +10,7 @@ import {
   NO_INPUT,
   obstaclesOf,
   sectorBounds,
+  spawnBehind,
   speedOf,
   stepFlight,
   type Bounds,
@@ -169,6 +170,19 @@ describe('el sector β como área de vuelo', () => {
     expect(near.distance).toBeGreaterThan(0)
     expect(boundaryProximity([0, 0, 0], b)).toBe(0)
     expect(boundaryProximity([b.max[0], 0, 0], b)).toBe(1)
+  })
+})
+
+describe('spawnBehind', () => {
+  it('con rumbo 0, la nave queda delante y debajo del punto (igual que antes)', () => {
+    expect(spawnBehind([0, 0, 0], 0, 2.5, 8).position).toEqual([0, -2.5, -8])
+  })
+  it('con otro rumbo, la nave queda delante del punto en esa dirección', () => {
+    const s = spawnBehind([10, 5, -40], 90, 2.5, 8) // 90° = mira a -X
+    expect(s.position[0]).toBeCloseTo(2)
+    expect(s.position[1]).toBeCloseTo(2.5)
+    expect(s.position[2]).toBeCloseTo(-40)
+    expect(s.yaw).toBeCloseTo(Math.PI / 2)
   })
 })
 

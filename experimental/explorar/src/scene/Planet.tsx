@@ -81,7 +81,7 @@ export function Planet({ o, spin, octaves }: Props) {
         },
       }),
     // octaves no es dependencia: se actualiza abajo sin recrear el material.
-    [o, colors, center, ring, ringNormal],
+    [o, colors, center, ring, ringNormal, vortices],
   )
   useEffect(() => {
     surface.uniforms.uOct!.value = octaves

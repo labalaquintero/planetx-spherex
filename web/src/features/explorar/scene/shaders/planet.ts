@@ -20,7 +20,10 @@ export const PLANET_FRAG = /* glsl */ `
 uniform vec3 uC0;
 uniform vec3 uC1;
 uniform vec3 uC2;
-uniform float uBands;   // 1 = gigante de bandas, 0 = rocoso
+uniform float uMode;    // 0 = rocoso, 1 = bandas, 2 = mundo frío con tormentas (enana marrón)
+uniform vec3 uVortex[3]; // direcciones de los vórtices (objeto)
+uniform vec3 uGlow;      // brillo propio (emisión tenue)
+uniform float uGlowStrength;
 uniform float uSeed;
 uniform vec3 uLight;    // dirección hacia la estrella (mundo)
 uniform vec3 uAmbient;
@@ -67,7 +70,29 @@ void main() {
   vec3 p = normalize(vObj);
   vec3 sp = p + vec3(uSeed * 0.731, uSeed * 0.317, uSeed * 0.113);
   float t;
-  if (uBands > 0.5) {
+  float storm = 0.0;
+  if (uMode > 1.5) {
+    // Mundo frío: la superficie se retuerce alrededor de 3 vórtices y fluye en zonas muy suaves
+    // (nada de bandas marcadas). Rotación diferencial lenta por latitud.
+    vec3 q = p;
+    float spin = uTime * 0.006 * (1.0 + 0.6 * abs(q.y));
+    float cs = cos(spin), sn = sin(spin);
+    q = vec3(cs * q.x + sn * q.z, q.y, -sn * q.x + cs * q.z);
+    for (int i = 0; i < 3; i++) {
+      vec3 c = normalize(uVortex[i]);
+      float d = distance(q, c);
+      float w = exp(-d * d / 0.03);
+      storm = max(storm, w);
+      float ang = w * (2.6 - float(i) * 0.6);
+      // Rodrigues: girar q alrededor de c.
+      q = q * cos(ang) + cross(c, q) * sin(ang) + c * dot(c, q) * (1.0 - cos(ang));
+    }
+    vec3 sq = q + vec3(uSeed * 0.731, uSeed * 0.317, uSeed * 0.113);
+    float warp = ex_fbm(sq * 2.2, int(uOct));
+    float zones = 0.5 + 0.5 * sin(q.y * 7.0 + warp * 3.2);
+    float turb = ex_fbm(sq * 4.5 + warp * 1.4, int(uOct));
+    t = mix(turb, zones, 0.22) * 0.85 + storm * 0.25;
+  } else if (uMode > 0.5) {
     // Franjas por latitud, torcidas por turbulencia; deriva lenta.
     float warp = ex_fbm(sp * 2.6 + vec3(uTime * 0.004, 0.0, 0.0), int(uOct)) - 0.5;
     float lat = p.y + warp * 0.22;
@@ -83,6 +108,8 @@ void main() {
     t -= smoothstep(0.82, 0.95, c) * 0.18;
   }
   vec3 albedo = ex_ramp(uC0, uC1, uC2, t);
+  // Ojo de las tormentas: un anillo algo más claro y frío.
+  albedo = mix(albedo, uC2 * 1.15, storm * smoothstep(0.2, 0.7, t) * 0.5);
   if (uHasMap > 0.5) {
     vec3 tex = texture2D(uMap, vUv).rgb;
     float lum = dot(tex, vec3(0.2126, 0.7152, 0.0722));
@@ -115,6 +142,8 @@ void main() {
   vec3 V = normalize(cameraPosition - vWorld);
   float rim = pow(1.0 - max(dot(N, V), 0.0), 3.0) * smoothstep(-0.2, 0.5, ndl);
   vec3 col = albedo * (uAmbient + diffuse * shadow * 1.15) + albedo * rim * 0.35;
+  // Brillo propio tenue (más visible en el lado nocturno), modulado por la turbulencia.
+  if (uGlowStrength > 0.0) col += uGlow * uGlowStrength * (0.35 + 0.65 * (1.0 - diffuse)) * (0.4 + 0.6 * t);
   gl_FragColor = vec4(col, 1.0);
   ${OUTPUT}
 }
@@ -136,12 +165,13 @@ export const ATMOS_FRAG = /* glsl */ `
 uniform vec3 uColor;
 uniform vec3 uLight;
 uniform float uIntensity;
+uniform float uPower; // más alto = borde más fino
 varying vec3 vWorld;
 varying vec3 vNormalW;
 void main() {
   vec3 N = normalize(vNormalW);
   vec3 V = normalize(cameraPosition - vWorld);
-  float fres = pow(1.0 - max(dot(N, V), 0.0), 2.6);
+  float fres = pow(1.0 - max(dot(N, V), 0.0), uPower);
   float lit = smoothstep(-0.35, 0.6, dot(N, uLight));
   float a = fres * lit * uIntensity;
   gl_FragColor = vec4(uColor * a, a);

@@ -1,21 +1,61 @@
 import { describe, expect, it } from 'vitest'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { validateGraph } from '../engine/graph'
 import { nearbyObject, nearestLabelled, validateFocus } from '../engine/nearest'
+import { SectorSelect } from '../screens/SectorSelect'
 import { SECTORS, getSector } from './index'
 import beta from './beta'
 import { fromView } from './view'
 
 describe('registro de sectores', () => {
-  it('descubre α, β y ε en orden, con ids y órdenes únicos', () => {
-    expect(SECTORS.map((s) => s.symbol)).toEqual(['α', 'β', 'ε'])
+  it('descubre los sectores en orden, con ids, símbolos y órdenes únicos', () => {
+    expect(SECTORS.length).toBeGreaterThan(0)
     expect(new Set(SECTORS.map((s) => s.id)).size).toBe(SECTORS.length)
+    expect(new Set(SECTORS.map((s) => s.symbol)).size).toBe(SECTORS.length)
     expect(new Set(SECTORS.map((s) => s.order)).size).toBe(SECTORS.length)
+    const orders = SECTORS.map((s) => s.order)
+    expect(orders).toEqual([...orders].sort((a, b) => a - b))
+    for (const s of SECTORS) expect(getSector(s.id)).toBe(s)
+    expect(getSector('sector-que-no-existe')).toBeUndefined()
   })
 
-  it('solo β es navegable por ahora; α y ε son «Próximamente»', () => {
-    expect(SECTORS.filter((s) => s.scene).map((s) => s.id)).toEqual(['beta'])
-    expect(getSector('alpha')?.scene).toBeUndefined()
-    expect(getSector('epsilon')?.scene).toBeUndefined()
-    expect(getSector('nada')).toBeUndefined()
+  // Sin listas fijas: vale para cualquier sector que se añada o se active.
+  describe.each(SECTORS.filter((s) => s.scene).map((s) => [s.id, s] as const))('sector con escena: %s', (_id, sector) => {
+    const scene = sector.scene!
+    it('su grafo de puntos de ruta es válido (inicio existente, vínculos de ida y vuelta, todo alcanzable)', () => {
+      expect(validateGraph(scene.waypoints, scene.startId)).toEqual([])
+    })
+    it('sus focusId apuntan a objetos con nombre y no hay objetos duplicados', () => {
+      expect(validateFocus(scene.waypoints, scene.objects)).toEqual([])
+    })
+  })
+
+  it('los sectores sin escena aparecen como «Próximamente» en la selección, y los demás como disponibles', () => {
+    const html = renderToStaticMarkup(
+      createElement(SectorSelect, {
+        sectors: SECTORS,
+        onEnter: () => {},
+        jump: null,
+        reduced: true,
+        quality: 'low',
+        forced: true,
+        focusId: null,
+      }),
+    )
+    for (const s of SECTORS) {
+      const card = html.slice(html.indexOf(`id="ex-card-${s.id}"`))
+      const end = card.indexOf('</div></li>')
+      const cardHtml = end > 0 ? card.slice(0, end) : card
+      if (s.scene) {
+        expect(html).toContain(`aria-label="${s.name}, entrar"`)
+        expect(cardHtml).toContain('Disponible')
+        expect(cardHtml).not.toContain('Próximamente')
+      } else {
+        expect(html).toContain(`aria-label="${s.name}, próximamente"`)
+        expect(cardHtml).toContain('Próximamente')
+      }
+    }
   })
 
   it('las esferas de la selección caben en el campo y no se solapan', () => {
@@ -31,6 +71,52 @@ describe('registro de sectores', () => {
         expect(Math.hypot(a.selector.x - b.selector.x, a.selector.y - b.selector.y)).toBeGreaterThan(15)
       }
     }
+  })
+})
+
+/** Tono (0–360°), saturación y luminosidad HSL de un color #rrggbb. */
+function hsl(hex: string): { h: number; s: number; l: number } {
+  const n = parseInt(hex.slice(1), 16)
+  const r = ((n >> 16) & 255) / 255
+  const g = ((n >> 8) & 255) / 255
+  const b = (n & 255) / 255
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const l = (max + min) / 2
+  const d = max - min
+  if (d === 0) return { h: 0, s: 0, l }
+  const s = d / (1 - Math.abs(2 * l - 1))
+  const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4
+  return { h: (h * 60 + 360) % 360, s, l }
+}
+
+describe('Ilmara: mundo frío inspirado en WISE 0855 (no un gigante tipo Júpiter)', () => {
+  const ilmara = beta.scene!.objects.find((o) => o.id === 'ilmara')!
+
+  it('superficie procedural de tormentas, sin textura de bandas', () => {
+    expect(ilmara.surface).toBe('storms')
+    expect(ilmara.texture).toBeUndefined()
+  })
+
+  it('paleta oscura y fría: ningún color naranja o crema claro (tono 15–65° con saturación y luz altas)', () => {
+    for (const c of ilmara.palette) {
+      const { h, s, l } = hsl(c)
+      expect(h >= 15 && h <= 65 && s > 0.3 && l > 0.4).toBe(false)
+    }
+    // El tono más claro es violáceo o magenta (frío), no cálido.
+    const light = hsl(ilmara.palette[0])
+    expect(light.h > 250 || light.h < 10).toBe(true)
+    // El más oscuro es casi negro.
+    expect(hsl(ilmara.palette[2]).l).toBeLessThan(0.12)
+  })
+
+  it('tiene brillo propio tenue y atmósfera (borde Fresnel)', () => {
+    expect(ilmara.glow).toBeTruthy()
+    expect(ilmara.atmosphere).toBeTruthy()
+  })
+
+  it('ningún objeto de β usa una textura de bandas tipo Júpiter', () => {
+    for (const o of beta.scene!.objects) expect(o.texture?.map ?? '').not.toMatch(/jupiter/i)
   })
 })
 

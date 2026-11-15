@@ -11,7 +11,6 @@ no se presentan como esos cuerpos.
 
 | Archivo empaquetado | Origen | Autor | Licencia | URL | Descarga |
 | --- | --- | --- | --- | --- | --- |
-| `bandas-jupiter.webp` (1024×512, 35 KB) | `2k_jupiter.jpg` | Solar System Scope (INOVE) | CC BY 4.0 | https://www.solarsystemscope.com/textures/ | 2026-11-15 |
 | `bandas-saturno.webp` (1024×512, 8 KB) | `2k_saturn.jpg` | Solar System Scope (INOVE) | CC BY 4.0 | https://www.solarsystemscope.com/textures/ | 2026-11-15 |
 | `anillo-saturno.webp` (1024×64, 3 KB) | `2k_saturn_ring_alpha.png` | Solar System Scope (INOVE) | CC BY 4.0 | https://www.solarsystemscope.com/textures/ | 2026-11-15 |
 | `luna-color.webp` (1024×512, 72 KB) | `lroc_color_poles_1k.jpg` (CGI Moon Kit) | NASA's Scientific Visualization Studio — Ernie Wright; datos LRO/LROC | Dominio público (NASA) | https://svs.gsfc.nasa.gov/4720/ | 2026-11-15 |
@@ -26,8 +25,8 @@ no se presentan como esos cuerpos.
   Studio».
 
 **Cambios (CC BY 4.0 exige indicarlos):** las texturas se redujeron a 1024 px (512 px el relieve) y se
-convirtieron a WebP. En la escena, las de Júpiter y Saturno se tiñen en parte hacia la paleta de cada planeta
-ilustrativo, y las lunares se usan como luminancia coloreada con otra paleta y como mapa de relieve.
+convirtieron a WebP. En la escena, las de Saturno se tiñen en parte hacia la paleta de Orun (planeta
+ilustrativo), y las lunares se usan como luminancia coloreada con otra paleta y como mapa de relieve.
 
 ## Software
 

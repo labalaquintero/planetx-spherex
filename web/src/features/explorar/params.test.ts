@@ -1,19 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { parseParams } from './params'
+import { parseParams, spawnPointParam } from './params'
 
 describe('parseParams', () => {
   it('por defecto: calidad automática y sin depuración', () => {
     expect(parseParams('')).toEqual({ quality: 'auto', debug: false })
   })
 
-  it('?quality=low|high fuerza la calidad (sin distinguir mayúsculas ni espacios)', () => {
+  it('?quality=low|medium|high fuerza la calidad (sin distinguir mayúsculas ni espacios)', () => {
     expect(parseParams('?quality=low').quality).toBe('low')
+    expect(parseParams('?quality=Medium').quality).toBe('medium')
     expect(parseParams('?quality=HIGH').quality).toBe('high')
     expect(parseParams('?quality=%20low%20').quality).toBe('low')
   })
 
   it('valores desconocidos o vacíos vuelven a automático', () => {
-    for (const q of ['?quality=ultra', '?quality=', '?quality=medium', '?quality=1']) {
+    for (const q of ['?quality=ultra', '?quality=', '?quality=med', '?quality=1']) {
       expect(parseParams(q).quality).toBe('auto')
     }
   })
@@ -30,5 +31,14 @@ describe('parseParams', () => {
 
   it('combina ambos parámetros', () => {
     expect(parseParams('?debug&quality=high')).toEqual({ quality: 'high', debug: true })
+  })
+})
+
+describe('spawnPointParam', () => {
+  it('acepta solo ids de waypoint existentes', () => {
+    expect(spawnPointParam('?punto=der_f', ['entry', 'der_f'])).toBe('der_f')
+    expect(spawnPointParam('?punto=nada', ['entry'])).toBeNull()
+    expect(spawnPointParam('', ['entry'])).toBeNull()
+    expect(spawnPointParam('?punto=', ['entry'])).toBeNull()
   })
 })
