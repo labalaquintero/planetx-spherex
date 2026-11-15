@@ -759,6 +759,17 @@
   color: var(--ex-warn);
   border-color: var(--ex-warn-line);
 }
+/* Bitácora: descubrimiento (verde agua) y logro (dorado, con brillo). */
+.ex-toast[data-tone='find'] {
+  color: #99f6e4;
+  border-color: rgba(45, 212, 191, 0.5);
+}
+.ex-toast[data-tone='logro'] {
+  color: #fde68a;
+  border-color: rgba(250, 204, 21, 0.6);
+  box-shadow: 0 0 18px rgba(250, 204, 21, 0.35);
+  font-weight: 700;
+}
 @keyframes ex-toast-in {
   from {
     opacity: 0;
@@ -1504,6 +1515,90 @@
   to {
     opacity: 0;
   }
+}
+
+/* ---------- Bitácora de exploración ---------- */
+.ex-hud-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ex-chip-found {
+  color: #99f6e4;
+  border-color: rgba(45, 212, 191, 0.45);
+}
+.ex-logbook-count {
+  margin-left: 4px;
+  font-family: var(--ex-mono);
+  font-size: 0.75rem;
+  color: #99f6e4;
+}
+.ex-logbook-sub {
+  margin: 14px 0 6px;
+  font-size: 0.85rem;
+  color: var(--ex-heading);
+}
+.ex-logbook-bodies,
+.ex-logbook-achievements {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ex-logbook-bodies li,
+.ex-logbook-achievements li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 5px 8px;
+  font-size: 0.82rem;
+  color: var(--ex-label);
+  background: var(--ex-surface);
+  border: 1px solid var(--ex-border);
+  border-radius: var(--ex-radius-sm);
+}
+.ex-logbook-dot {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  background: var(--ex-border-strong);
+  border-radius: 50%;
+}
+.ex-logbook-name {
+  flex: 1;
+  color: var(--ex-heading);
+}
+.ex-logbook-hidden {
+  color: var(--ex-muted);
+  font-style: italic;
+}
+.ex-chip-cross-tag {
+  color: #c7d2fe;
+}
+.ex-logbook-achievements li {
+  color: var(--ex-dim);
+}
+.ex-logbook-achievements li[data-ok] {
+  color: var(--ex-label);
+  border-color: rgba(250, 204, 21, 0.35);
+}
+.ex-logbook-badge {
+  width: 1.2em;
+  text-align: center;
+  color: var(--ex-dim);
+}
+.ex-logbook-achievements li[data-ok] .ex-logbook-badge {
+  color: #fde68a;
+}
+.ex-logbook-reset {
+  margin-top: 14px;
+}
+.ex-minimap-q {
+  font-size: 8px;
+  font-weight: 700;
+  fill: #cbd5e1;
 }
 
 @media (prefers-reduced-motion: reduce) {

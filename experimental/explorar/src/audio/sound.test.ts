@@ -124,6 +124,8 @@ describe('sonido (WebAudio)', () => {
     s.visitor('meteor')
     s.scan()
     s.dive()
+    s.discover()
+    s.achievement()
     expect(fake.created).toHaveLength(0)
     s.setEnabled(true)
     for (const k of ['comet', 'meteor', 'asteroid'] as const) {
@@ -140,6 +142,11 @@ describe('sonido (WebAudio)', () => {
     const beforeDive = fake.created.length
     s.dive()
     expect(fake.created.length).toBeGreaterThan(beforeDive)
+    for (const play of [() => s.discover(), () => s.achievement()]) {
+      const before = fake.created.length
+      play()
+      expect(fake.created.length).toBeGreaterThan(before)
+    }
   })
 })
 
@@ -159,6 +166,12 @@ describe('mezcla del motor', () => {
     const idle = engineMix(0)
     expect(idle.cutoff).toBeGreaterThan(400)
     expect(idle.air).toBeGreaterThan(0)
-    expect(idle.drone).toBeGreaterThan(0.05)
+    expect(idle.drone).toBeGreaterThan(0.02)
+  })
+
+  it('es más bajo que antes: acompaña sin cansar', () => {
+    expect(engineMix(0).drone).toBeLessThanOrEqual(0.04)
+    expect(engineMix(1).drone).toBeLessThanOrEqual(0.09)
+    expect(engineMix(1).air).toBeLessThanOrEqual(0.07)
   })
 })

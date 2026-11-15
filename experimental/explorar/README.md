@@ -103,6 +103,12 @@ Además, baja de nivel por debajo de 50 FPS en vez de 46. En Linux y macOS no ca
   efecto: no hay daño ni puntuación.
 - **Ficha del objeto:** a menos de 120 u de un objeto con nombre, el panel izquierdo muestra su contexto y, si la
   hay, la imagen de la que se sacó (por ejemplo, las dos épocas de WISE 0855 para Ilmara).
+- **Bitácora de exploración:** acercarse a un planeta (cuando aparece su ficha) lo **descubre**: aviso con
+  sonido y contador «Descubiertos n/30» en el HUD. En el mapa, los planetas sin descubrir salen como «?» sin
+  nombre, para que den ganas de ir a verlos. Escanear (R) y atravesar también quedan anotados. Hay 8 **logros**
+  (primer hallazgo, explorador, veterano, cartógrafo, primer escaneo, científico, atravesar un gigante y los dos
+  gigantes) con fanfarria. El botón «Bitácora» lista lo descubierto y los logros, y permite reiniciarla. Se
+  guarda por sector en este navegador (`engine/logbook.ts`, probado).
 - **Atravesar un gigante gaseoso:** Cobalto y Calder (marcados `crossable` en `beta/objects.ts`) son sólidos
   en vuelo normal: la nave frena y se desvía como con cualquier planeta. Pero con **turbo (W + Shift) directo
   hacia uno de ellos** empieza una secuencia de 6 s: la cámara pasa a un plano de tres cuartos junto a la nave

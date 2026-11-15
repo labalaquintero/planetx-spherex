@@ -14,6 +14,7 @@ import {
 } from '../engine/flight'
 import { STEER_SENSITIVITY } from '../engine/orbit'
 import { canScan } from '../engine/scan'
+import { EMPTY_LOG, logKey, parseLog, record, type LogKind, type Logbook as Log } from '../engine/logbook'
 import { lineUp, type DivePlan } from '../engine/dive'
 import type { DiveEvent } from '../scene/FlightRig'
 import type { VisitorEvent, VisitorKind } from '../engine/visitors'
@@ -25,6 +26,7 @@ import { Credits } from './Credits'
 import { ErrorBoundary } from './ErrorBoundary'
 import { FlightPad } from './FlightPad'
 import { InfoCard } from './InfoCard'
+import { Logbook } from './Logbook'
 import { Minimap } from './Minimap'
 import { NoWebGL } from './NoWebGL'
 import { ScanOverlay } from './ScanOverlay'
@@ -55,6 +57,9 @@ interface Props {
   onScan?: () => void
   /** Empieza la travesía de un planeta gaseoso (para su sonido). */
   onDive?: () => void
+  /** Bitácora: nuevo descubrimiento y logro conseguido (para sus sonidos). */
+  onDiscover?: () => void
+  onAchievement?: () => void
 }
 
 function isTextField(target: EventTarget | null): boolean {
@@ -91,7 +96,7 @@ export const INFO_DISTANCE = 120
 /** Y se oculta solo al alejarse más de esto (histéresis). */
 export const INFO_HIDE_DISTANCE = 140
 
-export function NavigationScreen({ sector, onExit, arrive, reduced, quality: initialLevel, forced, debug, extraControls, onEngine, onImpact, onVisitor, onScan, onDive }: Props) {
+export function NavigationScreen({ sector, onExit, arrive, reduced, quality: initialLevel, forced, debug, extraControls, onEngine, onImpact, onVisitor, onScan, onDive, onDiscover, onAchievement }: Props) {
   const { scene } = sector
   const webgl = useMemo(() => detectWebGL(), [])
   // Perfil de rendimiento: más ligero en Windows (Direct3D vía ANGLE); ?perfil= lo fuerza.
@@ -171,6 +176,7 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
     aim.current.dPitch = 0
     setScan(target)
     onScan?.()
+    noteRef.current?.('scanned', target.id)
   }, [onScan])
   const closeScan = useCallback(() => setScan(null), [])
 
@@ -271,12 +277,68 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
   }, [scene, bounds, onEngine])
 
   // Avisos breves: cometa a la vista, impacto.
-  const [toast, setToast] = useState<{ text: string; tone: 'info' | 'warn'; key: number } | null>(null)
+  const [toast, setToast] = useState<{ text: string; tone: 'info' | 'warn' | 'find' | 'logro'; key: number } | null>(null)
   useEffect(() => {
     if (!toast) return
     const id = setTimeout(() => setToast(null), toast.tone === 'warn' ? 3200 : 4500)
     return () => clearTimeout(id)
   }, [toast])
+
+  // Bitácora de exploración: descubrir (al acercarse), escanear y atravesar, con logros. Se guarda por sector
+  // en este navegador (si no se puede, solo dura la visita).
+  const logBodies = useMemo(() => scene.objects.filter((o) => canScan(o)), [scene])
+  const logTotals = useMemo(
+    () => ({ bodies: logBodies.length, crossable: scene.objects.filter((o) => o.crossable && o.label).length }),
+    [logBodies, scene],
+  )
+  const [log, setLog] = useState<Log>(() => {
+    try {
+      return parseLog(window.localStorage.getItem(logKey(sector.id)), logBodies.map((o) => o.id))
+    } catch {
+      return EMPTY_LOG
+    }
+  })
+  const logRef = useRef(log)
+  const discoveredSet = useMemo(() => new Set(log.discovered), [log])
+  /** Anota un hecho; devuelve si era nuevo. Si da un logro, el aviso lo dice (con `base` delante). */
+  const note = useCallback(
+    (kind: LogKind, id: string, base?: string): boolean => {
+      const r = record(logRef.current, kind, id, logTotals)
+      if (!r.isNew) return false
+      logRef.current = r.log
+      setLog(r.log)
+      try {
+        window.localStorage.setItem(logKey(sector.id), JSON.stringify(r.log))
+      } catch {
+        // Sin almacenamiento: la bitácora vale para esta visita.
+      }
+      const label = scene.objects.find((x) => x.id === id)?.label ?? id
+      const first = kind === 'discovered' ? `Nuevo descubrimiento: ${label} · ${r.log.discovered.length}/${logTotals.bodies}` : base
+      const prize = r.unlocked[r.unlocked.length - 1]
+      if (prize) {
+        setToast({ text: `${first ? `${first} · ` : ''}★ Logro: ${prize.title}`, tone: 'logro', key: Date.now() })
+        onAchievement?.()
+      } else if (first) {
+        setToast({ text: first, tone: kind === 'discovered' ? 'find' : 'info', key: Date.now() })
+        if (kind === 'discovered') onDiscover?.()
+      }
+      return true
+    },
+    [logTotals, scene, sector.id, onAchievement, onDiscover],
+  )
+  const noteRef = useRef(note)
+  useEffect(() => {
+    noteRef.current = note
+  }, [note])
+  const resetLog = useCallback(() => {
+    logRef.current = EMPTY_LOG
+    setLog(EMPTY_LOG)
+    try {
+      window.localStorage.removeItem(logKey(sector.id))
+    } catch {
+      // Nada que borrar.
+    }
+  }, [sector.id])
   const onVisitorEvent = useCallback(
     (e: VisitorEvent) => {
       if (e.type === 'spawn') onVisitor?.(e.kind)
@@ -301,7 +363,8 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
       } else {
         divingRef.current = false
         setDiving(null)
-        setToast({ text: `Atravesaste ${plan.label}`, tone: 'info', key: Date.now() })
+        const text = `Atravesaste ${plan.label}`
+        if (!noteRef.current?.('crossed', plan.id, text)) setToast({ text, tone: 'info', key: Date.now() })
       }
     },
     [onDive],
@@ -315,6 +378,10 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
   else if (!tele.near || tele.near.id !== shown.current || tele.near.distance > INFO_HIDE_DISTANCE) shown.current = null
   const nearObject = shown.current ? scene.objects.find((o) => o.id === shown.current) : undefined
   const nearInfo = nearObject?.info
+  const nearId = nearObject && canScan(nearObject) ? nearObject.id : null
+  useEffect(() => {
+    if (nearId) noteRef.current?.('discovered', nearId)
+  }, [nearId])
   const scanTarget = nearObject && canScan(nearObject) && tele.near ? nearObject.id : null
   const scanDistance = tele.near?.distance ?? 0
   useEffect(() => {
@@ -402,7 +469,12 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
 
       <div className="ex-hud ex-hud-top">
         <div className="ex-panel ex-hud-info" data-expanded={nearInfo ? '' : undefined}>
-          <span className="ex-chip ex-chip-muted">{sector.name}</span>
+          <div className="ex-hud-chips">
+            <span className="ex-chip ex-chip-muted">{sector.name}</span>
+            <span className="ex-chip ex-chip-found" title="Planetas descubiertos">
+              Descubiertos {log.discovered.length}/{logBodies.length}
+            </span>
+          </div>
           <p className="ex-hud-point">{tele.near ? `Cerca de ${tele.near.label}` : 'Espacio abierto'}</p>
           <dl className="ex-hud-stats">
             <div>
@@ -442,6 +514,7 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
           )}
         </div>
         <div className="ex-hud-actions">
+          <Logbook log={log} bodies={logBodies} onReset={resetLog} />
           <Credits />
           {extraControls}
           <button type="button" className="ex-btn" onClick={onExit}>
@@ -449,7 +522,15 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
           </button>
         </div>
         <div className="ex-panel ex-route-panel">
-          <Minimap bounds={bounds} objects={scene.objects} position={tele.position} yaw={tele.yaw} edge={tele.edge} size={mapSize} />
+          <Minimap
+            bounds={bounds}
+            objects={scene.objects}
+            position={tele.position}
+            yaw={tele.yaw}
+            edge={tele.edge}
+            size={mapSize}
+            discovered={discoveredSet}
+          />
         </div>
       </div>
 

@@ -23,6 +23,8 @@ export const DIVE = {
   exitSpeed: FLIGHT.maxSpeed * FLIGHT.boostFactor,
   /** Holgura extra al terminar, fuera de cualquier obstáculo y de su zona de frenado. */
   exitClear: 6,
+  /** Relámpagos dentro del planeta (fracciones de la secuencia): los comparten la imagen y el sonido. */
+  flashes: [0.34, 0.47, 0.6],
 } as const
 
 export interface DivePlan {
