@@ -1,7 +1,8 @@
 import { reportById, sharedPage } from './colaboracion.js';
 import {
-  archiveNote, articles, dateMark, daysBetween, epoch, escapeHtml, featuredObservation, nasaSky, nasaVela, prepared,
+  archiveNote, articles, comparisonLink, dateMark, daysBetween, epoch, escapeHtml, featuredObservation, nasaSky, nasaVela, prepared,
 } from './datos.js';
+import { sampleObservationById, samplePublications } from './ejemplos-blog.js';
 import { pdfButton, reportEvidence } from './espacio.js';
 import { back, missingView } from './ui.js';
 import { exampleProfile, weeklyMark } from './insignias.js';
@@ -61,28 +62,31 @@ function observationCover() {
 }
 
 function publicationCard(report) {
+  const label = report.example ? `Ejemplo · ${escapeHtml(report.topic)}` : dateMark(report.publishedAt ?? report.created);
   return `<article class="blog-report-card">
-    <p class="blog-kicker">${dateMark(report.publishedAt ?? report.created)}</p>
+    <p class="blog-kicker">${label}</p>
     <h3><a href="#articulo/${encodeURIComponent(report.id)}">${escapeHtml(report.title)} <span aria-hidden="true">↗</span></a></h3>
     <p>Por ${escapeHtml(report.author)}</p>
+    ${report.example ? `<p class="blog-report-summary">${escapeHtml(report.summary)}</p>` : ''}
     ${weeklyMark(report.weeklyPick)}
   </article>`;
 }
 
 export function blogCommunity(params, { loading = false, unavailable = false } = {}) {
   const localPublished = readWorkspace().reports.filter((report) => report.status === 'published');
-  const published = sharedPage.publications ?? [];
+  const published = loading || unavailable ? [] : sharedPage.publications ?? [];
   const page = Math.min(1000000, Math.max(0, Number.parseInt(params.get('pagina'), 10) || 0));
-  return `${loading || unavailable || sharedPage.enabled ? `<section class="blog-section" aria-labelledby="community-heading">
+  const reports = page === 0 ? [...samplePublications, ...published] : published;
+  return `${reports.length || loading || unavailable || sharedPage.enabled ? `<section class="blog-section" aria-labelledby="community-heading">
     <h2 class="blog-section-title" id="community-heading">Observaciones de la comunidad</h2>
+    ${reports.length ? `<div class="blog-report-grid">${reports.map(publicationCard).join('')}</div>` : ''}
     ${loading ? '<p class="blog-section-note" role="status">Cargando publicaciones…</p>'
       : unavailable ? '<p class="blog-section-note" role="status">Por ahora no se pudieron cargar las publicaciones de la comunidad.</p>'
-      : `${published.length ? `<div class="blog-report-grid">${published.map(publicationCard).join('')}</div>`
-        : '<p class="blog-section-note">Aquí aparecerán las fichas que publique el equipo.</p>'}
-      ${page || published.length === 30 ? `<nav class="row blog-pagination" aria-label="Páginas de fichas">
-        ${page ? `<a class="button secondary" href="#blog?pagina=${page - 1}">← Anteriores</a>` : ''}
-        ${published.length === 30 ? `<a class="button secondary" href="#blog?pagina=${page + 1}">Siguientes →</a>` : ''}
-      </nav>` : ''}`}
+      : reports.length ? '' : '<p class="blog-section-note">No hay publicaciones en esta página.</p>'}
+    ${!loading && !unavailable && (page || published.length === 30) ? `<nav class="row blog-pagination" aria-label="Páginas de fichas">
+      ${page ? `<a class="button secondary" href="#blog?pagina=${page - 1}">← Anteriores</a>` : ''}
+      ${published.length === 30 ? `<a class="button secondary" href="#blog?pagina=${page + 1}">Siguientes →</a>` : ''}
+    </nav>` : ''}
   </section>` : ''}
   ${localPublished.length ? `<section class="blog-section" aria-labelledby="local-reports-heading">
     <h2 class="blog-section-title" id="local-reports-heading">Publicaciones de este navegador</h2>
@@ -162,20 +166,33 @@ export function articleView(id) {
   if (id === featuredObservation.id) return observationArticle();
   const guide = guides.find((item) => item.id === id);
   if (guide) return guideArticle(guide);
-  const report = reportById(id);
+  const report = sampleObservationById(id) ?? reportById(id);
   if (report?.status !== 'published') return missingView();
+  const comparison = report.comparison ?? prepared;
+  const category = report.example ? `Ejemplo de la comunidad / ${report.topic}`
+    : report.shared ? 'Observación de la comunidad' : 'Publicación de este navegador';
+  const byline = report.example ? escapeHtml(report.author)
+    : `${escapeHtml(report.author)} · ${dateMark(report.publishedAt ?? report.created, true)}`;
+  const difference = report.example ? comparison.difference : null;
   return `<article class="blog-article">
     ${back('#blog', 'Volver al Blog')}
-    ${articleHeading(report.title, report.shared ? 'Observación de la comunidad' : 'Publicación de este navegador')}
-    <p class="blog-report-byline">Por ${escapeHtml(report.author)} · ${dateMark(report.publishedAt ?? report.created, true)}</p>
+    ${articleHeading(report.title, category)}
+    <p class="blog-report-byline">Por ${byline}</p>
     ${weeklyMark(report.weeklyPick)}
     <div class="blog-article-layout">
       <section class="blog-article-text">
         <h2>Observación</h2>
         <p class="preserve-lines">${escapeHtml(report.notes || `Documento PDF: ${report.fileName}`)}</p>
         ${pdfButton(report)}
+        ${difference ? `<figure class="panel blog-report-difference">
+          <img class="science-image" src="${escapeHtml(difference.image_url)}" data-frame-id="${escapeHtml(difference.id)}"
+            width="64" height="64" alt="Mapa de diferencia con una franja azul alrededor del núcleo enmascarado">
+          <p class="image-error" role="alert" hidden>Imagen de diferencia no disponible.</p>
+          <figcaption>Brillo superficial en B menos A · SPHEREx DR1</figcaption>
+        </figure>` : ''}
+        ${report.example ? `<a class="button primary" href="${escapeHtml(comparisonLink(comparison))}">Abrir ${escapeHtml(report.topic)} en el visor <span aria-hidden="true">↗</span></a>` : ''}
       </section>
-      ${reportEvidence(report.comparison ?? prepared, report.annotations, { reportId: report.id, from: 'articulo' })}
+      ${reportEvidence(comparison, report.annotations, { reportId: report.id, from: 'articulo' })}
     </div>
   </article>`;
 }
