@@ -209,5 +209,7 @@ def test_synthetic_prepared_has_realistic_shape_and_is_still_marked_synthetic():
         # patrón /ibe/data/spherex/...fits), aunque es FICTICIA (semana SYNTHnnn).
         assert validate_access_url(frame["source_url"], f"spherex_{frame['release']}", IrsaConfig())
         assert "SYNTH" in frame["source_url"] and "SYNTH" in frame["observation_id"]
+        # OBSID de la exposición: la regla del catálogo, sin «/D2» (el detector va en source_url).
+        assert re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", frame["observation_id"])
         assert frame["id"].startswith("synthetic-")  # marcado como sintético en el id
     assert len({f["observation_id"] for f in payload["frames"]}) == 2

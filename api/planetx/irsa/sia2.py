@@ -51,7 +51,9 @@ class Candidate:
 
     @property
     def observation_id(self) -> str:
-        return f"{self.obs_id}/D{self.detector}"
+        """OBSID de la exposición (``^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$``). El detector NO va aquí:
+        se conserva en ``detector`` y en la clave del recorte (nombre del archivo local)."""
+        return self.obs_id
 
     @property
     def observed_at(self) -> datetime:
