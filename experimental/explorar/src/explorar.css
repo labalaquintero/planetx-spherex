@@ -1,0 +1,150 @@
+/* Estilos de <Explorar />. Todo cuelga de .explorar y de clases ex-*, para no afectar al visor. */
+.explorar {
+  --ex-bg: #050b1a;
+  --ex-panel: rgb(10 21 48 / 0.86);
+  --ex-border: #28407a;
+  --ex-text: #e6efff;
+  --ex-muted: #9db0d8;
+  --ex-accent: #8fc2ff;
+
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  overflow: hidden;
+  color: var(--ex-text);
+  background: radial-gradient(ellipse at 50% 20%, #0b1a3c 0%, var(--ex-bg) 70%);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+.explorar *,
+.explorar *::before,
+.explorar *::after {
+  box-sizing: border-box;
+}
+.explorar button:focus-visible {
+  outline: 2px solid var(--ex-accent);
+  outline-offset: 3px;
+}
+.ex-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Pantalla 1: selección de sector ---------- */
+.ex-select {
+  position: absolute;
+  inset: 0;
+  container-type: size;
+}
+.ex-stars {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.ex-sector-list {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ex-sector-item {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+.ex-sector {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  min-width: 56px;
+  padding: 0;
+  color: #fff;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 28px 4px rgb(120 170 255 / 0.25);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+.ex-sector:hover,
+.ex-sector:focus-visible {
+  transform: scale(1.1);
+  box-shadow: 0 0 40px 10px rgb(143 194 255 / 0.45);
+}
+.ex-sector[data-soon] {
+  cursor: default;
+  filter: saturate(0.55) brightness(0.8);
+}
+.ex-sector-symbol {
+  font-size: clamp(1.4rem, 4cqmin, 2.4rem);
+  font-weight: 600;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 0.6);
+  pointer-events: none;
+}
+.ex-card {
+  position: absolute;
+  top: calc(100% + 14px);
+  left: 50%;
+  z-index: 5;
+  width: min(260px, 70cqw);
+  padding: 12px 14px;
+  background: var(--ex-panel);
+  border: 1px solid var(--ex-border);
+  border-radius: 10px;
+  backdrop-filter: blur(6px);
+  transform: translateX(-50%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 140ms ease, visibility 140ms;
+}
+.ex-sector-item:hover .ex-card,
+.ex-sector-item:focus-within .ex-card {
+  opacity: 1;
+  visibility: visible;
+}
+.ex-card-title {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+.ex-card-text {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--ex-muted);
+}
+.ex-card-badge {
+  display: inline-block;
+  margin: 8px 0 0;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  color: #0a1530;
+  background: var(--ex-accent);
+  border-radius: 999px;
+}
+.ex-disclaimer {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--ex-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ex-sector,
+  .ex-card {
+    transition: none;
+  }
+  .ex-sector:hover,
+  .ex-sector:focus-visible {
+    transform: none;
+  }
+}
