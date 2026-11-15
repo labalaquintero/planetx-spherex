@@ -29,6 +29,14 @@ export const ASSET_CREDITS: readonly Credit[] = [
     assets: ['luna-color', 'luna-relieve'],
     note: 'Reducidos y coloreados con la paleta de Veshta y de la esfera menor.',
   },
+  {
+    what: 'Recortes reales del campo de WISE 0855 (dos épocas, 0,99 µm)',
+    author: 'NASA/JPL-Caltech, misión SPHEREx (datos de NASA/IPAC IRSA), procesados por el proyecto',
+    license: 'Courtesy NASA/JPL-Caltech (política de uso de imágenes de SPHEREx)',
+    url: 'https://irsa.ipac.caltech.edu/Missions/spherex.html',
+    assets: ['wise0855-2025-05-06', 'wise0855-2025-10-31'],
+    note: 'Se muestran en la ficha de Ilmara. Procedencia completa en docs/referencias/wise0855/README.md.',
+  },
 ]
 
 export const SOFTWARE_CREDITS: readonly { name: string; license: string }[] = [

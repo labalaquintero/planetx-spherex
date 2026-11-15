@@ -2,6 +2,7 @@ import { useMemo, useRef, type MutableRefObject } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { AgXToneMapping } from 'three'
 import type { Bounds, FlightInput, FlightState, Obstacle } from '../engine/flight'
+import type { Look } from '../engine/orbit'
 import type { AdaptiveQuality, QualitySettings } from '../engine/quality'
 import type { SectorScene as SectorSceneData } from '../engine/types'
 import { smallBodiesOf } from './bodies'
@@ -20,6 +21,8 @@ interface Props {
   scene: SectorSceneData
   flight: MutableRefObject<FlightState>
   input: MutableRefObject<FlightInput>
+  /** Mirada libre con clic derecho. */
+  look: MutableRefObject<Look>
   bounds: Bounds
   /** Obstáculos de los objetos (los cuerpos pequeños se añaden aquí, según la calidad). */
   obstacles: readonly Obstacle[]
@@ -53,7 +56,7 @@ function Governor({ quality, onChange, onFps }: { quality: AdaptiveQuality; onCh
 
 /** Escena 3D de un sector con vuelo libre. Es la única parte que importa three (carga diferida). */
 export default function SectorScene(props: Props) {
-  const { scene, flight, input, bounds, obstacles, animate, arrive, settings, quality, onQualityChange, onFps } = props
+  const { scene, flight, input, look, bounds, obstacles, animate, arrive, settings, quality, onQualityChange, onFps } = props
   const light = LIGHT_DIR.clone().multiplyScalar(200)
   const bodies = useMemo(() => smallBodiesOf(scene, settings.debris), [scene, settings.debris])
   // Las rocas también son obstáculos (con su holgura): no se atraviesan.
@@ -98,6 +101,7 @@ export default function SectorScene(props: Props) {
         animate={animate}
         arrive={arrive}
         trailParticles={settings.trailParticles}
+        look={look}
       />
       {settings.bloom && <Bloom strength={settings.bloomStrength} samples={samples} chromatic={settings.chromatic} grain={settings.grain} />}
       <Governor quality={quality} onChange={onQualityChange} onFps={onFps} />

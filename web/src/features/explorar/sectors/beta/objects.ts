@@ -3,6 +3,7 @@ import { BASE_FOV_DEG } from '../../engine/motion'
 import { radiusForScreenSize, REFERENCE_ASPECT, screenToWorld, type ViewCamera } from '../../engine/projection'
 import type { SceneObject, SceneObjectKind } from '../../engine/types'
 import { WAYPOINTS } from './waypoints'
+import { BETA_INFO } from './info'
 
 /**
  * Objetos de β generados desde el boceto medido (docs/referencias/layout.json). Cada objeto se
@@ -74,6 +75,7 @@ function build(id: string, st: Staging): SceneObject {
     ...(st.surface ? { surface: st.surface } : {}),
     ...(st.atmosphere ? { atmosphere: st.atmosphere } : {}),
     ...(st.glow ? { glow: st.glow } : {}),
+    ...(BETA_INFO[id] ? { info: BETA_INFO[id] } : {}),
     ...(st.texture ? { texture: st.texture } : {}),
   }
   switch (st.kind) {
