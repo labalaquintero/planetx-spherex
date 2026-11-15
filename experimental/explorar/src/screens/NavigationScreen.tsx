@@ -144,7 +144,9 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
     return { id: o.id, distance: Math.hypot(o.position[0] - p[0], o.position[1] - p[1], o.position[2] - p[2]) }
   })
   const scanRef = useRef(scan)
-  scanRef.current = scan
+  useEffect(() => {
+    scanRef.current = scan
+  }, [scan])
   const scannable = useRef<{ id: string; distance: number } | null>(null)
   const openScan = useCallback(() => {
     const target = scannable.current
@@ -242,7 +244,11 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
   else if (!tele.near || tele.near.id !== shown.current || tele.near.distance > INFO_HIDE_DISTANCE) shown.current = null
   const nearObject = shown.current ? scene.objects.find((o) => o.id === shown.current) : undefined
   const nearInfo = nearObject?.info
-  scannable.current = nearObject && canScan(nearObject) && tele.near ? { id: nearObject.id, distance: tele.near.distance } : null
+  const scanTarget = nearObject && canScan(nearObject) && tele.near ? nearObject.id : null
+  const scanDistance = tele.near?.distance ?? 0
+  useEffect(() => {
+    scannable.current = scanTarget ? { id: scanTarget, distance: scanDistance } : null
+  }, [scanTarget, scanDistance])
   const scanObject = scan ? scene.objects.find((o) => o.id === scan.id) : undefined
 
   return (
