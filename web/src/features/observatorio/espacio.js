@@ -1,41 +1,12 @@
-const workspaceKey = 'planet-x-prototipo-v1';
-const exampleReport = {
-  id: 'ejemplo', status: 'review', format: 'manual', example: true,
-  author: 'Cuenta de ejemplo', title: 'Comparación del campo de WISE 0855',
-  notes: 'Al alternar las dos épocas, comprobé que el centro y la escala se conservan. Registré ambas fechas y las referencias de IRSA.',
-  created: prepared.checked_at,
-};
+import {
+  archiveNote, comparisonLink, comparisonMode, coordinateParams, dateMark, epoch, escapeHtml,
+  fieldLabel, fieldName, formatBand, imageLink, nasaVela, prepared, reportStatuses,
+} from './datos.js';
+import { back, badge, dataRows, miniPair, missingView, pageHeading, toast } from './ui.js';
+import { comparisonFor } from './visor.js';
+import { cacheImages, readWorkspace, reportFile, writeWorkspace } from './workspace.js';
 
-let workspaceState = {
-  profile: { alias: 'Explorador', active: false, public: false, paused: false, avatar: '' },
-  recent: null,
-  reports: [exampleReport],
-  annotations: {},
-};
 let reportBuffer;
-let storageNotice = false;
-
-function readWorkspace() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(workspaceKey));
-    if (saved?.profile && Array.isArray(saved.reports) && saved.annotations) workspaceState = saved;
-  } catch {
-    // The workspace can continue in memory when storage is unavailable.
-  }
-  return structuredClone(workspaceState);
-}
-
-function writeWorkspace(state) {
-  workspaceState = state;
-  try {
-    localStorage.setItem(workspaceKey, JSON.stringify(state));
-  } catch {
-    if (!storageNotice) {
-      storageNotice = true;
-      toast('El almacenamiento del navegador está desactivado. Los cambios se conservan durante esta visita.');
-    }
-  }
-}
 
 function statusBadge(report) {
   const state = Object.hasOwn(reportStatuses, report.status) ? reportStatuses[report.status] : reportStatuses.draft;
@@ -52,19 +23,19 @@ function avatar(profile, size = 'large') {
     : `<span class="avatar avatar-${size}" aria-hidden="true">${escapeHtml(initials(profile.alias))}</span>`;
 }
 
-function reportEvidence(data, annotations, editable = true) {
+function reportEvidence(data, annotations, editable = true, reportId) {
   const annotationCount = data.frames.reduce((count, frame) => count + (annotations[frame.id]?.length ?? 0), 0);
   const releases = [...new Set(data.frames.map((frame) => frame.release.toUpperCase()))].join(' / ');
   return `<aside class="panel attachment-panel" aria-labelledby="attachment-title">
     <h2 id="attachment-title">Observaciones asociadas</h2>
     <p class="muted">${fieldName(data.query)} · SPHEREx ${releases}</p>
-    ${miniPair(editable, data)}
+    ${miniPair(true, data, reportId)}
     ${dataRows([
       ['Banda aproximada', formatBand(data.band)],
       ['Campo', fieldLabel(data.query)],
       ['Procedencia', 'Cada fotograma conserva su fecha, ID y enlace FITS.'],
     ])}
-    ${editable ? `<a class="text-link" href="${escapeHtml(imageLink(0, data))}">Ampliar y anotar <span aria-hidden="true">→</span></a>` : ''}
+    ${editable ? `<a class="text-link" href="${escapeHtml(imageLink(0, data, reportId))}">Ampliar y anotar <span aria-hidden="true">→</span></a>` : ''}
     ${annotationCount ? `<p class="input-hint">${editable ? 'Marcas locales disponibles' : 'Marcas en la ficha'}: ${annotationCount}</p>` : ''}
   </aside>`;
 }
@@ -77,7 +48,8 @@ function reportView(id, params) {
   const state = readWorkspace();
   const reportId = params.get('borrador') ?? '';
   const existing = state.reports.find((item) => item.id === reportId && ['draft', 'rejected'].includes(item.status));
-  const data = existing?.comparison ?? comparisonFor(params);
+  if (reportId && !existing) return missingView();
+  const data = existing ? existing.comparison ?? prepared : comparisonFor(params);
   if (!data) return `${pageHeading('Vuelve a abrir la comparación', 'Abre las observaciones antes de preparar una ficha de este campo.')}
     <a class="button primary" href="#visor?${escapeHtml(params)}">Abrir el comparador</a>`;
   const format = id === 'pdf' ? 'pdf' : 'manual';
@@ -120,7 +92,7 @@ function reportView(id, params) {
           <p class="input-hint">Las fichas y sus revisiones se guardan en este navegador.</p>
         </form>
       </section>
-      ${reportEvidence(data, state.annotations)}
+      ${reportEvidence(data, { ...existing?.annotations, ...state.annotations }, true, existing?.id)}
     </div>`;
 }
 
@@ -134,7 +106,7 @@ function exportReport(report, format) {
       mode: data.mode,
       checked_at: data.checked_at,
       science_version: data.science_version,
-      frames: data.frames.map(({ src, ...frame }) => frame),
+      frames: data.frames.map(({ src: _renderedUrl, ...frame }) => frame),
     },
   };
   const md = (text) => String(text).replace(/[\u0060*_[\]<>#|\\]/g, '\\$&');
@@ -167,39 +139,24 @@ function downloadLocalFile(file, name) {
   }, 2000);
 }
 
-function reportFile(mode, operation) {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open('planet-x-report-files', 1);
-    request.onupgradeneeded = () => request.result.createObjectStore('pdf');
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => {
-      const database = request.result;
-      try {
-        const transaction = database.transaction('pdf', mode);
-        const result = operation(transaction.objectStore('pdf'));
-        transaction.oncomplete = () => {
-          database.close();
-          resolve(result.result);
-        };
-        transaction.onabort = () => {
-          database.close();
-          reject(transaction.error ?? new Error('Archivo no disponible.'));
-        };
-      } catch (error) {
-        database.close();
-        reject(error);
-      }
-    };
-  });
-}
-
 function pdfButton(report) {
   return report.hasPdf
     ? `<button class="button secondary" type="button" data-pdf-download="${escapeHtml(report.id)}">Descargar PDF</button>`
     : '';
 }
 
+function exportButtons(report) {
+  return ['json', 'md'].map((type) =>
+    `<button class="button ghost" type="button" data-report-export="${type}" data-report-id="${escapeHtml(report.id)}">Descargar ${type === 'json' ? 'JSON' : 'Markdown'}</button>`).join('');
+}
+
 document.addEventListener('click', async (event) => {
+  const exportControl = event.target.closest('[data-report-export]');
+  if (exportControl) {
+    const report = readWorkspace().reports.find((item) => item.id === exportControl.dataset.reportId);
+    if (report) exportReport({ ...report, comparison: report.comparison ?? prepared }, exportControl.dataset.reportExport);
+    return;
+  }
   const button = event.target.closest('[data-pdf-download]');
   if (!button) return;
   const report = readWorkspace().reports.find((item) => item.id === button.dataset.pdfDownload);
@@ -222,7 +179,7 @@ function bindReport(_id, params) {
   const error = document.querySelector('#report-error');
   const { format, existing, created } = form.dataset;
   const earlier = readWorkspace().reports.find((report) => report.id === existing);
-  const data = earlier?.comparison ?? comparisonFor(params);
+  const data = earlier ? earlier.comparison ?? prepared : comparisonFor(params);
   const key = draftKey(params, data);
 
   form.addEventListener('input', () => {
@@ -260,7 +217,7 @@ function bindReport(_id, params) {
           const header = file.size <= 10000000 && /\.pdf$/i.test(file.name) ? await file.slice(0, 5).text() : '';
           if (header !== '%PDF-') throw new Error('invalid-pdf');
           fileName = file.name;
-        } else if (earlier?.fileName) {
+        } else if (earlier?.fileName && earlier.hasPdf) {
           fileName = earlier.fileName;
         } else {
           throw new Error('missing-pdf');
@@ -273,7 +230,7 @@ function bindReport(_id, params) {
       }
     }
     if (!form.isConnected) return;
-    const annotations = readWorkspace().annotations;
+    const annotations = { ...earlier?.annotations, ...readWorkspace().annotations };
     const report = {
       id: existing || crypto.randomUUID(), author, title, notes, format, fileName, created,
       status: action === 'review' ? 'review' : 'draft',
@@ -302,8 +259,14 @@ function bindReport(_id, params) {
       }
     }
     const state = readWorkspace();
+    if (existing && !state.reports.some((item) => item.id === existing && ['draft', 'rejected'].includes(item.status))) {
+      error.textContent = 'El estado de esta ficha cambió. Vuelve a abrirla antes de guardar.';
+      error.hidden = false;
+      return;
+    }
     state.reports = [report, ...state.reports.filter((item) => item.id !== report.id)];
     writeWorkspace(state);
+    void cacheImages(data.frames);
     reportBuffer = undefined;
     if (form.isConnected) location.hash = `confirmacion/${encodeURIComponent(report.id)}`;
   });
@@ -317,9 +280,11 @@ function confirmationView(id) {
     : 'La ficha y sus referencias están disponibles en este navegador.';
   return `${back('#perfil', 'Mi espacio')}
     ${pageHeading(report.status === 'review' ? 'Ficha en revisión' : report.status === 'draft' ? 'Borrador guardado' : 'Estado de tu ficha', lead, '', true)}
+    <div class="split">
     <section class="panel report-confirmation">
       <div class="row between"><h2>${escapeHtml(report.title)}</h2>${statusBadge(report)}</div>
       <p class="muted">${escapeHtml(report.author)} · ${dateMark(report.created, true)}</p>
+      ${report.notes || report.fileName ? `<p class="preserve-lines">${escapeHtml(report.notes || report.fileName)}</p>` : ''}
       ${report.reviewNote ? `<p class="callout ${report.status === 'rejected' ? 'danger' : 'info'}">${escapeHtml(report.reviewNote)}</p>` : ''}
       <div class="row">
         <a class="button primary" href="#perfil">Ver mis fichas</a>
@@ -328,7 +293,10 @@ function confirmationView(id) {
         ${report.status === 'review' ? `<a class="button secondary" href="#administracion/${report.id}">Ver bandeja de revisión</a>` : ''}
         ${report.status === 'published' ? `<a class="button secondary" href="#articulo/${report.id}">Ver publicación</a>` : ''}
       </div>
-    </section>`;
+      <div class="row">${exportButtons(report)}</div>
+    </section>
+    ${reportEvidence(report.comparison ?? prepared, report.annotations ?? {}, false, report.id)}
+    </div>`;
 }
 
 function editURL(report) {
@@ -343,13 +311,17 @@ function accountView(id) {
   return `<div class="account-layout">
     <section class="panel">
       ${pageHeading(title, 'Guarda tu alias, tus comparaciones y tus fichas en este navegador.', '', true)}
-      ${recovery ? `<p class="muted">Abre Mi espacio desde este mismo navegador para recuperar el perfil guardado.</p>
-        <a class="button primary" href="#acceso">Volver a acceso</a>` : `
+      ${recovery ? `<form class="form-grid" id="local-account">
+        <div class="avatar-block">${avatar(profile)}<strong>${escapeHtml(profile.alias)}</strong></div>
+        <p class="muted">Recupera el perfil y las fichas guardados en este navegador.</p>
+        <p class="input-error" id="access-error" role="alert" hidden></p>
+        <button type="submit" class="button primary">Recuperar perfil local</button>
+      </form>` : `
       <nav class="segmented" aria-label="Acceso y registro">
         <a href="#acceso" ${registration ? '' : 'aria-current="page"'}>Abrir espacio</a>
         <a href="#acceso/registro" ${registration ? 'aria-current="page"' : ''}>Crear perfil</a>
       </nav>
-      <form class="form-grid" id="demo-account">
+      <form class="form-grid" id="local-account">
         ${registration ? '<div><label for="account-alias">Alias</label><input id="account-alias" name="alias" placeholder="Explorador" maxlength="50" required></div>'
           : `<div class="avatar-block">${avatar(profile)}<strong>${escapeHtml(profile.alias)}</strong></div>`}
         <p class="input-error" id="access-error" role="alert" hidden></p>
@@ -364,7 +336,7 @@ function accountView(id) {
 }
 
 function bindAccount() {
-  const form = document.querySelector('#demo-account');
+  const form = document.querySelector('#local-account');
   form?.addEventListener('submit', (event) => {
     event.preventDefault();
     const state = readWorkspace();
@@ -386,7 +358,6 @@ function profileView() {
   const { profile, reports, recent } = readWorkspace();
   const myReports = reports.filter((report) => !report.example);
   const contributions = myReports.filter((report) => ['accepted', 'published'].includes(report.status));
-  const last = typeof recent === 'string' ? { viewedAt: recent, query: prepared.query, mode: 'prepared' } : recent;
   return `${pageHeading('Mi espacio', 'Retoma tus comparaciones y consulta el estado de tus fichas guardadas en este navegador.', '', true)}
     <div class="workplace">
       <div class="stack">
@@ -401,10 +372,11 @@ function profileView() {
         </section>
         <section class="panel">
           <h2>Comparaciones recientes</h2>
-          ${last?.query ? `<ul class="item-list"><li class="row between">
-            <div><a class="list-title" href="${escapeHtml(comparisonLink(last))}">${fieldName(last.query)}</a><p class="list-meta">Última consulta · ${dateMark(last.viewedAt, true)}</p></div>
-            ${badge(comparisonMode(last), last.mode === 'prepared' ? 'success' : 'info')}
-          </li></ul>` : '<p class="muted">Las comparaciones que abras aparecerán aquí.</p>'}
+          ${recent.length ? `<ul class="item-list">${recent.map((entry) => `<li class="row between">
+            <div><a class="list-title" href="${escapeHtml(comparisonLink(entry))}">${fieldName(entry.query)}</a>
+              <p class="list-meta">${dateMark(entry.viewedAt, true)} · RA ${entry.query.ra_deg}° · Dec ${entry.query.dec_deg}°</p></div>
+            ${badge(comparisonMode(entry), entry.mode === 'prepared' ? 'success' : 'info')}
+          </li>`).join('')}</ul>` : '<p class="muted">Las comparaciones que abras aparecerán aquí.</p>'}
         </section>
       </div>
       <aside class="panel workspace-details">
@@ -518,7 +490,7 @@ function moderationView(id) {
 }
 
 function usersPanel(profile) {
-  return `<section class="panel reading"><h2>Usuarios de prueba</h2>
+  return `<section class="panel reading"><h2>Perfil de este navegador</h2>
     <table class="admin-table">
       <thead><tr><th scope="col">Perfil</th><th scope="col">Rol</th><th scope="col">Estado</th></tr></thead>
       <tbody><tr><td>${escapeHtml(profile.alias)}</td><td>Colaborador</td><td>
@@ -526,7 +498,7 @@ function usersPanel(profile) {
           <option value="enabled" ${profile.paused ? '' : 'selected'}>Activo</option>
           <option value="paused" ${profile.paused ? 'selected' : ''}>Pausado</option>
         </select>
-      </td></tr><tr><td>Equipo de prueba</td><td>Revisión</td><td>Activo</td></tr></tbody>
+      </td></tr></tbody>
     </table>
   </section>`;
 }
@@ -537,7 +509,7 @@ function reviewPanel(report) {
     <p class="list-meta">${escapeHtml(report.author)} · ${dateMark(report.created, true)}${report.example ? ' · Ficha de ejemplo' : ''}</p>
     <p class="muted preserve-lines">${escapeHtml(report.notes || `Documento de referencia: ${report.fileName}`)}</p>
     <div class="row">
-      <a class="text-link" href="${escapeHtml(comparisonLink(report.comparison ?? prepared))}">Abrir las observaciones asociadas →</a>
+      <a class="text-link" href="${escapeHtml(imageLink(0, report.comparison ?? prepared, report.id))}">Abrir las observaciones asociadas →</a>
       ${pdfButton(report)}
     </div>
     ${report.status === 'review' ? `<form id="moderation-form" class="form-grid" data-report="${report.id}">
@@ -575,7 +547,7 @@ function bindModeration() {
     report.status = decision;
     report.reviewNote = note;
     writeWorkspace(state);
-    renderRoute();
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
   });
   document.querySelector('#publish-local')?.addEventListener('click', (event) => {
     const state = readWorkspace();
@@ -583,7 +555,7 @@ function bindModeration() {
     if (report?.status !== 'accepted') return;
     report.status = 'published';
     writeWorkspace(state);
-    renderRoute();
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
     toast('Reporte disponible en el blog de este navegador.');
   });
   document.querySelector('#demo-user-status')?.addEventListener('change', (event) => {
@@ -595,3 +567,8 @@ function bindModeration() {
     toast(state.profile.paused ? 'Perfil de prueba pausado.' : 'Perfil de prueba activo.');
   });
 }
+
+export {
+  accountView, avatar, bindAccount, bindModeration, bindReport, bindSettings, confirmationView,
+  moderationView, pdfButton, profileView, publicProfileView, reportEvidence, reportView, settingsView,
+};

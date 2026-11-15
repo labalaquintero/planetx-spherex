@@ -1,50 +1,24 @@
+import {
+  articles, comparisonLink, comparisonMode, coordinateParams, dateMark, daysBetween, escapeHtml, fieldLabel,
+  fold, formatBand, fullDate, nasaSky, nasaVela, prepared, targets,
+} from './datos.js';
+import {
+  accountView, avatar, bindAccount, bindModeration, bindReport, bindSettings, confirmationView,
+  moderationView, pdfButton, profileView, publicProfileView, reportEvidence, reportView, settingsView,
+} from './espacio.js';
+import { back, badge, dataRows, miniPair, missingView, pageHeading } from './ui.js';
+import {
+  bindComparisonSlider, bindInspector, bindViewer, cancelSearch, comparisonFor, comparisonSlider,
+  inspectorView, stopPlayback, viewerExamples, viewerView,
+} from './visor.js';
+import { bindEvidenceImages, readWorkspace } from './workspace.js';
+
 const main = document.querySelector('main');
 const menu = document.querySelector('#menu-toggle');
 const nav = document.querySelector('#site-nav');
 const search = document.querySelector('#search-dialog');
 const searchInput = document.querySelector('#site-search');
 const searchResults = document.querySelector('#search-results');
-let toastTimer;
-
-function pageHeading(title, lead = '', eyebrow = '', compact = false) {
-  return `<header class="page-heading${compact ? ' compact' : ''}">
-    ${eyebrow ? `<p class="eyebrow">${escapeHtml(eyebrow)}</p>` : ''}
-    <h1>${escapeHtml(title)}</h1>
-    ${lead ? `<p>${escapeHtml(lead)}</p>` : ''}
-  </header>`;
-}
-
-function badge(text, color = 'neutral', dot = true) {
-  return `<span class="badge ${color}${dot ? ' dot' : ''}">${escapeHtml(text)}</span>`;
-}
-
-function dataRows(rows) {
-  return `<dl class="data-list">${rows.map(([label, content]) =>
-    `<div><dt>${label}</dt><dd>${content}</dd></div>`).join('')}</dl>`;
-}
-
-function back(href, text) {
-  return `<a href="${href}" class="text-link back-link"><span aria-hidden="true">←</span> ${text}</a>`;
-}
-
-function miniPair(link = false, data = prepared) {
-  return `<div class="mini-pair" aria-label="Fotogramas de ${escapeHtml(fieldName(data.query))}">
-    ${data.frames.map((frame, index) => {
-      const figure = `<figure><img class="science-image" src="${escapeHtml(frame.src)}" alt="Recorte SPHEREx de la época ${epoch(index)}" width="64" height="64">
-        <figcaption><b>${epoch(index)}</b> ${dateMark(frame.observed_at)}</figcaption></figure>`;
-      return link ? `<a href="${escapeHtml(imageLink(index, data))}" aria-label="Ampliar época ${epoch(index)}">${figure}</a>` : figure;
-    }).join('')}
-  </div>`;
-}
-
-function toast(message) {
-  const notice = document.querySelector('#toast');
-  window.clearTimeout(toastTimer);
-  notice.hidden = false;
-  notice.textContent = message;
-  toastTimer = window.setTimeout(() => { notice.hidden = true; }, 5600);
-}
-
 function homeView() {
   const workspace = readWorkspace();
   const published = workspace.reports.find((report) => report.status === 'published');
@@ -77,7 +51,7 @@ function homeView() {
     <div class="section-heading">
       <h2 id="featured-title">Explora el cielo</h2>
       <div class="row home-links">
-        ${workspace.recent ? '<a class="text-link" href="#perfil">Comparaciones recientes <span aria-hidden="true">→</span></a>' : ''}
+        ${workspace.recent.length ? '<a class="text-link" href="#perfil">Comparaciones recientes <span aria-hidden="true">→</span></a>' : ''}
         <a class="text-link" href="#articulo/leer-epocas">Guía para comparar épocas <span aria-hidden="true">→</span></a>
       </div>
     </div>
@@ -124,20 +98,25 @@ function skyPosition(target) {
   return `--ra:${target.ra / 360 * 100}%; --dec:${(90 - target.dec) / 180 * 100}%`;
 }
 
+function targetComparison({ ra, dec }) {
+  const data = comparisonFor(new URLSearchParams({ ra, dec }));
+  return data?.frames.length >= 2 ? data : null;
+}
+
 function targetCard(target) {
-  const hasPair = target.id === 'wise-0855';
+  const pair = targetComparison(target);
   const chart = `<div class="sky-marker" role="img" aria-label="Posición aproximada en coordenadas ICRS"
      style="${skyPosition(target)}"><span aria-hidden="true">ICRS</span></div>`;
-  return `<article class="panel target-card${hasPair ? ' wide' : ''}">
-    ${hasPair ? '' : chart}
+  return `<article class="panel target-card${pair ? ' wide' : ''}">
+    ${pair ? '' : chart}
     <div>
-      ${hasPair ? badge('Caso preparado', 'success') : badge('Coordenadas de referencia', 'neutral', false)}
+      ${pair ? badge(comparisonMode(pair), pair.mode === 'prepared' ? 'success' : 'info') : badge('Coordenadas de referencia', 'neutral', false)}
       <h2>${target.name}</h2>
       <p>${target.type}</p>
       <p class="mono">${target.ra.toFixed(6)}° / ${target.dec.toFixed(6)}°</p>
       <a class="text-link" href="#objetivo/${target.id}" aria-label="Ver detalle de ${target.name}">Ver ficha <span aria-hidden="true">→</span></a>
     </div>
-    ${hasPair ? miniPair(true) : ''}
+    ${pair ? miniPair(true, pair) : ''}
   </article>`;
 }
 
@@ -162,7 +141,7 @@ function galleryView(params) {
 }
 
 function galleryMap(targetsToShow, selected) {
-  const hasPair = selected.id === 'wise-0855';
+  const pair = targetComparison(selected);
   return `<div class="panel atlas">
     <div class="atlas-chart">
       <h2>Mapa de campos</h2>
@@ -189,7 +168,7 @@ function galleryMap(targetsToShow, selected) {
       <select id="atlas-select">${targetsToShow.map((target) => `<option value="${target.id}"
         ${target === selected ? 'selected' : ''}>${target.name}</option>`).join('')}</select>
       <div class="atlas-actions">
-        <a class="button primary" href="#visor/${selected.id}">${hasPair ? 'Comparar épocas' : 'Usar coordenadas'} <span aria-hidden="true">→</span></a>
+        <a class="button primary" href="${escapeHtml(pair ? comparisonLink(pair) : `#visor/${selected.id}`)}">${pair ? 'Comparar épocas' : 'Usar coordenadas'} <span aria-hidden="true">→</span></a>
         <a class="text-link" href="#objetivo/${selected.id}">Ver ficha <span aria-hidden="true">→</span></a>
       </div>
     </section>
@@ -209,7 +188,7 @@ function bindGallery() {
   function update() {
     const query = fold(input.value);
     const matching = targets.filter((target) => {
-      const hasPair = target.id === 'wise-0855';
+      const hasPair = Boolean(targetComparison(target));
       const matchesMode = filter === 'todos' || (filter === 'preparado' ? hasPair : !hasPair);
       return matchesMode && fold(`${target.name} ${target.type}`).includes(query);
     });
@@ -224,6 +203,7 @@ function bindGallery() {
     } else {
       results.innerHTML = matching.map(targetCard).join('');
     }
+    bindEvidenceImages(results);
   }
   input.addEventListener('input', update);
   buttons.forEach((button) => button.addEventListener('click', () => {
@@ -255,19 +235,19 @@ function bindGallery() {
 function targetView(id) {
   const target = targets.find((item) => item.id === id);
   if (!target) return missingView();
-  const hasPair = id === 'wise-0855';
+  const pair = targetComparison(target);
 
   return `${back('#galeria', 'Galería')}
     ${pageHeading(target.name, target.description, target.type)}
     <div class="split">
       <section class="panel">
-        <div class="section-heading"><h2 class="section-title">${hasPair ? 'Épocas disponibles' : 'Campo de referencia'}</h2>
-          ${hasPair ? badge('Caso preparado', 'success') : ''}</div>
-        ${hasPair ? `<div class="target-frames">${miniPair(true)}</div>`
+        <div class="section-heading"><h2 class="section-title">${pair ? 'Épocas disponibles' : 'Campo de referencia'}</h2>
+          ${pair ? badge(comparisonMode(pair), pair.mode === 'prepared' ? 'success' : 'info') : ''}</div>
+        ${pair ? `<div class="target-frames">${miniPair(true, pair)}</div>`
           : '<p class="muted">Usa estas coordenadas en el visor para consultar las observaciones disponibles en IRSA.</p>'}
         <div class="row">
-          <a class="button primary" href="#visor/${id}">${hasPair ? 'Comparar épocas' : 'Usar coordenadas'} <span aria-hidden="true">→</span></a>
-          ${hasPair ? '<a class="button secondary" href="#ficha">Preparar ficha</a>' : ''}
+          <a class="button primary" href="${escapeHtml(pair ? comparisonLink(pair) : `#visor/${id}`)}">${pair ? 'Comparar épocas' : 'Usar coordenadas'} <span aria-hidden="true">→</span></a>
+          ${pair ? `<a class="button secondary" href="#ficha?${escapeHtml(coordinateParams(pair.query))}">Preparar ficha</a>` : ''}
         </div>
       </section>
       <aside class="panel evidence" aria-label="Datos del campo">
@@ -276,7 +256,8 @@ function targetView(id) {
           ['Ascensión recta · RA', `<span class="mono">${target.ra}°</span>`],
           ['Declinación · Dec', `<span class="mono">${target.dec}°</span>`],
           ['Marco de referencia', id === 'barnard' ? 'ICRS · J2000' : 'ICRS'],
-          ...(hasPair ? [['Campo', '0.10° × 0.10°'], ['Banda aproximada', bandLabel], ['Colección', 'SPHEREx DR1']] : []),
+          ...(pair ? [['Campo', fieldLabel(pair.query)], ['Banda aproximada', formatBand(pair.band)],
+            ['Colección', [...new Set(pair.frames.map((frame) => `SPHEREx ${frame.release.toUpperCase()}`))].join(' / ')]] : []),
         ])}
       </aside>
     </div>`;
@@ -336,7 +317,7 @@ function articleView(id) {
       <p class="preserve-lines">${escapeHtml(report.notes || `Documento PDF: ${report.fileName}`)}</p>
     </section>
     ${pdfButton(report)}
-    ${reportEvidence(report.comparison ?? prepared, report.annotations ?? {}, false)}
+    ${reportEvidence(report.comparison ?? prepared, report.annotations ?? {}, false, report.id)}
   </article>`;
 }
 
@@ -350,11 +331,6 @@ function stateGalleryView() {
         <a class="text-link" href="#visor/${slug}" aria-label="Ver estado ${state.title}">Ver estado <span aria-hidden="true">→</span></a>
       </article>`).join('')}
     </div>`;
-}
-
-function missingView() {
-  return `${pageHeading('Vista no encontrada', 'Puedes volver al inicio o abrir el caso preparado del visor.')}
-    <a class="button primary" href="#inicio">Volver al inicio</a>`;
 }
 
 function setMenu(open) {
@@ -376,10 +352,10 @@ function renderSearch() {
 
 const views = {
   inicio: { html: homeView, bind: bindHome, nav: 'inicio', title: 'Inicio' },
-  visor: { html: viewerView, bind: bindViewer, nav: 'visor', title: 'Visor temporal' },
+  visor: { html: viewerView, bind: (id, params) => bindViewer(id, params, runtime.compare), nav: 'visor', title: 'Visor temporal' },
   explorar: {
     html: () => '<section id="explorer-root" aria-label="Explorar"></section>',
-    bind: () => { unmountExplorer = window.planetXRuntime.mountExplorer(document.querySelector('#explorer-root')); },
+    bind: () => { unmountExplorer = runtime.mountExplorer(document.querySelector('#explorer-root')); },
     nav: 'explorar', title: 'Explorar',
   },
   galeria: { html: (_id, params) => galleryView(params), bind: bindGallery, nav: 'galeria', title: 'Galería' },
@@ -397,6 +373,7 @@ const views = {
   administracion: { html: moderationView, bind: bindModeration, title: 'Revisión de reportes' },
 };
 
+let runtime;
 let unmountExplorer;
 
 function renderRoute() {
@@ -432,11 +409,13 @@ function renderRoute() {
   const params = new URLSearchParams(query);
   main.innerHTML = selected.html(id, params);
   selected.bind?.(id, params);
+  bindEvidenceImages(main);
   window.scrollTo(0, 0);
   main.focus({ preventScroll: true });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+export function startObservatory(services) {
+  runtime = services;
   menu.addEventListener('click', () => setMenu(menu.getAttribute('aria-expanded') !== 'true'));
   nav.addEventListener('click', (event) => {
     if (event.target.closest('a')) setMenu(false);
@@ -466,4 +445,4 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   window.addEventListener('hashchange', renderRoute);
   renderRoute();
-}, { once: true });
+}

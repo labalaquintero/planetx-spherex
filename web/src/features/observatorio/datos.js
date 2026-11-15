@@ -123,7 +123,6 @@ const dateMark = (date, full = false) => `<time datetime="${escapeHtml(date)}" t
 const bandFormat = new Intl.NumberFormat('es-MX', { maximumSignificantDigits: 4 });
 const formatBand = (band) => band
   ? `${bandFormat.format(band.center_um)} ± ${bandFormat.format(band.tolerance_um)} µm` : 'No disponible';
-const bandLabel = formatBand(prepared.band);
 
 const validCoordinates = (ra, dec) => Number.isFinite(ra) && ra >= 0 && ra < 360
   && Number.isFinite(dec) && dec >= -90 && dec <= 90;
@@ -148,8 +147,10 @@ function comparisonLink(data) {
   return target?.id === 'wise-0855' ? '#visor/wise-0855' : `#visor?${coordinateParams(data.query)}`;
 }
 
-function imageLink(index, data) {
-  return `#imagen/${index}?${coordinateParams(data.query)}`;
+function imageLink(index, data, reportId) {
+  const params = coordinateParams(data.query);
+  if (reportId) params.set('ficha', reportId);
+  return `#imagen/${index}?${params}`;
 }
 
 function archiveURL(input) {
@@ -191,3 +192,10 @@ function normalizeComparison(data) {
     }),
   };
 }
+
+export {
+  nasaVela, nasaSky, prepared, targets, articles, reportStatuses, archiveNote,
+  escapeHtml, fold, epoch, daysBetween, validDate, shortDate, fullDate, dateMark,
+  formatBand, fieldLabel, fieldName, comparisonMode, coordinateParams,
+  coordinatesFromParams, comparisonLink, imageLink, normalizeComparison, validCoordinates,
+};

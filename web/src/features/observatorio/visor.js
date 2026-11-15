@@ -1,3 +1,11 @@
+import {
+  archiveNote, comparisonLink, comparisonMode, coordinateParams, coordinatesFromParams, dateMark,
+  epoch, escapeHtml, fieldLabel, fieldName, formatBand, fullDate, imageLink, normalizeComparison,
+  prepared, shortDate, targets,
+} from './datos.js';
+import { back, badge, dataRows, pageHeading, toast } from './ui.js';
+import { bindEvidenceImages, cacheImages, readWorkspace, rememberComparison, writeWorkspace } from './workspace.js';
+
 const viewerExamples = {
   'wise-0855': { title: 'Comparación lista', kind: 'Datos reales', color: 'success', description: 'Dos exposiciones de WISE 0855 con fechas y enlaces a IRSA.' },
   'sin-consulta': { title: 'Antes de buscar', kind: 'Inicio', color: 'neutral', description: 'El visor guía la primera consulta y ofrece un ejemplo.' },
@@ -27,28 +35,39 @@ function sameCoordinates(data, ra, dec) {
   return data?.query.ra_deg === ra && data.query.dec_deg === dec;
 }
 
+function savedComparison(ra, dec) {
+  if (sameCoordinates(activeComparison, ra, dec)) return activeComparison;
+  return readWorkspace().recent.find(({ comparison }) => sameCoordinates(comparison, ra, dec))?.comparison;
+}
+
+function reportFrom(params) {
+  const id = params.get('ficha');
+  return id ? readWorkspace().reports.find((report) => report.id === id) : null;
+}
+
 function comparisonFor(params = new URLSearchParams()) {
+  const reportId = params.get('ficha');
+  if (reportId) {
+    const report = reportFrom(params);
+    return report ? report.comparison ?? prepared : null;
+  }
   const coordinates = coordinatesFromParams(params);
-  if (!coordinates) return activeComparison ?? prepared;
-  if (sameCoordinates(activeComparison, coordinates.ra, coordinates.dec)) return activeComparison;
+  if (!coordinates) return activeComparison ?? readWorkspace().recent.find((entry) => entry.comparison)?.comparison ?? prepared;
+  const saved = savedComparison(coordinates.ra, coordinates.dec);
+  if (saved) return saved;
   if (sameCoordinates(prepared, coordinates.ra, coordinates.dec)) return prepared;
   return null;
 }
 
-function rememberComparison(data) {
+function storeComparison(data) {
   activeComparison = data;
   try {
     sessionStorage.setItem(comparisonStorageKey, JSON.stringify(data));
   } catch {
     // Route changes can reuse the in-memory result during this visit.
   }
-  const state = readWorkspace();
-  state.recent = {
-    viewedAt: new Date().toISOString(),
-    query: data.query,
-    mode: data.mode,
-  };
-  writeWorkspace(state);
+  rememberComparison(data);
+  void cacheImages(data.frames);
 }
 
 function comparisonState(data) {
@@ -67,17 +86,19 @@ function cancelSearch() {
   activeSearch = undefined;
 }
 
-function comparisonSlider(id, label, frames = prepared.frames) {
+function comparisonSlider(id, label, frames = prepared.frames, first = 0) {
+  const labels = frames.map((_, offset) => epoch(first + offset));
   return `<div class="wipe">
-    <div class="wipe-surface">
+    <div class="wipe-surface" data-first="${labels[0]}" data-second="${labels[1]}">
       ${frames.map((frame, index) => `<img class="wipe-image wipe-${epoch(index).toLowerCase()}"
-        src="${escapeHtml(frame.src)}" width="64" height="64" alt="Época ${epoch(index)}, ${shortDate(frame.observed_at)}">`).join('')}
+        src="${escapeHtml(frame.src)}" data-frame-id="${escapeHtml(frame.id)}" width="64" height="64" alt="Época ${labels[index]}, ${shortDate(frame.observed_at)}">`).join('')}
+      <span class="image-error" role="alert" hidden>Una imagen no está disponible.</span>
       <span class="wipe-divider" aria-hidden="true"></span>
       <span class="wipe-handle" aria-hidden="true">↔</span>
       <input class="wipe-input" id="${id}-wipe" type="range" min="0" max="100" step="1" value="50" aria-label="${label}">
     </div>
     <div class="wipe-dates">
-      ${frames.map((frame, index) => `<span><b class="epoch-token">${epoch(index)}</b> ${dateMark(frame.observed_at)}</span>`).join('')}
+      ${frames.map((frame, index) => `<span><b class="epoch-token">${labels[index]}</b> ${dateMark(frame.observed_at)}</span>`).join('')}
     </div>
   </div>`;
 }
@@ -89,7 +110,7 @@ function bindComparisonSlider(wipe) {
   function update() {
     const split = Number(input.value);
     surface.style.setProperty('--split', `${split}%`);
-    input.setAttribute('aria-valuetext', `Época A ${split} %, época B ${100 - split} %`);
+    input.setAttribute('aria-valuetext', `Época ${surface.dataset.first} ${split} %, época ${surface.dataset.second} ${100 - split} %`);
   }
   input.addEventListener('input', update);
   update();
@@ -103,10 +124,11 @@ function viewerView(id, params) {
   const ra = requested?.ra ?? (id === 'fallo' ? prepared.query.ra_deg : isExample ? 10.25 : '');
   const dec = requested?.dec ?? (id === 'fallo' ? prepared.query.dec_deg : isExample ? -12.5 : '');
   const autoSearch = !isExample && (id === 'wise-0855' || !!query);
-  const data = autoSearch && sameCoordinates(activeComparison, ra, dec) ? activeComparison : null;
+  const data = autoSearch ? savedComparison(ra, dec) : null;
   const status = isExample ? id : data ? comparisonState(data) : 'idle';
+  if (data) activeComparison = data;
   viewer = { status, example: isExample, data, autoSearch: autoSearch && !data, index: 0,
-    layout: data?.frames.length === 2 ? 'side' : 'alternate' };
+    layout: data?.frames.length >= 2 ? 'side' : 'alternate' };
 
   return `<div class="row between viewer-title">
     ${pageHeading('Visor temporal', 'Elige una región del cielo y compara sus observaciones a través del tiempo.', '', true)}
@@ -189,7 +211,7 @@ function evidencePanel(data, single = false) {
 }
 
 function frameTile(frame, index, preview = false, data = prepared) {
-  const contents = `<img class="science-image" src="${escapeHtml(frame.src)}" alt="Recorte ${preview ? 'de referencia' : 'SPHEREx de la época ' + epoch(index)}" width="64" height="64">
+  const contents = `<img class="science-image" src="${escapeHtml(frame.src)}" data-frame-id="${escapeHtml(frame.id)}" alt="Recorte ${preview ? 'de referencia' : 'SPHEREx de la época ' + epoch(index)}" width="64" height="64">
     <span class="image-error" role="alert" hidden>Imagen no disponible.</span>`;
   return `<figure class="frame-tile" data-frame="${index}">
     <figcaption class="frame-label"><span class="epoch-token">${epoch(index)}</span>
@@ -223,26 +245,25 @@ function temporalPlayer(data) {
 }
 
 function readyComparison(data) {
-  const pair = data.frames.length === 2;
   const releases = [...new Set(data.frames.map((frame) => frame.release.toUpperCase()))].join(' / ');
   return `<div class="observatory comparison-workspace" data-testid="comparison-viewer">
     <section class="panel comparison-panel" aria-label="Comparador de épocas" tabindex="0">
       <div class="comparison-head row between">
         <div><h2>${fieldName(data.query)}</h2><p>${data.frames.length} observaciones de SPHEREx ${releases}</p></div>
         <div class="row comparison-tools">
-          ${pair ? `<div class="segmented" role="group" aria-label="Modo de comparación">
+          <div class="segmented" role="group" aria-label="Modo de comparación">
             <button type="button" data-layout="side" aria-pressed="true">Lado a lado</button>
             <button type="button" data-layout="alternate" aria-pressed="false">Alternar</button>
             <button type="button" data-layout="wipe" aria-pressed="false">Deslizar</button>
-          </div>` : ''}
+          </div>
           ${document.fullscreenEnabled ? '<button class="icon-button" type="button" id="comparison-fullscreen" aria-pressed="false" aria-label="Pantalla completa" title="Pantalla completa">⤢</button>' : ''}
         </div>
       </div>
       <div class="frame-grid" id="live-frames">${data.frames.map((frame, index) => frameTile(frame, index, false, data)).join('')}</div>
-      ${pair ? `<div class="wipe-stage" id="live-wipe" hidden>
-        ${comparisonSlider('visor', 'Deslizar entre las dos épocas', data.frames)}
-        <p class="input-hint">Arrastra el divisor. Selecciona A o B en la línea de tiempo para consultar la procedencia.</p>
-      </div>` : ''}
+      <div class="wipe-stage" id="live-wipe" hidden>
+        <div id="wipe-pair"></div>
+        <p class="input-hint">Arrastra el divisor o elige una época en la línea de tiempo.</p>
+      </div>
       ${temporalPlayer(data)}
     </section>
     ${evidencePanel(data)}
@@ -292,7 +313,6 @@ function renderObservation() {
   </div>` : '';
   if (status === 'ready') {
     workspace.innerHTML = readyComparison(data);
-    bindComparisonSlider(workspace.querySelector('#live-wipe .wipe'));
     updateFrame();
   } else if (status === 'insuficiente') {
     workspace.innerHTML = `${exampleTag}<div class="observatory" data-testid="status-insufficient">
@@ -306,18 +326,7 @@ function renderObservation() {
   } else {
     workspace.innerHTML = exampleTag + emptyComparison(status);
   }
-  bindImageFailures(workspace);
-}
-
-function bindImageFailures(workspace) {
-  workspace.querySelectorAll('.frame-image-link img, #zoom-layer img').forEach((img) => {
-    const showError = () => {
-      if (img.nextElementSibling?.classList.contains('image-error')) img.nextElementSibling.hidden = false;
-      img.style.visibility = 'hidden';
-    };
-    img.addEventListener('error', showError, { once: true });
-    if (img.complete && !img.naturalWidth) showError();
-  });
+  bindEvidenceImages(workspace);
 }
 
 function updateFrame(announce = false) {
@@ -326,14 +335,23 @@ function updateFrame(announce = false) {
   const frame = data.frames[index];
   const slider = panel.querySelector('#epoch-slider');
   const frames = panel.querySelector('#live-frames');
+  const first = Math.min(index, data.frames.length - 2);
   frames.classList.toggle('single', layout === 'alternate');
   frames.hidden = layout === 'wipe';
   const wipe = panel.querySelector('#live-wipe');
-  if (wipe) wipe.hidden = layout !== 'wipe';
+  wipe.hidden = layout !== 'wipe';
+  if (layout === 'wipe' && wipe.dataset.first !== String(first)) {
+    wipe.dataset.first = String(first);
+    const container = wipe.querySelector('#wipe-pair');
+    container.innerHTML = comparisonSlider('visor', 'Deslizar entre las dos épocas', data.frames.slice(first, first + 2), first);
+    bindComparisonSlider(container.querySelector('.wipe'));
+    bindEvidenceImages(container);
+  }
   panel.querySelectorAll('[data-frame]').forEach((figure) => {
-    const active = Number(figure.dataset.frame) === index;
+    const position = Number(figure.dataset.frame);
+    const active = position === index;
     figure.classList.toggle('is-active', active);
-    figure.hidden = layout === 'alternate' && !active;
+    figure.hidden = layout === 'alternate' ? !active : position < first || position > first + 1;
   });
   panel.querySelectorAll('[data-select]').forEach((button) => {
     button.setAttribute('aria-pressed', String(Number(button.dataset.select) === index));
@@ -356,7 +374,7 @@ function updateFrame(announce = false) {
   if (announce) document.querySelector('#viewer-announcement').textContent = `Época ${epoch(index)}, ${fullDate(frame.observed_at)}`;
 }
 
-function bindViewer() {
+function bindViewer(_id, _params, compare) {
   const form = document.querySelector('#coordinates');
   const ra = form.elements.ra;
   const dec = form.elements.dec;
@@ -397,13 +415,13 @@ function bindViewer() {
     const controller = new AbortController();
     activeSearch = controller;
     try {
-      const payload = await window.planetXRuntime.compare(Number(raValue), Number(decValue), controller.signal);
+      const payload = await compare(Number(raValue), Number(decValue), controller.signal);
       if (!form.isConnected || controller.signal.aborted) return;
       const data = normalizeComparison(payload);
       viewer.data = data;
       viewer.status = comparisonState(data);
-      viewer.layout = data.frames.length === 2 ? 'side' : 'alternate';
-      if (data.frames.length) rememberComparison(data);
+      viewer.layout = data.frames.length >= 2 ? 'side' : 'alternate';
+      if (data.frames.length) storeComparison(data);
       if (data.status === 'ready') form.closest('details').open = false;
       renderObservation();
       if (data.status === 'ready') document.querySelector('#viewer-announcement').textContent = `Comparación lista. ${data.frames.length} épocas. Consulta sus fechas y fuentes en Procedencia.`;
@@ -510,7 +528,14 @@ function inspectorView(id, params) {
   const frame = /^\d+$/.test(id) ? data?.frames[index] : null;
   if (!frame) return `${pageHeading('Imagen no disponible', 'Abre la comparación correspondiente antes de ampliar una época.')}
     <a class="button primary" href="#visor?${escapeHtml(params)}">Abrir el comparador</a>`;
-  return `${back(comparisonLink(data), 'Visor temporal')}
+  const reportId = params.get('ficha');
+  const report = reportFrom(params);
+  const readOnly = report && !['draft', 'rejected'].includes(report.status);
+  const returnLink = reportId ? `#confirmacion/${encodeURIComponent(reportId)}` : comparisonLink(data);
+  const reportLink = report
+    ? `#ficha${report.format === 'pdf' ? '/pdf' : ''}?borrador=${encodeURIComponent(report.id)}`
+    : `#ficha?${coordinateParams(data.query)}`;
+  return `${back(returnLink, reportId ? 'Volver a la ficha' : 'Visor temporal')}
     ${pageHeading(`${fieldName(data.query)} · Época ${epoch(index)}`, fullDate(frame.observed_at), '', true)}
     <div class="observatory">
       <section class="panel image-inspector" aria-label="Imagen ampliada">
@@ -530,7 +555,7 @@ function inspectorView(id, params) {
         <div class="zoom-stage">
           <div class="zoom-window">
             <div class="zoom-layer" id="zoom-layer">
-              <img class="science-image" src="${escapeHtml(frame.src)}" alt="Recorte SPHEREx de la época ${epoch(index)}" width="64" height="64">
+              <img class="science-image" src="${escapeHtml(frame.src)}" data-frame-id="${escapeHtml(frame.id)}" alt="Recorte SPHEREx de la época ${epoch(index)}" width="64" height="64">
               <span class="image-error" role="alert" hidden>Imagen no disponible. Vuelve a consultar este campo.</span>
               <canvas id="annotation-layer" width="512" height="512" aria-label="Capa de anotaciones del fotograma"></canvas>
             </div>
@@ -542,16 +567,18 @@ function inspectorView(id, params) {
             aria-valuetext="Época ${epoch(index)}, ${shortDate(frame.observed_at)}">
           <div class="timeline-labels">${data.frames.map((item, pos) => `<span>${epoch(pos)} · ${dateMark(item.observed_at)}</span>`).join('')}</div>
         </div>
-        <div class="row zoom-toolbar" aria-label="Anotaciones">
+        ${readOnly ? '' : `<div class="row zoom-toolbar" aria-label="Anotaciones">
           <button class="button secondary" id="draw" type="button" aria-pressed="false">Dibujar</button>
           <button class="button secondary" id="crop" type="button" aria-pressed="false">Delimitar recorte</button>
           <button class="button ghost" id="clear-annotation" type="button">Limpiar marcas</button>
-        </div>
-        <p class="annotation-note" id="annotation-note">Las marcas se guardan aparte del PNG y se incluyen en la ficha local.</p>
+        </div>`}
+        <p class="annotation-note" id="annotation-note">${readOnly
+          ? 'Esta imagen muestra las marcas guardadas cuando se envió la ficha.'
+          : 'Las marcas se guardan aparte del PNG y se incluyen en la ficha local.'}</p>
       </section>
       <aside class="panel evidence"><div class="row between"><h2>Procedencia</h2>${badge(comparisonMode(data), 'success')}</div>
         ${frameData(frame, data)}
-        <div class="row"><a href="#ficha?${escapeHtml(coordinateParams(data.query))}" class="button primary">Preparar ficha</a></div>
+        <div class="row"><a href="${escapeHtml(readOnly ? returnLink : reportLink)}" class="button primary">${readOnly ? 'Volver a la ficha' : report ? 'Editar ficha' : 'Preparar ficha'}</a></div>
       </aside>
     </div>`;
 }
@@ -562,6 +589,8 @@ function bindInspector(id, params) {
   const data = comparisonFor(params);
   const context = canvas.getContext('2d');
   const frame = data.frames[Number(id)];
+  const report = reportFrom(params);
+  const readOnly = report && !['draft', 'rejected'].includes(report.status);
   const zoomLayer = document.querySelector('#zoom-layer');
   const zoomIn = document.querySelector('#zoom-in');
   const zoomOut = document.querySelector('#zoom-out');
@@ -571,15 +600,16 @@ function bindInspector(id, params) {
   let zoom = 1;
   let tool = null;
   let pending = null;
-  let marks = readWorkspace().annotations[frame.id];
+  const workspaceMarks = readWorkspace().annotations;
+  let marks = readOnly ? report.annotations?.[frame.id]
+    : (Object.hasOwn(workspaceMarks, frame.id) ? workspaceMarks[frame.id] : report?.annotations?.[frame.id]);
   if (!Array.isArray(marks)) marks = [];
-  bindImageFailures(document.querySelector('#contenido'));
 
   for (const controlId of ['inspector-date', 'inspector-slider']) {
     const control = document.getElementById(controlId);
     control.addEventListener(controlId === 'inspector-date' ? 'change' : 'input', () => {
       inspectorFocus = controlId;
-      location.hash = imageLink(control.value, data);
+      location.hash = imageLink(control.value, data, params.get('ficha'));
     });
   }
   if (inspectorFocus) {
@@ -641,6 +671,10 @@ function bindInspector(id, params) {
 
   zoomIn.addEventListener('click', () => updateZoom(1));
   zoomOut.addEventListener('click', () => updateZoom(-1));
+  if (readOnly) {
+    repaint();
+    return;
+  }
   if (!context) {
     const note = document.querySelector('#annotation-note');
     note.textContent = 'Este navegador permite ampliar. La capa de anotaciones requiere Canvas.';
@@ -695,3 +729,9 @@ function bindInspector(id, params) {
   });
   repaint();
 }
+
+
+export {
+  bindComparisonSlider, bindInspector, bindViewer, cancelSearch, comparisonFor, comparisonSlider,
+  inspectorView, stopPlayback, viewerExamples, viewerView,
+};

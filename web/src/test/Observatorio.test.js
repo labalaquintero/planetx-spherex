@@ -19,12 +19,8 @@ it('abre el comparador desde el punto de entrada de Docker y lleva sus datos a l
       image_url: `/api/v1/images/${frame.id}`,
     })),
   });
-  vi.stubGlobal('planetXRuntime', { compare });
-  const scripts = ['datos.js', 'visor.js', 'espacio.js', 'app.js']
-    .map((file) => readWebFile(`public/observatorio/${file}`)).join('\n');
-
-  window.eval(scripts);
-  document.dispatchEvent(new Event('DOMContentLoaded'));
+  const { startObservatory } = await import('../features/observatorio/app.js');
+  startObservatory({ compare, mountExplorer: vi.fn() });
 
   await vi.waitFor(() => {
     expect(document.querySelector('[data-testid="comparison-viewer"]')).toBeInTheDocument();
