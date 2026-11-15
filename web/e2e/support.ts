@@ -23,7 +23,19 @@ export function loadFixture(name: string): string {
   );
 }
 
-/** Intercepta /api/v1/comparisons y responde con un fixture sintético. */
+// Nombres accesibles REALES del visor en main (SHA ae983c9). Ver docs/qa/aceptacion/selectores-propuestos.md.
+export const CAMPO_RA = "RA (grados ICRS)";
+export const CAMPO_DEC = "Dec (grados ICRS)";
+
+/** Abre la página y lanza una búsqueda desde el formulario. */
+export async function buscar(page: Page, ra = "10.25", dec = "-12.5"): Promise<void> {
+  await page.goto("/");
+  await page.getByRole("textbox", { name: CAMPO_RA }).fill(ra);
+  await page.getByRole("textbox", { name: CAMPO_DEC }).fill(dec);
+  await page.getByRole("button", { name: "Comparar" }).click();
+}
+
+/** Intercepta /api/v1/comparisons y responde con un fixture. */
 export async function mockComparisons(
   page: Page,
   fixtureName: string,
