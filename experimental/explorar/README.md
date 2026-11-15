@@ -5,8 +5,12 @@ después se navega en nave, de punto en punto, por una escena 3D. **Es ilustrati
 
 El proyecto vive aislado en `experimental/explorar/`, con su propio `package.json` y `pnpm-lock.yaml`, fuera de
 cualquier workspace. No toca `web/`, `api/`, `infra/` ni Docker. **No hace llamadas de red en ejecución:** no usa
-CDN, fuentes, texturas ni modelos remotos. Las superficies, la nebulosa y las esferas se generan con shaders y canvas
-en el navegador, y la fuente es la del sistema, como en el visor. Funciona sin conexión.
+CDN, fuentes, texturas ni modelos remotos. La nebulosa, la nave y las esferas de la selección se generan en el
+navegador. Las cinco texturas de referencia (NASA y Solar System Scope, 140 KB) van empaquetadas y se sirven desde
+el mismo origen. La fuente es la del sistema, como en el visor. Funciona sin conexión.
+
+La composición de la escena y de la selección **sale de medir los bocetos**
+(`docs/referencias/layout.json`); ver «Fidelidad a los bocetos».
 
 ## Cómo correrlo
 
@@ -23,7 +27,7 @@ pnpm build && pnpm preview  # build de producción: http://localhost:4173
 | ---------------- | ----------------------------------------------------------- |
 | `pnpm dev`       | Servidor de desarrollo                                      |
 | `pnpm typecheck` | `tsc --noEmit` (modo estricto)                              |
-| `pnpm test`      | Vitest (113 pruebas de lógica y de encapsulación del CSS)   |
+| `pnpm test`      | Vitest (148 pruebas: lógica, proyección del boceto, créditos y CSS) |
 | `pnpm build`     | Typecheck + build de producción en `dist/`                  |
 | `pnpm preview`   | Sirve `dist/`                                               |
 
@@ -53,6 +57,148 @@ Se pueden combinar: `?quality=low&debug`.
 - **Sonido:** opcional, sintetizado con WebAudio (sin archivos). **Apagado por defecto.** No se crea el contexto de
   audio hasta pulsar el botón «Silencio/Sonido», así que nunca suena solo.
 
+## Fidelidad a los bocetos
+
+Los bocetos están en `docs/referencias/` (`boceto-seleccion.png`, `boceto-navegacion.png`; no se versionan). Todo
+lo que se mide de ellos va a **`docs/referencias/layout.json`**, que sí se versiona y es la única fuente de la
+composición. Lo leen `src/boceto.ts`, los objetos de β, la nave y la selección.
+
+### Método de extracción (`tools/analizar_bocetos.py`)
+
+1. **Franja de captura.** Se recorta la franja superior de cada imagen (filas cuyo fondo no es el del dibujo): 9 px
+   en la navegación y 3 px en la selección.
+2. **Segmentación por color.**
+   - Navegación: blanco (mín(R,G,B) > 170, cierre de 7 px) para los objetos y azul (B > R+45 y B > G+60) para la
+     nave y la cruceta.
+   - Selección: trazo oscuro (< 200, cierre de 4 px para cerrar los círculos hechos a mano).
+3. **Medidas por objeto.** Componentes conexas y contornos de OpenCV. De cada uno salen centroide y caja
+   normalizados (0–1), área relativa, redondez 4πA/P², aspecto, solidez, ángulo y elongación por momentos, y huecos
+   (contornos hijos). Las estrellas del fondo (≤ 40 px) se descartan con un área mínima de 80 px.
+4. **Clasificación por reglas explícitas.**
+   - Con hueco y alargado → estación.
+   - Las dos mayores arriba a la izquierda → planetas.
+   - La mayor e irregular arriba a la derecha → planeta con anillo.
+   - La redonda más cercana al centro-derecha → esfera.
+   - El resto → cuerpos pequeños.
+
+   Cada objeto lleva una nota de confianza.
+5. **Ancla por objeto.** Es el punto de pantalla donde debe caer su centro 3D y su diámetro aparente:
+   - **Veshta** está recortado por el borde superior (punto ciego). Se completa como esfera del mismo ancho apoyada
+     en su borde inferior; no cambia de tipo.
+   - En la **estación**, el ancla es el centro del cilindro sin el asa; el asa se mide aparte.
+6. **Nave.** Se miden en el trazo azul la nariz, las puntas de ala, la base de la nariz (hombro) y las líneas de la
+   caja del motor. La geometría y el encuadre de la nave se ajustan por mínimos cuadrados (scipy) para que su
+   silueta proyectada coincida con esos 6 puntos en una pantalla 16:9, conservando las proporciones del dibujo.
+7. **Selección.** Se miden el marco (por recorridos de línea), el ícono de menú, los tres círculos (lazo cerrado,
+   solidez ≥ 0,9) y la llamada (trazos que salen del círculo hacia la derecha).
+
+### Cómo regenerar `layout.json` y volver a medir
+
+```bash
+cd experimental/explorar
+python3 -m venv /tmp/explorar-venv                                   # venv desechable, fuera del repo
+/tmp/explorar-venv/bin/pip install -r tools/requirements-analisis.txt
+/tmp/explorar-venv/bin/python tools/analizar_bocetos.py --debug /tmp/explorar-analisis   # escribe layout.json
+pnpm test                                                            # prueba de proyección (tolerancia 0,05)
+pnpm build && pnpm preview &                                         # luego, comparación sobre el render real:
+/tmp/explorar-venv/bin/python tools/comparar_vista.py --url http://localhost:4173/ --salida /tmp/explorar-comparacion.png
+```
+
+`comparar_vista.py` abre la vista inicial de β en Chrome sin interfaz, a 1280×720 y sin HUD, con todo DNS externo
+bloqueado. Genera en `/tmp` una imagen lado a lado (boceto | escena) con las anclas y lo detectado, y la tabla de
+error. Las imágenes no se versionan.
+
+### Boceto vs escena (vista inicial de β, pantalla 16:9)
+
+La «proyección» es la prueba pura (`src/sectors/beta/composicion.test.ts`, con la cámara de three como
+implementación independiente). El «render» es lo medido en la captura real: se toma la componente brillante más
+cercana al ancla. Tolerancia: 0,05 en coordenadas normalizadas.
+
+| Objeto | Clase (confianza) | Boceto (u, v) | Proyección | Render (u, v) | Error en el render |
+| --- | --- | --- | --- | --- | --- |
+| Ilmara | planeta (alta) | 0,100, 0,143 | 0,0000 | 0,114, 0,146 | 0,015 |
+| Veshta | planeta, recortado (media) | borde inferior 0,090, 0,055 | 0,0000 | 0,117, 0,067 | 0,030 |
+| Orun | planeta con anillo (media) | 0,818, 0,327 | 0,0000 | 0,836, 0,319 | 0,019 |
+| Estación Ancla | estación (alta) | 0,787, 0,673 | 0,0000 | 0,792, 0,621 | 0,053 ¹ |
+| Esfera menor | esfera (media) | 0,722, 0,562 | 0,0000 | 0,729, 0,558 | 0,008 |
+| c1 | cuerpo pequeño | 0,639, 0,341 | 0,0000 | 0,655, 0,335 | 0,016 |
+| c2 | cuerpo pequeño | 0,198, 0,298 | 0,0000 | 0,207, 0,300 | 0,010 |
+| c3 | cuerpo pequeño (irregular) | 0,334, 0,259 | 0,0000 | 0,341, 0,251 | 0,011 |
+| c4 | cuerpo pequeño | 0,180, 0,224 | 0,0000 | 0,184, 0,228 | 0,006 |
+
+¹ En la estación, el detector toma la franja de ventanas iluminadas (la parte alta del cilindro), no el cilindro
+entero; en la imagen lado a lado la cruz del boceto cae sobre la estación. Hay además un sesgo de unas +0,01 en u
+en casi todos los objetos: la luz llega por la derecha y el lado iluminado desplaza la caja detectada.
+
+La proyección da 0 por construcción: la posición 3D se calcula invirtiendo la cámara de entrada. La prueba sirve
+para comprobar que los datos llegan bien a la escena y que el encuadre de la app es el supuesto (FOV 50°, 16:9,
+cabeceo 4° del punto de entrada). Los **tamaños aparentes** quedan a menos del 15 % de lo medido y conservan su
+orden.
+
+**Nave** (6 puntos de la silueta, error tras el ajuste): nariz 0,019 · hombro 0,019 · ala izquierda 0,009 · ala
+derecha 0,009 · motor arriba 0,020 · motor abajo 0,020. El error de ~0,019 es casi todo horizontal: en el boceto la
+nave está algo a la izquierda (u = 0,475) y en la app va centrada. Proporciones medidas:
+
+- envergadura/largo 1,20;
+- nariz 30 % del largo;
+- cuerpo 25 % de la envergadura;
+- motor 14 % del largo;
+- punta de ala al 76 % del largo;
+- barrido del borde de ataque 46°.
+
+El ajuste da un cabeceo de 66°: el boceto es casi una vista en planta desde atrás y arriba.
+
+**Selección** (centro en el marco): α 0,323, 0,270 · β 0,652, 0,353 · ε 0,457, 0,652, con un error ≤ 0,0005. Los
+diámetros dibujados son ε > β > α (8,8 %, 8,1 % y 6,3 % del ancho del marco). Se conserva ese orden, escalado ×1,6
+para que se puedan señalar con comodidad.
+
+### Interpretaciones revisadas con los datos
+
+| # | Interpretación anterior | Qué dicen los datos | Cambio |
+| --- | --- | --- | --- |
+| 1 | Menú hamburguesa en la barra de la app | Ícono dentro del marco, arriba a la izquierda (0,07, 0,09) | Se mantiene: es la esquina superior izquierda de la pantalla |
+| 2 | Textos inventados neutros | — | Sin cambio |
+| 3 | «Ocho cuerpos pequeños dispersos» | **Cuatro** cuerpos pequeños (uno triangular) más una esfera; c1 también es redondo | Corregido: 4 cuerpos con su posición medida. El relleno sembrado no aparece en la vista inicial |
+| 4 | Estación con anillo **alrededor del centro** y radios | El asa sale **del extremo derecho** (hueco medido a la derecha del cilindro) | Corregido: anillo de atraque en el extremo, en el plano de la pantalla, con el largo y alto medidos |
+| 5 | Nave cabeceada 29°, a contraluz | Silueta casi en planta, con la envergadura 1,2 veces el largo | Corregido: geometría y cabeceo ajustados a 6 puntos |
+| 6 | Ruta de 7 puntos | — | Sin cambio. Los miradores laterales ahora apuntan a su objeto, calculado con los datos |
+| 7 | Botones según el destino durante el movimiento | — | Sin cambio |
+| 8 | Esc en la selección no hace nada | — | Sin cambio |
+| 9 | α y ε enfocables | — | Sin cambio |
+| 10 | Posición de las esferas «según proporciones» | Medidas: α, β y ε a ≤ 0,05 de lo que había | Corregido: posición exacta medida y orden de tamaños ε > β > α (antes β era la mayor) |
+| — | Tarjeta **debajo** del sector | La llamada del boceto va **a la derecha**, centrada, con líneas guía | Corregido: tarjeta a la derecha con línea guía (a la izquierda si el sector está muy a la derecha; debajo en pantallas estrechas) |
+| — | Anillo de Orun inclinado 24° | Eje mayor medido a 11° | Corregido: 11°. Proporción del anillo de Saturno (1,24–2,27 radios) |
+| — | Esfera menor (ancla de la esfera) | Dos manchas redondas a la derecha: (0,64, 0,34) y (0,72, 0,56) | La esfera es la más cercana al «centro-derecha» (confianza media); la otra es un cuerpo pequeño |
+| — | Cruceta abajo a la derecha | En cruz, centro ≈ (0,96, 0,80), el botón derecho cortado por el borde | Sin cambio: la cruz ya coincide |
+
+## Texturas y fuentes
+
+Se usan cinco texturas de fuentes con licencia verificada en su propia página (detalle en **ATTRIBUTIONS.md**;
+panel «Créditos» en la interfaz):
+
+- Solar System Scope (CC BY 4.0): bandas de Júpiter para Ilmara, Saturno y su anillo con transparencia para Orun.
+- NASA SVS, CGI Moon Kit (dominio público): color y relieve lunares para Veshta y la esfera menor, coloreados con
+  su propia paleta y con relieve por derivadas.
+
+Se descargan y reducen con `tools/preparar_texturas.py` (los originales quedan en `/tmp`). Los cuerpos siguen
+siendo ilustrativos.
+
+| Recurso | Peso |
+| --- | --- |
+| `bandas-jupiter.webp` | 35,6 KB |
+| `bandas-saturno.webp` | 8,4 KB |
+| `anillo-saturno.webp` | 3,0 KB (va incrustado en el chunk) |
+| `luna-color.webp` | 73,9 KB |
+| `luna-relieve.webp` | 22,1 KB |
+| **Total** | **≈ 143 KB**, solo al entrar en un sector; presupuesto fijado en 300 KB |
+
+**Cielo real de SPHEREx (etapa 4): omitido.** El registro de HiPS del CDS (MocServer) anuncia
+`CDS/P/SPHEREx/QR2/color` en `https://alasky.cds.unistra.fr/SPHEREx/color` con teselas PNG. Sin embargo, el
+servidor devolvió 404 a todo (`properties`, `Norder3/Allsky.png`, teselas de orden 0 y 3, e incluso un HiPS de
+control) y el espejo `alaskybis` no respondió. Además, la ficha no declara ODbL: dice «Courtesy NASA/JPL-Caltech» con
+la política de uso de imágenes de SPHEREx (`hips_copyright` CNRS/Unistra). Si se retoma, hay que revisar esa
+licencia antes.
+
 ## Estructura
 
 ```text
@@ -73,7 +219,12 @@ src/
   audio/                    # motor de sonido WebAudio y botón
   scene/                    # three (chunk diferido): planetas, cielo, estación, cuerpos, nave, estela, bloom
     shaders/                # GLSL propio: ruido, planeta, atmósfera, anillo, cielo, estrellas, estela
-  sectors/                  # datos: alpha/, beta/, epsilon/ y el registro
+  sectors/                  # datos: alpha/, beta/ (objetos desde layout.json), epsilon/, registro y selector.ts
+  boceto.ts                 # acceso tipado a docs/referencias/layout.json
+  credits.ts                # créditos del panel (y prueba contra ATTRIBUTIONS.md)
+  scene/assets/             # texturas empaquetadas (WebP)
+tools/                      # medición de bocetos, comparación con el render y preparación de texturas (Python)
+docs/referencias/           # layout.json (versionado) y los bocetos (sin versionar)
 ```
 
 ## Identidad visual (tomada del visor, sin paleta nueva)
@@ -110,11 +261,14 @@ independiente (`main.tsx`) y no viaja con `<Explorar />`.
 
 ### Tamaños de los chunks (build de producción)
 
-| Archivo                  | Antes (etapa 1)       | Después               |
-| ------------------------ | --------------------- | --------------------- |
-| `index-*.js` (principal) | 234,26 kB / 74,03 gz  | 256,95 kB / 82,53 gz  |
-| `index-*.css`            | 5,43 kB / 1,86 gz     | 15,80 kB / 4,28 gz    |
-| `SectorScene-*.js` (three, diferido) | 928,59 kB / 246,11 gz | 963,59 kB / 255,53 gz |
+| Archivo                  | Etapa 1               | Etapa 2 (pulido)      | Fidelidad (esta)      |
+| ------------------------ | --------------------- | --------------------- | --------------------- |
+| `index-*.js` (principal) | 234,26 kB / 74,03 gz  | 256,95 kB / 82,53 gz  | 268,37 kB / 87,19 gz  |
+| `index-*.css`            | 5,43 kB / 1,86 gz     | 15,80 kB / 4,28 gz    | 17,57 kB / 4,62 gz    |
+| `SectorScene-*.js` (three, diferido) | 928,59 kB / 246,11 gz | 963,59 kB / 255,53 gz | 970,71 kB / 260,60 gz |
+| Texturas (diferidas)     | —                     | —                     | 139,9 kB en 4 archivos + anillo incrustado |
+
+El chunk principal crece por `layout.json` (~10 kB): la selección y los datos de β lo leen.
 
 ## Decisiones
 
@@ -125,13 +279,14 @@ independiente (`main.tsx`) y no viaja con `<Explorar />`.
 - **Una sola estrella clave ilumina todo.** La luz direccional (nave, estación, cuerpos), los shaders de planetas,
   atmósferas y anillo, y el disco de la estrella en el cielo usan la misma dirección (`scene/light.ts`). La nave
   tiene además un relleno suave desde atrás, porque se ve a contraluz.
-- **Planetas:** superficie por ruido en GPU, calculado en el espacio del objeto, así que no tiene costuras. Hay dos
-  tipos: bandas torcidas por turbulencia (gigantes) y roca con crestas y depresiones. El terminador es suave y hay
+- **Planetas:** primero, superficie por ruido en GPU (sin costuras); cuando llega su textura de referencia (carga
+  progresiva), color de la textura teñido hacia su paleta (gigantes) o su luminancia coloreada con la paleta
+  (rocosos), con relieve por derivadas y detalle fino de ruido encima. Si una textura falla, sigue la procedural. El terminador es suave y hay
   una atmósfera aditiva con fresnel, más intensa del lado iluminado. El anillo tiene bandas, una división y
   transparencia, recibe la sombra del planeta y proyecta la suya sobre el planeta.
-- **Cuerpos pequeños:** los 8 del boceto más un relleno sembrado (hasta 40) que **nunca queda a menos de 7 unidades
-  de la ruta** ni dentro de planetas, anillos o la estación (probado). Al bajar la calidad solo se quitan cuerpos,
-  no se mueven.
+- **Cuerpos pequeños:** los 4 medidos en el boceto más un relleno sembrado (hasta 40). El relleno **nunca queda a
+  menos de 14 unidades de la ruta** ni dentro de planetas, anillos o la estación (probado), y no aparece en la vista
+  inicial, para que esta reproduzca el boceto. Al bajar la calidad solo se quitan cuerpos, no se mueven.
 - **Movimiento:** sigue siendo lineal por puntos de ruta. Al pose del grafo se le suman la llegada, el empuje de FOV
   (+7° a mitad de tramo), una leve oscilación de cámara y el alabeo de la nave en A/D.
 - **Pantallas verticales:** se conserva el campo de visión horizontal del encuadre 16:9 (hasta 92° vertical) y la
@@ -158,8 +313,9 @@ independiente (`main.tsx`) y no viaja con `<Explorar />`.
    ruta y objetos con nombre), sin inventar contenido.
 8. **Sonido:** zumbido grave del motor, un barrido de ruido en cada tramo y un barrido ascendente en el salto. No se
    guarda la preferencia: siempre empieza apagado.
-9. **Las 10 interpretaciones de la primera etapa** siguen vigentes: menú solo en la app independiente, α y ε
-   enfocables con `aria-disabled`, rejilla de 7 puntos, Esc en la selección no hace nada, etc.
+9. **Las 10 interpretaciones de la primera etapa** se revisaron contra las medidas. Las correcciones están en
+   «Interpretaciones revisadas con los datos»; en particular, la estación (punto 4 de arriba) ahora lleva el asa en
+   un extremo, no un anillo en el centro.
 
 ## Cómo añadir o activar α y ε
 
@@ -183,7 +339,9 @@ const Explorar = lazy(() => import('../features/explorar').then((m) => ({ defaul
 </div>
 ```
 
-1. Copia `src/` sin `App.tsx`, `main.tsx` ni `app.css` a `web/src/features/explorar/`.
+1. Copia `src/` sin `App.tsx`, `main.tsx` ni `app.css` a `web/src/features/explorar/`, junto con
+   `docs/referencias/layout.json`. Ajusta la ruta de importación en `src/boceto.ts` y activa `resolveJsonModule`
+   en el tsconfig de `web/`. `src/scene/assets/` viaja con `src/`.
 2. Añade a `web/package.json` `three@0.187.0`, `@react-three/fiber@^9.8.2` y `@types/three@0.187.0`, con las mismas
    versiones que aquí.
 3. Carga `Explorar` con `lazy`, como arriba. Así ni el componente ni three pesan en el visor hasta que se abre la
@@ -236,9 +394,12 @@ Verificado con Chrome sin interfaz y render **por software** (SwiftShader), con 
 
 ## Límites conocidos
 
-- Las pruebas cubren la lógica (113): grafo, navegación, pose, calidad adaptativa, parámetros de URL, estados de la
-  cruceta, plano de ruta, dispersión, curvas de movimiento, ruido, sonido y encapsulación del CSS. No hay pruebas de
-  componentes DOM ni de render.
+- Las pruebas cubren la lógica (148): grafo, navegación, pose, calidad adaptativa, parámetros de URL, estados de la
+  cruceta, plano de ruta, dispersión, curvas de movimiento, ruido, sonido, encapsulación del CSS, proyección del
+  boceto (objetos, tamaños, nave, selección y miradores) y créditos de las texturas. No hay pruebas de componentes
+  DOM. El render se compara con `tools/comparar_vista.py`, fuera de `pnpm test`.
+- La vista inicial reproduce el boceto en 16:9. En pantallas más anchas, los objetos se acercan al centro en
+  horizontal; en más estrechas, se alejan (el FOV vertical es fijo en horizontal).
 - `@react-three/fiber` 9.8.2 escribe en consola «THREE.Clock: This module has been deprecated». Es interno de la
   librería.
 - En vertical muy estrecho, los objetos de los bordes del encuadre del boceto quedan parcialmente fuera.
@@ -246,8 +407,11 @@ Verificado con Chrome sin interfaz y render **por software** (SwiftShader), con 
 
 ## Licencias
 
-**No se añadió ninguna librería en esta etapa.** No se incluyen modelos, imágenes, fuentes ni texturas de
-terceros: la nave, los objetos, el ruido, los shaders y las texturas son código propio de este proyecto.
+**No se añadió ninguna librería.** Las únicas piezas de terceros que no son código son las cinco texturas
+empaquetadas de NASA SVS (dominio público) y Solar System Scope (CC BY 4.0), detalladas en **ATTRIBUTIONS.md**. La
+nave, la estación, el ruido y los shaders son código propio. Las herramientas de `tools/` usan numpy, OpenCV,
+Pillow, scipy y websocket-client en un venv desechable fuera del repo (`tools/requirements-analisis.txt`). No son
+dependencias de la app.
 
 Dependencias de ejecución (en el navegador):
 
