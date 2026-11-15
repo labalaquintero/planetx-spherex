@@ -42,6 +42,8 @@ interface Props {
   /** Ranura para controles extra en la barra superior del HUD (p. ej., sonido). */
   extraControls?: ReactNode
   /** Nivel del motor 0..1, unas 10 veces por segundo (para el sonido). */
+  /** Paso de un visitante (para su sonido). */
+  onVisitor?: (kind: VisitorKind) => void
   onEngine?: (level: number) => void
   /** Impacto de un cometa o meteorito (para el sonido). */
   onImpact?: (strength: number) => void
@@ -81,7 +83,7 @@ export const INFO_DISTANCE = 120
 /** Y se oculta solo al alejarse más de esto (histéresis). */
 export const INFO_HIDE_DISTANCE = 140
 
-export function NavigationScreen({ sector, onExit, arrive, reduced, quality: initialLevel, forced, debug, extraControls, onEngine, onImpact }: Props) {
+export function NavigationScreen({ sector, onExit, arrive, reduced, quality: initialLevel, forced, debug, extraControls, onEngine, onImpact, onVisitor }: Props) {
   const { scene } = sector
   const webgl = useMemo(() => detectWebGL(), [])
   // Perfil de rendimiento: más ligero en Windows (Direct3D vía ANGLE); ?perfil= lo fuerza.
@@ -185,13 +187,14 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
   }, [toast])
   const onVisitorEvent = useCallback(
     (e: VisitorEvent) => {
+      if (e.type === 'spawn') onVisitor?.(e.kind)
       if (e.type === 'spawn' && e.kind === 'comet') setToast({ text: 'Un cometa cruza el sector', tone: 'info', key: Date.now() })
       if (e.type === 'impact') {
         setToast({ text: `${IMPACT_TEXT[e.kind]} · la nave se estabiliza`, tone: 'warn', key: Date.now() })
         onImpact?.(e.strength)
       }
     },
-    [onImpact],
+    [onImpact, onVisitor],
   )
 
   const mapSize = 200
