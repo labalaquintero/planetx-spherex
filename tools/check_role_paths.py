@@ -63,6 +63,7 @@ OWNERS: dict[str, list[str]] = {
         "api/planetx/http/",
         "api/planetx/irsa/",
         "api/tests/http/",
+        "experimental/explorar/",  # extra independiente «Explorar»; fuera de §6 a petición de Isaac
     ],
     "devalle": [
         "api/planetx/catalog/",
