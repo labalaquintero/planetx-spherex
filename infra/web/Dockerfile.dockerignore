@@ -1,0 +1,6 @@
+# Lista blanca para el build del web (BuildKit usa este archivo junto a infra/web/Dockerfile).
+*
+!web/**
+web/node_modules
+web/dist
+!infra/web/nginx.conf

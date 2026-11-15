@@ -12,11 +12,5 @@ test-results/
 !.env.example
 *.pem
 *.key
-/data/raw/
-/data/processed/
-/data/products/
-/data/**/products/
-/data/**/*.png
-/data/**/*.fits
-/data/**/*.fits.gz
-/data/**/*.local.json
+# Los datos (manifiestos, PNG, FITS) nunca se suben al repositorio.
+/data/
