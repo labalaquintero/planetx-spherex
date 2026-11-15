@@ -1,6 +1,6 @@
 # Catálogo de casos preparados (F01) · Frontera y modelo de datos
 
-**Responsable:** DeValle · **Rama:** `devalle/wise0855-catalog-spec` · **Contrato:** Comparación v1 (`schema_version: "1"`).
+**Responsable:** DeValle · **Rama:** `devalle/catalog-hardening-validation` · **Contrato:** Comparación v1 (`schema_version: "1"`).
 
 ## 1. Frontera de integración para API (`Isaac`)
 
@@ -29,6 +29,14 @@ payload = get_prepared(
 3. **Revocación trazable:** para invalidar un caso sin perder historial, marcar `"revoked": true` o `"active": false` en la entrada del manifiesto.
 4. **Integridad de productos:** cada `frame.id` debe existir como `<frame_id>.png` no vacío en storage antes de exponer el manifiesto.
 5. **Formato de `frame.id`:** debe cumplir la expresión regular `^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$` (entre 1 y 128 caracteres; empieza con alfanumérico; el resto admite letras, dígitos, punto, guión bajo y guión medio; sin espacios, barras ni caracteres especiales). Esta regla está alineada con `FRAME_ID_RE` del módulo HTTP (`planetx.http.images`) para garantizar que todo `frame_id` emitido por `get_prepared()` sea directamente servible por `/api/v1/images/<frame_id>` sin conversión ni rechazo.
+6. **Fechas UTC estrictas y coherencia temporal:** tanto `checked_at` como cada `observed_at` deben cumplir la expresión regular estricta `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$` (separador obligatorio `T`, sufijo `Z` y hasta 6 dígitos de microsegundos opcionales; se rechazan separadores con espacio, fechas sin hora u offsets numéricos como `+00:00` o `+02:00`). Asimismo, todo fotograma debe cumplir `observed_at <= checked_at` (no puede haberse observado después de la verificación del catálogo).
+7. **Procedencia estricta (`release`, `source_url`, `observation_id`):**
+   * `observation_id`: debe cumplir `^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$` (sin espacios ni símbolos de control).
+   * En fotogramas con `release` oficial (`"dr1"`, `"qr3"`), `source_url` es obligatorio y debe ser una URL `https://` válida con host (netloc) no vacío.
+   * En fotogramas con `release == "fixture"`, `source_url` puede ser `None` o una URL `http://` / `https://` válida (se rechazan esquemas no soportados como `ftp://` o URLs malformadas).
+8. **Versionado estricto (`schema_version`, `science_version`):**
+   * `science_version`: debe cumplir `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` (entre 1 y 64 caracteres, sin espacios al inicio/final ni símbolos no permitidos) tanto al consultarse en `get_prepared()` (`InvalidCatalogQueryError` ante valor inválido) como en cada entrada del manifiesto (`ManifestCorruptError`).
+   * Si la raíz del manifiesto JSON declara `schema_version`, este debe ser exactamente `"1"`.
 
 ## 3. Ficha técnica oficial — Caso preparado WISE 0855
 
