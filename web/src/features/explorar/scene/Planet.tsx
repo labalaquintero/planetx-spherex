@@ -192,8 +192,9 @@ export function Planet({ o, spin, octaves, segments: detail, bumpScale = 0.9 }: 
           <sphereGeometry args={[o.radius, segments[0], segments[1]]} />
         </mesh>
       </group>
+      {/* Atmósfera fina: más gruesa se veía como un segundo disco corrido, sobre todo de lejos. */}
       {atmosphere && (
-        <mesh material={atmosphere} scale={o.surface === 'storms' ? 1.035 : 1.075}>
+        <mesh material={atmosphere} scale={o.surface === 'storms' ? 1.035 : 1.045}>
           <sphereGeometry args={[o.radius, 48, 32]} />
         </mesh>
       )}

@@ -50,6 +50,16 @@ varying vec3 vWorld;
 varying vec3 vNormalW;
 ${NOISE}
 ${RING_DENSITY}
+// Costura: muchos mapas son recortes cuyo borde izquierdo no casa con el derecho y, al envolver la esfera,
+// se veía un corte vertical. Cerca de la costura se mezcla con el lado opuesto en espejo: a ambos lados
+// queda el mismo valor. Las dos lecturas van fuera de ramas (derivadas y mipmaps bien definidos).
+vec4 ex_seamless(sampler2D t, vec2 uv) {
+  vec4 c = texture2D(t, uv);
+  vec4 m = texture2D(t, vec2(1.0 - uv.x, uv.y));
+  float d = min(uv.x, 1.0 - uv.x);
+  float w = 0.5 * (1.0 - smoothstep(0.0, 0.045, d));
+  return mix(c, m, w);
+}
 // Relieve por derivadas de pantalla (como bumpmap de three, sin tangentes).
 vec3 ex_bump(vec3 N, vec3 pos, float h, float scale) {
   vec3 dpx = dFdx(pos);
@@ -115,7 +125,7 @@ void main() {
   // Ojo de las tormentas: un anillo algo más claro y frío.
   albedo = mix(albedo, uC2 * 1.15, storm * smoothstep(0.2, 0.7, t) * 0.5);
   if (uHasMap > 0.5) {
-    vec3 tex = texture2D(uMap, vUv).rgb;
+    vec3 tex = ex_seamless(uMap, vUv).rgb;
     float lum = dot(tex, vec3(0.2126, 0.7152, 0.0722));
     // Detalle fino procedural encima de la textura (evita que se vea borrosa de cerca).
     float fineDetail = 0.94 + 0.12 * ex_noise3(sp * 14.0);
@@ -127,7 +137,7 @@ void main() {
   }
 
   vec3 N = normalize(vNormalW);
-  if (uHasBump > 0.5) N = ex_bump(N, vWorld, texture2D(uBump, vUv).r, uBumpScale);
+  if (uHasBump > 0.5) N = ex_bump(N, vWorld, ex_seamless(uBump, vUv).r, uBumpScale);
   float ndl = dot(N, uLight);
   float diffuse = smoothstep(-0.12, 1.0, ndl);           // terminador suave
   float shadow = 1.0;

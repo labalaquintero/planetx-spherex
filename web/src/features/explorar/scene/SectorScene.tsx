@@ -91,7 +91,9 @@ export default function SectorScene(props: Props) {
     <Canvas
       dpr={dpr}
       frameloop={paused ? 'never' : animate ? 'always' : 'demand'}
-      camera={{ fov: 50, near: 0.1, far: 4000, position: [0, 0, 0] }}
+      // near 0,5 (no 0,1): 5 veces más precisión de profundidad a 1000 u, sin parpadeo entre la atmósfera y
+      // la superficie de los planetas lejanos. far 6000: el fondo nunca se recorta en el borde del sector.
+      camera={{ fov: 50, near: 0.5, far: 6000, position: [0, 0, 0] }}
       // Sin antialias en el lienzo: el composer ya hace MSAA; en el lienzo solo costaría una
       // resolución extra a pantalla completa en cada cuadro.
       gl={{ antialias: false, powerPreference: 'high-performance', toneMapping: AgXToneMapping, toneMappingExposure: 1.15 }}
