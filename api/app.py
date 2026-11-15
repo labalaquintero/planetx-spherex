@@ -1,7 +1,3 @@
-from fastapi import FastAPI
+from planetx.http import create_app
 
-app = FastAPI(title="Planet X / SPHEREx")
-
-@app.get("/api/health")
-def health():
-    return {"status": "ok"}
+app = create_app()
