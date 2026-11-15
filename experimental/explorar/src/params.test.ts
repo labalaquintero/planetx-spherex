@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseParams, scanParam, spawnPointParam } from './params'
+import { diveParam, parseParams, scanParam, spawnPointParam } from './params'
 
 describe('parseParams', () => {
   it('por defecto: calidad automática y sin depuración', () => {
@@ -49,5 +49,13 @@ describe('scanParam', () => {
     expect(scanParam('?escanear=nadie', ['cobalto'])).toBeNull()
     expect(scanParam('?escanear=', ['cobalto'])).toBeNull()
     expect(scanParam('', ['cobalto'])).toBeNull()
+  })
+})
+
+describe('diveParam', () => {
+  it('solo acepta planetas atravesables', () => {
+    expect(diveParam('?atravesar=cobalto', ['cobalto', 'calder'])).toBe('cobalto')
+    expect(diveParam('?atravesar=orun', ['cobalto', 'calder'])).toBeNull()
+    expect(diveParam('', ['cobalto'])).toBeNull()
   })
 })

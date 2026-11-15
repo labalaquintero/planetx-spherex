@@ -19,6 +19,8 @@ export interface SoundEngine {
   hover(): void
   /** Escaneo de un planeta: barrido ascendente con tics y dos notas al terminar. */
   scan(): void
+  /** Travesía de un planeta gaseoso: acelerón, rugido dentro de las nubes y estallido al salir (≈6 s). */
+  dive(): void
   /** Paso de un visitante: «fiu» corto de estrella fugaz, soplo largo de cometa, roce grave de asteroide. */
   visitor(kind: 'comet' | 'meteor' | 'asteroid'): void
   dispose(): void
@@ -105,9 +107,9 @@ export function createSound(factory: () => Ctx | null = defaultFactory): SoundEn
     return ctx
   }
 
-  const swoosh = (duration: number, from: number, peak: number, level: number) => {
+  const swoosh = (duration: number, from: number, peak: number, level: number, at = 0) => {
     if (!on || !ctx || !master || !noise) return
-    const t = ctx.currentTime
+    const t = ctx.currentTime + at
     const src = ctx.createBufferSource()
     src.buffer = noise
     const bp = ctx.createBiquadFilter()
@@ -198,6 +200,29 @@ export function createSound(factory: () => Ctx | null = defaultFactory): SoundEn
     },
     hover() {
       blip(1320, 0, 0.09, 0.06)
+    },
+    dive() {
+      if (!on || !ctx || !master) return
+      swoosh(1.4, 180, 1400, 0.2)
+      swoosh(3.1, 90, 520, 0.26, 1.3)
+      swoosh(1.5, 300, 2600, 0.24, 4.3)
+      const t = ctx.currentTime
+      // Retumbo grave dentro del gas (sube y baja con la travesía).
+      const o = ctx.createOscillator()
+      o.type = 'sawtooth'
+      o.frequency.setValueAtTime(48, t + 1.2)
+      o.frequency.exponentialRampToValueAtTime(70, t + 3)
+      o.frequency.exponentialRampToValueAtTime(42, t + 4.4)
+      const lp = ctx.createBiquadFilter()
+      lp.type = 'lowpass'
+      lp.frequency.value = 260
+      const g = ctx.createGain()
+      g.gain.setValueAtTime(0.0001, t + 1.2)
+      g.gain.exponentialRampToValueAtTime(0.12, t + 1.8)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 4.5)
+      o.connect(lp).connect(g).connect(master)
+      o.start(t + 1.2)
+      o.stop(t + 4.6)
     },
     scan() {
       if (!on || !ctx || !master) return

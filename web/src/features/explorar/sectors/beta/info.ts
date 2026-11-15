@@ -38,6 +38,7 @@ export const BETA_INFO: Readonly<Record<string, ObjectInfo>> = {
     facts: [
       'El azul de Neptuno se debe al metano de su atmósfera, que absorbe la luz roja.',
       'En Neptuno soplan los vientos más rápidos del sistema solar: más de 2 000 km/h.',
+      'Es gaseoso: con turbo (Shift) y directo hacia él, la nave lo atraviesa.',
     ],
     images: [{ src: NEPTUNO, caption: 'Neptuno · Voyager 2 (NASA/JPL)' }],
     credit: JPL_COLOR,
@@ -320,6 +321,7 @@ export const BETA_INFO: Readonly<Record<string, ObjectInfo>> = {
     facts: [
       'Los gigantes de hielo tienen más agua, amoniaco y metano que los gigantes gaseosos como Júpiter o Saturno.',
       'Su luna helada, Sora, orbita cerca.',
+      'Es gaseoso: con turbo (Shift) y directo hacia él, la nave lo atraviesa.',
     ],
     images: [{ src: SATURNO, caption: 'Mapa de Saturno (solo su luminancia)' }],
     credit: 'Imagen: Solar System Scope, CC BY 4.0.',

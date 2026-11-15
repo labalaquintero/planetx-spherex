@@ -7,7 +7,9 @@ import type { SectorScene as SectorSceneData } from '../engine/types'
 import { smallBodiesOf } from './bodies'
 import { DeepSky } from './DeepSky'
 import { Bloom } from './Effects'
-import { FlightRig } from './FlightRig'
+import { FlightRig, type DiveEvent } from './FlightRig'
+import { DiveFX, type ActiveDive } from './DiveFX'
+import type { DivePlan } from '../engine/dive'
 import { LIGHT_DIR } from './light'
 import { Planet } from './Planet'
 import { Sky } from './Sky'
@@ -38,6 +40,8 @@ interface Props {
   onVisitorEvent?: (e: VisitorEvent) => void
   /** En pausa (p. ej., durante un escaneo): no se dibuja ni se simula. */
   paused?: boolean
+  /** Travesía de un planeta gaseoso: empieza, entra, sale y termina (para el HUD y el sonido). */
+  onDive?: (event: DiveEvent, plan: DivePlan) => void
 }
 
 /** dpr de la escena según el nivel y el tope de píxeles; se recalcula al cambiar el tamaño o el zoom. */
@@ -76,7 +80,8 @@ function Governor({ quality, onChange, onFps }: { quality: AdaptiveQuality; onCh
 
 /** Escena 3D de un sector con vuelo libre. Es la única parte que importa three (carga diferida). */
 export default function SectorScene(props: Props) {
-  const { scene, flight, input, aim, bounds, obstacles, animate, arrive, settings, quality, onQualityChange, onFps, onVisitorEvent, paused } = props
+  const { scene, flight, input, aim, bounds, obstacles, animate, arrive, settings, quality, onQualityChange, onFps, onVisitorEvent, paused, onDive } = props
+  const dive = useRef<ActiveDive | null>(null)
   const light = LIGHT_DIR.clone().multiplyScalar(200)
   const bodies = useMemo(() => smallBodiesOf(scene, settings.debris), [scene, settings.debris])
   // Las rocas también son obstáculos (con su holgura): no se atraviesan.
@@ -129,7 +134,11 @@ export default function SectorScene(props: Props) {
         arrive={arrive}
         trailParticles={settings.trailParticles}
         aim={aim}
+        objects={scene.objects}
+        dive={dive}
+        onDive={onDive}
       />
+      <DiveFX dive={dive} objects={scene.objects} />
       {settings.bloom && <Bloom strength={settings.bloomStrength} samples={samples} chromatic={settings.chromatic} grain={settings.grain} scale={settings.bloomScale} />}
       <Governor quality={quality} onChange={onQualityChange} onFps={onFps} />
     </Canvas>

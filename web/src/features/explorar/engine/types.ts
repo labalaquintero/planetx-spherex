@@ -52,6 +52,11 @@ export interface SceneObject {
   readonly surface?: 'bands' | 'rocky' | 'storms'
   /** Brillo propio tenue (CSS), p. ej. la emisión infrarroja ilustrada de un mundo frío. */
   readonly glow?: string
+  /**
+   * Planeta gaseoso que se puede atravesar: en vuelo normal es sólido como los demás, pero si la nave va con
+   * turbo directo hacia él, lo cruza en una secuencia corta (engine/dive.ts).
+   */
+  readonly crossable?: boolean
   /** Solo planeta con anillo: radios interno y externo en múltiplos del radio. */
   readonly ring?: { readonly inner: number; readonly outer: number; readonly tiltDeg: number }
   /** Solo estación: longitud del cilindro. */

@@ -40,6 +40,15 @@ export function scanParam(search: string, validIds: readonly string[]): string |
 }
 
 /**
+ * ?atravesar=<id de planeta atravesable>: la nave sale frente a ese planeta gaseoso, mirándolo (demo de la
+ * travesía: basta con mantener W + Shift). Sin valor válido, se usa el punto de salida normal.
+ */
+export function diveParam(search: string, validIds: readonly string[]): string | null {
+  const v = new URLSearchParams(search).get('atravesar')?.trim()
+  return v && validIds.includes(v) ? v : null
+}
+
+/**
  * ?perfil=windows|general fuerza el perfil de rendimiento (para probar el de Windows en otro sistema,
  * o para quitarlo). Sin valor válido, se detecta la plataforma.
  */

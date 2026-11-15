@@ -89,6 +89,7 @@ export function Explorar({ className }: ExplorarProps) {
           onImpact={(k) => sound.impact(k)}
           onVisitor={(k) => sound.visitor(k)}
           onScan={() => sound.scan()}
+          onDive={() => sound.dive()}
         />
       ) : (
         <SectorSelect

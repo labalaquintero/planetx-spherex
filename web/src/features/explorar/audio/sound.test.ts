@@ -123,6 +123,7 @@ describe('sonido (WebAudio)', () => {
     s.hover()
     s.visitor('meteor')
     s.scan()
+    s.dive()
     expect(fake.created).toHaveLength(0)
     s.setEnabled(true)
     for (const k of ['comet', 'meteor', 'asteroid'] as const) {
@@ -136,6 +137,9 @@ describe('sonido (WebAudio)', () => {
     const beforeScan = fake.created.length
     s.scan()
     expect(fake.created.length).toBeGreaterThan(beforeScan)
+    const beforeDive = fake.created.length
+    s.dive()
+    expect(fake.created.length).toBeGreaterThan(beforeDive)
   })
 })
 

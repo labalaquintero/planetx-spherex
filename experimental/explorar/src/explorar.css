@@ -1418,11 +1418,102 @@
   }
 }
 
+/* ---------- Travesía de un planeta gaseoso (turbo directo hacia Cobalto o Calder) ---------- */
+.ex-chip-cross {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.72rem;
+  white-space: normal;
+}
+.ex-nav[data-diving] .ex-hud,
+.ex-nav[data-diving] .ex-toast {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 300ms ease;
+}
+.ex-cine {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+}
+.ex-cine-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 11%;
+  background: #000;
+  animation: ex-cine-in 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.ex-cine-bar[data-side='top'] {
+  top: 0;
+  transform-origin: top;
+}
+.ex-cine-bar[data-side='bottom'] {
+  bottom: 0;
+  transform-origin: bottom;
+}
+.ex-cine-caption {
+  position: absolute;
+  left: 50%;
+  bottom: calc(11% + 18px);
+  margin: 0;
+  font-size: clamp(0.9rem, 2.4cqmin, 1.3rem);
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--ex-heading);
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.9);
+  white-space: nowrap;
+  transform: translateX(-50%);
+  animation: ex-cine-caption 5.6s ease both;
+}
+/* Destello al entrar y al salir del planeta. */
+.ex-cine-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 16;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.95), rgba(224, 242, 254, 0.6) 40%, rgba(224, 242, 254, 0) 80%);
+  animation: ex-cine-flash 700ms ease-out both;
+}
+@keyframes ex-cine-in {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes ex-cine-caption {
+  0%,
+  8% {
+    opacity: 0;
+    letter-spacing: 0.6em;
+  }
+  20%,
+  80% {
+    opacity: 1;
+    letter-spacing: 0.32em;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes ex-cine-flash {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ex-scan,
   .ex-scan-layer,
   .ex-scan-line,
-  .ex-lock-hint {
+  .ex-lock-hint,
+  .ex-cine-bar,
+  .ex-cine-caption,
+  .ex-cine-flash {
     animation: none;
   }
   .ex-scan-readout div {
