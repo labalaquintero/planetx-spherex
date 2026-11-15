@@ -20,18 +20,18 @@
     {
       "id": "sintetico-prep-a",
       "observed_at": "2026-01-05T00:00:00Z",
-      "release": "fixture",
+      "release": "dr1",
       "observation_id": "sintetico-prep-obs-a",
-      "source_url": null,
+      "source_url": "https://example.invalid/irsa/sintetico-prep-obs-a",
       "image_url": "/api/v1/images/sintetico-prep-a",
       "quality_flags": []
     },
     {
       "id": "sintetico-prep-b",
       "observed_at": "2026-07-05T00:00:00Z",
-      "release": "fixture",
+      "release": "dr1",
       "observation_id": "sintetico-prep-obs-b",
-      "source_url": null,
+      "source_url": "https://example.invalid/irsa/sintetico-prep-obs-b",
       "image_url": "/api/v1/images/sintetico-prep-b",
       "quality_flags": []
     }

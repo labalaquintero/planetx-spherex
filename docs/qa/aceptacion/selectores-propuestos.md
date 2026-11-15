@@ -25,6 +25,7 @@
 | Sin cobertura | `status` con texto «Sin cobertura» |
 | Fallo temporal (503) | `alert` con texto «Fallo temporal» y `button` «Reintentar» |
 | Error inesperado (500) | `alert` con mensaje público breve |
+| Aviso de búsqueda recortada (`ready` + warning `search_limit_reached`) | `note` no bloqueante con texto «búsqueda recortada» (texto exacto por acordar); no debe confundirse con «Cobertura insuficiente» |
 | Aviso de no-hallazgo | `note` con «un cambio visible no prueba un hallazgo» |
 | Datos de prueba | texto visible «Datos de prueba» |
 | Caso preparado | texto visible «Caso preparado» + fecha de preparación |
@@ -52,10 +53,15 @@ Es esencial que «Sin cobertura», «Cobertura insuficiente» y «Fallo temporal
 | Enlace de fuente | `link` «Fuente (IRSA)» con `href` = `source_url` |
 | Release | texto `dr1` / `qr3` |
 
+## Cerrada (respondida por Alexis)
+
+- ~~¿La UI valida RA/Dec en el navegador antes de enviar?~~ **Sí: RA/Dec se validan en el navegador y también en la API.** La UI no envía la petición con coordenadas inválidas (casos C09–C11); el `422 invalid_coordinates` de la API se prueba directamente, sin UI (F01-R03a/b/c). Por tanto la UI no necesita mostrar un 422 del servidor para estos casos.
+
 ## Preguntas abiertas para Santiago
 
-1. ¿La UI valida RA/Dec en el navegador antes de enviar? Si sí, ¿qué mensaje y qué campo recibe el foco? ¿Y si llega un `422` del servidor, se muestra igual?
+1. ¿Qué campo recibe el foco y qué texto exacto muestra el error de validación (faltante, NaN/Infinity, fuera de rango)? ¿Orienta sobre la conversión desde horas/minutos?
 2. ¿Cómo se anuncia el cambio de fotograma durante la reproducción (región `aria-live`)?
 3. ¿Selector de época como `slider` o como grupo de botones?
 4. ¿Cómo se ve un fotograma cuyo PNG da 404?
 5. ¿Puerto y proxy de dev para `E2E_BASE_URL`? (Isaac confirma el puerto de la API.)
+6. ¿Cómo y con qué texto se muestra el aviso de búsqueda recortada (`ready` + `search_limit_reached` en `warnings`)?

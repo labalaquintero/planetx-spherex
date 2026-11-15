@@ -70,13 +70,38 @@ test.describe("F01 estados 200 [SIMULADO]", () => {
     await expect(page.getByRole("button", { name: "Reproducir" })).toBeDisabled();
   });
 
-  test.fixme("F01-C06 · insufficient search_limit_reached @simulado", async ({ page }) => {
-    await mockComparisons(page, "sintetico-insufficient-search-limit-reached");
+  // search_limit_reached sin fotograma validado: frames [] y band null.
+  test.fixme("F01-C06 · insufficient search_limit_reached sin fotograma (frames [] y band null) @simulado", async ({ page }) => {
+    await mockComparisons(page, "sintetico-insufficient-search-limit-reached-0-frames");
     await buscar(page);
 
     await expect(page.getByRole("status")).toContainText("Cobertura insuficiente");
     await expect(page.getByRole("status")).not.toContainText("Sin cobertura");
+    await expect(page.getByRole("img")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Reproducir" })).toBeDisabled();
+  });
+
+  // search_limit_reached con un fotograma validado: 1 frame y band con valor.
+  test.fixme("F01-C20 · insufficient search_limit_reached con 1 fotograma validado (band con valor) @simulado", async ({ page }) => {
+    await mockImages(page);
+    await mockComparisons(page, "sintetico-insufficient-search-limit-reached-1-frame");
+    await buscar(page);
+
+    await expect(page.getByRole("status")).toContainText("Cobertura insuficiente");
+    await expect(page.getByRole("img", { name: /Fotograma 1 de 1/ })).toBeVisible();
+    await expect(page.getByText(/1[.,]25/)).toBeVisible(); // banda presentada
+    await expect(page.getByRole("button", { name: "Reproducir" })).toBeDisabled();
+  });
+
+  // search_limit_reached como warning con secuencia válida: status ready.
+  test.fixme("F01-C21 · ready con warning search_limit_reached @simulado", async ({ page }) => {
+    await mockImages(page);
+    await mockComparisons(page, "sintetico-ready-search-limit-warning");
+    await buscar(page);
+
+    await expect(page.getByText(/búsqueda.*(recort|límite)/i)).toBeVisible(); // aviso no bloqueante
+    await expect(page.getByRole("button", { name: "Reproducir" })).toBeEnabled(); // el reproductor sigue habilitado
+    await expect(page.getByRole("status")).not.toContainText("Cobertura insuficiente");
   });
 
   test.fixme("F01-C07 · no_coverage no_observations @simulado", async ({ page }) => {
@@ -95,6 +120,13 @@ test.describe("F01 estados 200 [SIMULADO]", () => {
 
     await expect(page.getByText("Caso preparado")).toBeVisible();
     await expect(page.getByText("2026-11-14")).toBeVisible(); // checked_at = fecha de preparación
+    // Regla 2: cada fotograma lleva release dr1/qr3 y un source_url. En este fixture sintético es
+    // https://example.invalid/... a propósito (NO verificable); que uno real abre en IRSA es F01-R08.
+    await expect(page.getByText("dr1").first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Fuente (IRSA)" }).first()).toHaveAttribute(
+      "href",
+      "https://example.invalid/irsa/sintetico-prep-obs-a",
+    );
   });
 
   test.fixme("F01-C16 · etiqueta «Datos de prueba» con mode fixture @simulado", async ({ page }) => {

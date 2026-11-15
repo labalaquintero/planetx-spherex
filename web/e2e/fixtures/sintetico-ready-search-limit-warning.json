@@ -1,0 +1,41 @@
+{
+  "schema_version": "1",
+  "status": "ready",
+  "reason": null,
+  "mode": "fixture",
+  "query": {
+    "ra_deg": 10.25,
+    "dec_deg": -12.5,
+    "frame": "ICRS",
+    "fov_deg": 0.1
+  },
+  "band": {
+    "center_um": 1.25,
+    "tolerance_um": 0.02
+  },
+  "checked_at": "2026-11-14T12:00:00Z",
+  "science_version": "v1",
+  "warnings": [
+    "search_limit_reached"
+  ],
+  "frames": [
+    {
+      "id": "sintetico-warn-a",
+      "observed_at": "2026-01-05T00:00:00Z",
+      "release": "fixture",
+      "observation_id": "sintetico-warn-obs-a",
+      "source_url": null,
+      "image_url": "/api/v1/images/sintetico-warn-a",
+      "quality_flags": []
+    },
+    {
+      "id": "sintetico-warn-b",
+      "observed_at": "2026-07-05T00:00:00Z",
+      "release": "fixture",
+      "observation_id": "sintetico-warn-obs-b",
+      "source_url": null,
+      "image_url": "/api/v1/images/sintetico-warn-b",
+      "quality_flags": []
+    }
+  ]
+}

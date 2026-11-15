@@ -11,8 +11,9 @@ async function buscar(page: Page, ra: string, dec: string) {
   await page.getByRole("button", { name: "Comparar" }).click();
 }
 
-// Validación en navegador (§2.1). Pregunta abierta a Santiago: si la UI no bloquea en cliente
-// y envía igualmente, estos casos pasan a comprobar el 422 `invalid_coordinates` (sintetico-error-422).
+// Validación en navegador (§2.1). CONFIRMADO por Alexis: RA/Dec se validan en el navegador y también
+// en la API; la UI NO envía la petición con coordenadas inválidas. El mock 422 sólo detecta que no sale.
+// El 422 real de la API se prueba directamente en api.spec.ts (F01-R03a/b/c).
 test.describe("F01 validación de coordenadas [SIMULADO]", () => {
   const sinPeticion = async (page: Page) => {
     let peticiones = 0;
