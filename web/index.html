@@ -1,13 +1,67 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>web</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#080b17">
+  <meta name="description" content="Explora y compara observaciones de una misma región del cielo en distintas fechas con SPHEREx.">
+  <title>Planet X · Visor temporal SPHEREx</title>
+  <script type="module" src="/src/main.tsx"></script>
+</head>
+<body>
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="#inicio" aria-label="Planet X, inicio">
+        <span class="orbit-mark" aria-hidden="true"></span>
+        <span>Planet<span class="brand-x"> X</span></span>
+      </a>
+      <nav class="site-nav" id="site-nav" aria-label="Navegación principal">
+        <a href="#inicio" data-view="inicio">Inicio</a>
+        <a href="#visor" data-view="visor">Visor</a>
+        <a href="#galeria" data-view="galeria">Galería</a>
+        <a href="#explorar" data-view="explorar">Mapa</a>
+        <a href="#blog" data-view="blog">Blog</a>
+      </nav>
+      <div class="header-actions">
+        <button class="icon-button header-search" id="search-open" type="button" aria-label="Buscar objetivos o artículos" aria-keyshortcuts="Control+K Meta+K" title="Buscar (Ctrl+K o ⌘+K)">
+          <span class="icon-search" aria-hidden="true"></span>
+          <span class="search-key" aria-hidden="true">K</span>
+        </button>
+        <a class="space-link" href="#acceso" id="space-link" aria-label="Mi espacio">
+          <span class="avatar avatar-small" aria-hidden="true">PX</span>
+          <span class="space-label">Mi espacio</span>
+        </a>
+        <button class="icon-button menu-button" id="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Abrir menú">
+          <span class="icon-menu" aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell main-content" id="contenido" tabindex="-1"></main>
+  <noscript><p class="shell">Activa JavaScript para navegar por Planet X y usar el visor.</p></noscript>
+  <footer class="site-footer">
+    <div class="shell footer-inner">
+      <p><strong>Planet X</strong><span>Datos de SPHEREx · NASA/IPAC IRSA</span></p>
+      <nav aria-label="Recursos del proyecto">
+        <a href="#estados">Estados del visor</a>
+        <a href="#administracion">Revisión local</a>
+        <a href="https://irsa.ipac.caltech.edu/Missions/spherex.html" target="_blank" rel="noopener">Archivo IRSA ↗</a>
+      </nav>
+    </div>
+  </footer>
+
+  <dialog class="search-dialog" id="search-dialog" aria-labelledby="search-title">
+    <form method="dialog" class="dialog-heading">
+      <h2 id="search-title">Buscar en Planet X</h2>
+      <button class="icon-button" type="submit" aria-label="Cerrar búsqueda">×</button>
+    </form>
+    <label for="site-search">Objetivo o artículo</label>
+    <input type="search" id="site-search" placeholder="Por ejemplo, WISE 0855" autocomplete="off" autofocus>
+    <ul class="quick-results" id="search-results" aria-label="Resultados de búsqueda"></ul>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+</body>
 </html>

@@ -6,7 +6,7 @@ import { Shell } from '../app/Shell.tsx';
 describe('Menú de secciones (Shell)', () => {
   it('arranca en el visor, con el menú visible', () => {
     render(<Shell />);
-    expect(screen.getByRole('heading', { name: 'Visor Temporal de Regiones Celestes' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'El cielo a través del tiempo' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Menú de secciones' })).toBeInTheDocument();
   });
 
@@ -25,11 +25,11 @@ describe('Menú de secciones (Shell)', () => {
     await user.click(screen.getByRole('button', { name: 'Menú de secciones' }));
     await user.click(screen.getByRole('button', { name: /Explorar/ }));
     expect(await screen.findByRole('heading', { name: 'Elige un sector' }, { timeout: 5000 })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Visor Temporal de Regiones Celestes' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'El cielo a través del tiempo' })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Menú de secciones' }));
     await user.click(screen.getByRole('button', { name: /Inicio/ }));
-    expect(screen.getByRole('heading', { name: 'Visor Temporal de Regiones Celestes' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'El cielo a través del tiempo' })).toBeInTheDocument();
   });
 
   it('Esc cierra el menú', async () => {
