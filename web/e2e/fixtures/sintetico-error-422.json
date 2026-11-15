@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "invalid_coordinates",
+    "message": "ra_deg y dec_deg deben ser grados decimales ICRS finitos: 0 <= ra_deg < 360 y -90 <= dec_deg <= 90."
+  }
+}

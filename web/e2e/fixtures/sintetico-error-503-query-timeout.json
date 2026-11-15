@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "query_timeout",
+    "message": "La consulta tardó demasiado. Inténtalo de nuevo."
+  }
+}

@@ -1,0 +1,27 @@
+id,ambito,grupo,caso,fixture,spec,resultado_esperado,estado,sha,fecha_utc,observado,notas
+F01-C01,SIMULADO,estado-200,ready con 2 fotogramas,sintetico-ready-2.json,web/e2e/estados.spec.ts,"Reproductor y A/B habilitados; fecha UTC banda ID y fuente por fotograma; aviso de no-hallazgo; sin autoplay",pendiente,,,,
+F01-C02,SIMULADO,estado-200,ready con 6 fotogramas,sintetico-ready-6.json,web/e2e/estados.spec.ts,"6 posiciones en orden cronologico; sin interpolar; Play/Pausa",pendiente,,,,
+F01-C03,SIMULADO,estado-200,insufficient single_epoch,sintetico-insufficient-single-epoch.json,web/e2e/estados.spec.ts,"Imagen individual; sin reproduccion ni A/B; razon explicada",pendiente,,,,
+F01-C04,SIMULADO,estado-200,insufficient no_common_band,sintetico-insufficient-no-common-band.json,web/e2e/estados.spec.ts,"Cobertura insuficiente con razon; sin imagenes; distinto de no_coverage",pendiente,,,,
+F01-C05,SIMULADO,estado-200,insufficient no_usable_frames,sintetico-insufficient-no-usable-frames.json,web/e2e/estados.spec.ts,"Cobertura insuficiente con razon; distinto de no_coverage y de fallo",pendiente,,,,
+F01-C06,SIMULADO,estado-200,insufficient search_limit_reached,sintetico-insufficient-search-limit-reached.json,web/e2e/estados.spec.ts,"Cobertura insuficiente; explica recorte de busqueda; no afirma ausencia",pendiente,,,,
+F01-C07,SIMULADO,estado-200,no_coverage no_observations,sintetico-no-coverage.json,web/e2e/estados.spec.ts,"Sin cobertura acotada al ambito consultado; sin imagenes ni reproduccion",pendiente,,,,
+F01-C08,SIMULADO,estado-200,mode prepared,sintetico-prepared.json,web/e2e/estados.spec.ts,"Rotulo Caso preparado con fecha de preparacion y procedencia",pendiente,,,,
+F01-C09,SIMULADO,http-error,422 parametro faltante,sintetico-error-422.json,web/e2e/errores.spec.ts,"Error de validacion asociado al campo; no muestra Sin cobertura",pendiente,,,,"Pregunta abierta a Santiago: validacion en cliente vs 422 del servidor"
+F01-C10,SIMULADO,http-error,422 NaN/Infinity,sintetico-error-422.json,web/e2e/errores.spec.ts,"Mensaje de validacion; sin resultado de comparacion",pendiente,,,,
+F01-C11,SIMULADO,http-error,422 fuera de rango,sintetico-error-422.json,web/e2e/errores.spec.ts,"Mensaje con rango valido; ra=0 y dec=+-90 se aceptan",pendiente,,,,
+F01-C12,SIMULADO,http-error,503 archive_unavailable,sintetico-error-503-archive-unavailable.json,web/e2e/errores.spec.ts,"Fallo temporal con Reintentar; nunca Sin cobertura",pendiente,,,,
+F01-C13,SIMULADO,http-error,503 query_timeout,sintetico-error-503-query-timeout.json,web/e2e/errores.spec.ts,"Fallo temporal reintentable distinto de no_coverage",pendiente,,,,
+F01-C14,SIMULADO,http-error,500 internal_error,sintetico-error-500.json,web/e2e/errores.spec.ts,"Mensaje publico breve sin detalles internos; pagina operable",pendiente,,,,
+F01-C15,SIMULADO,http-error,404 image_not_found,sintetico-error-404-image.json,web/e2e/errores.spec.ts,"Estado de imagen no disponible en ese fotograma; metadatos visibles",pendiente,,,,
+F01-C16,SIMULADO,etiquetado,Etiqueta Datos de prueba,sintetico-ready-2.json,web/e2e/estados.spec.ts,"Etiqueta Datos de prueba visible en mode fixture",pendiente,,,,
+F01-C17,SIMULADO,transversal,Teclado y foco,sintetico-ready-2.json,web/e2e/transversales.spec.ts,"Todos los controles operables con teclado; foco visible",pendiente,,,,
+F01-C18,SIMULADO,transversal,Vista movil,sintetico-ready-2.json,web/e2e/transversales.spec.ts,"Sin scroll horizontal; controles usables",pendiente,,,,
+F01-C19,SIMULADO,transversal,Respuesta tardia descartada,sintetico-ready-2.json,web/e2e/transversales.spec.ts,"La respuesta antigua se descarta y su reproduccion se detiene",pendiente,,,,
+F01-R01,REAL,demo,Caso preparado real con dos fechas reales,,,"A/B y Play; IDs y enlaces de fuente comprobables; misma banda",pendiente,,,,"Requiere URL y SHA de Isaac y matriz de Cesar"
+F01-R02,REAL,demo,Preparado exacto con IRSA caido,,,"Se sirve el preparado con fecha y procedencia",pendiente,,,,"Procedimiento con Isaac"
+F01-R03,REAL,api,422 invalid_coordinates en API real,,,"422 con error.code invalid_coordinates para faltante NaN y fuera de rango",pendiente,,,,
+F01-R04,REAL,demo,Entrada manual y consulta en vivo,,,"Resultado en un estado del contrato con su razon",pendiente,,,,"Depende de F02"
+F01-R05,REAL,api,404 image_not_found en API real,,,"404 con error.code image_not_found",pendiente,,,,
+F01-R06,REAL,demo,Incognito y red externa con mismo SHA,,,"Cargan web API PNG y fuentes; sin fixtures visibles",pendiente,,,,
+F01-R07,REAL,demo,Teclado y movil en demo real,,,"Controles operables y sin scroll horizontal",pendiente,,,,

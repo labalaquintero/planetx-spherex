@@ -1,0 +1,75 @@
+{
+  "schema_version": "1",
+  "status": "ready",
+  "reason": null,
+  "mode": "fixture",
+  "query": {
+    "ra_deg": 10.25,
+    "dec_deg": -12.5,
+    "frame": "ICRS",
+    "fov_deg": 0.1
+  },
+  "band": {
+    "center_um": 1.25,
+    "tolerance_um": 0.02
+  },
+  "checked_at": "2026-11-14T12:00:00Z",
+  "science_version": "v1",
+  "warnings": [],
+  "frames": [
+    {
+      "id": "sintetico6-a",
+      "observed_at": "2026-01-05T00:00:00Z",
+      "release": "fixture",
+      "observation_id": "sintetico6-obs-a",
+      "source_url": null,
+      "image_url": "/api/v1/images/sintetico6-a",
+      "quality_flags": []
+    },
+    {
+      "id": "sintetico6-b",
+      "observed_at": "2026-02-05T00:00:00Z",
+      "release": "fixture",
+      "observation_id": "sintetico6-obs-b",
+      "source_url": null,
+      "image_url": "/api/v1/images/sintetico6-b",
+      "quality_flags": []
+    },
+    {
+      "id": "sintetico6-c",
+      "observed_at": "2026-03-05T00:00:00Z",
+      "release": "fixture",
+      "observation_id": "sintetico6-obs-c",
+      "source_url": null,
+      "image_url": "/api/v1/images/sintetico6-c",
+      "quality_flags": []
+    },
+    {
+      "id": "sintetico6-d",
+      "observed_at": "2026-04-05T00:00:00Z",
+      "release": "fixture",
+      "observation_id": "sintetico6-obs-d",
+      "source_url": null,
+      "image_url": "/api/v1/images/sintetico6-d",
+      "quality_flags": []
+    },
+    {
+      "id": "sintetico6-e",
+      "observed_at": "2026-05-05T00:00:00Z",
+      "release": "fixture",
+      "observation_id": "sintetico6-obs-e",
+      "source_url": null,
+      "image_url": "/api/v1/images/sintetico6-e",
+      "quality_flags": []
+    },
+    {
+      "id": "sintetico6-f",
+      "observed_at": "2026-06-05T00:00:00Z",
+      "release": "fixture",
+      "observation_id": "sintetico6-obs-f",
+      "source_url": null,
+      "image_url": "/api/v1/images/sintetico6-f",
+      "quality_flags": []
+    }
+  ]
+}
