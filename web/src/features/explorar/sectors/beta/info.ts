@@ -13,8 +13,52 @@ import VELA_ORIGINAL from './referencias/vela-spherex-original.webp?no-inline'
 // arrastrar el registro de texturas al chunk principal.
 const LUNA = new URL('../../scene/assets/luna-color.webp', import.meta.url).href
 const SATURNO = new URL('../../scene/assets/bandas-saturno.webp', import.meta.url).href
+const IO = new URL('../../scene/assets/io-galileo.webp', import.meta.url).href
+const GANIMEDES = new URL('../../scene/assets/ganimedes-voyager.webp', import.meta.url).href
+const VENUS = new URL('../../scene/assets/venus-magellan.webp', import.meta.url).href
+const MARTE = new URL('../../scene/assets/marte-viking.webp', import.meta.url).href
+const JPL = 'Imagen: NASA/JPL-Caltech/USGS (Solar System Simulator de JPL). Solo su luminancia, recoloreada.'
 
 export const BETA_INFO: Readonly<Record<string, ObjectInfo>> = {
+  brasa: {
+    title: 'Mundo volcánico',
+    summary:
+      'Brasa es inventado y está en el borde exterior del sector. Su superficie usa el mapa de Ío, la luna ' +
+      'de Júpiter con más volcanes del sistema solar, recoloreado en rojos de brasa.',
+    facts: [
+      'En el Ío real, los colores amarillos y rojos son compuestos de azufre que expulsan sus volcanes.',
+      'El brillo propio es ilustrativo: imita roca caliente.',
+    ],
+    images: [{ src: IO, caption: 'Ío · Voyager y Galileo (NASA/JPL/USGS)' }],
+    credit: JPL,
+  },
+  jade: {
+    title: 'Mundo de hielo surcado',
+    summary:
+      'Jade es inventado. Su superficie parte del mapa de Ganímedes, la luna más grande del sistema solar, ' +
+      'con sus franjas claras de hielo surcado, en verdes jade.',
+    facts: ['En Ganímedes real, las zonas oscuras son más antiguas y las claras, hielo más joven con surcos.'],
+    images: [{ src: GANIMEDES, caption: 'Ganímedes · Voyager (NASA/JPL/USGS)' }],
+    credit: JPL,
+  },
+  ceniza: {
+    title: 'Planeta de ceniza',
+    summary:
+      'Ceniza es inventado. Su superficie es el relieve de Venus que midió por radar la sonda Magellan ' +
+      '(a través de sus nubes), en grises de ceniza.',
+    facts: ['Venus está cubierto de nubes: su superficie solo se pudo cartografiar con radar.'],
+    images: [{ src: VENUS, caption: 'Venus · radar de Magellan (NASA/JPL)' }],
+    credit: JPL,
+  },
+  marea: {
+    title: 'Planeta turquesa',
+    summary:
+      'Marea es inventado. Su superficie usa el mapa de Marte de las sondas Viking, solo por su luminancia, ' +
+      'en turquesas.',
+    facts: ['Las manchas oscuras del Marte real son roca basáltica; las claras, polvo.'],
+    images: [{ src: MARTE, caption: 'Marte · Viking (NASA/JPL/USGS)' }],
+    credit: JPL,
+  },
   ilmara: {
     title: 'Mundo frío inspirado en WISE 0855',
     summary:

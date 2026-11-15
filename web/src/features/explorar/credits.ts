@@ -69,7 +69,8 @@ export const ASSET_CREDITS: readonly Credit[] = [
       'venus-magellan-original',
     ],
     note:
-      'Son la superficie de los planetas ilustrativos de α (Óxido, Hielo rayado, Azufre, Surcos, Radar y Cráter). ' +
+      'Son la superficie de los planetas ilustrativos de α (Óxido, Hielo rayado, Azufre, Surcos, Radar y Cráter) y, ' +
+      'solo por su luminancia y recoloreados, de cuatro planetas de β (Brasa, Jade, Ceniza y Marea). ' +
       'Reducidos a 1024 × 512 y convertidos a WebP con tools/alpha/texturas_nasa.py; Europa, Ganímedes y Fobos se recolorean.',
   },
 ]

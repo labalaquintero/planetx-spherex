@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mulberry32 } from './random'
 import type { Vec3 } from './types'
 import {
+  streakGrow,
   initialVisitors,
   lineDistance,
   segmentPointDistance,
@@ -149,5 +150,21 @@ describe('cometas, estrellas fugaces y asteroides', () => {
   it('el choque se detecta aunque el meteoro «salte» la nave en un cuadro', () => {
     expect(segmentPointDistance([-10, 0, 0], [10, 0, 0], [0, 1, 0])).toBeCloseTo(1)
     expect(segmentPointDistance([-10, 0, 0], [-5, 0, 0], [0, 0, 0])).toBeCloseTo(5)
+  })
+})
+
+describe('crecimiento de la estela', () => {
+  it('nace sin largo, crece sin saltos y llega a su largo completo', () => {
+    expect(streakGrow(0, 1)).toBe(0)
+    expect(streakGrow(1, 1)).toBe(1)
+    expect(streakGrow(5, 1)).toBe(1)
+    let prev = 0
+    for (let a = 0.05; a <= 1; a += 0.05) {
+      const g = streakGrow(a, 1)
+      expect(g).toBeGreaterThan(prev)
+      expect(g - prev).toBeLessThan(0.16)
+      prev = g
+    }
+    expect(streakGrow(0.3, 0)).toBe(1)
   })
 })

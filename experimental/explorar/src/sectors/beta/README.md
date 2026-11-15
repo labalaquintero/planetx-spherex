@@ -17,6 +17,12 @@ La posición y el tamaño aparente de cada objeto salen del boceto de navegació
 | **Estación Ancla** | Cilindro con asa (anillo de atraque) en un extremo | Casco con paneles y ventanas, luces de posición |
 | **Esfera menor** y cuerpos pequeños | Del boceto, más un relleno sembrado | Textura lunar con relieve; el relleno no aparece en la vista inicial |
 
+**Borde exterior (amplía el área del sector):** cuatro planetas inventados fuera de la vista inicial, cuya superficie
+usa los mapas globales de la NASA que también trae α, solo por su luminancia y con paletas propias: **Brasa**
+(Ío, rojos de brasa con brillo propio), **Jade** (Ganímedes, verdes), **Ceniza** (radar de Venus, grises) y
+**Marea** (Marte, turquesas). Cada uno tiene su ficha con la imagen de origen. El relleno de cuerpos pequeños
+también se reparte por toda el área.
+
 `waypoints.ts` define el grafo de puntos de ruta. La entrada es el punto de salida; los demás sirven
 como zonas despejadas y como puntos de salida alternativos con `?punto=<id>`.
 

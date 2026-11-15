@@ -22,19 +22,19 @@ const beta: SectorConfig = {
   symbol: 'β',
   name: 'Sector β',
   description:
-    'Un cúmulo con dos planetas grandes, un planeta con anillo y una estación orbital. Representación ilustrativa.',
+    'Un cúmulo amplio de planetas hechos con imágenes de SPHEREx y de la NASA, con un planeta con anillo. Representación ilustrativa.',
   order: 2,
   selector: { ...selectorFromSketch('beta'), colors: ['#bae6fd', '#0c3a66'], surface: 'bands', seed: 12, glow: 'rgba(56, 189, 248, 0.6)' },
   scene: {
     startId: 'entry',
     waypoints: ROUTE,
     objects: OBJECTS,
-    // Más cuerpos pequeños como los del boceto, repartidos por el sector y lejos de la ruta.
+    // Más cuerpos pequeños como los del boceto, repartidos por todo el sector (ahora más amplio) y lejos de la ruta.
     field: {
       seed: 4242,
-      count: 40,
-      center: [0, 10, -150],
-      extent: [190, 70, 140],
+      count: 72,
+      center: [0, 10, -80],
+      extent: [480, 80, 460],
       minRadius: 0.7,
       maxRadius: 3.2,
       clearance: 14,

@@ -5,7 +5,7 @@ después se **vuela libremente** en nave por todo el sector, en una escena 3D. *
 
 El proyecto vive aislado en `experimental/explorar/`, con su propio `package.json` y `pnpm-lock.yaml`, fuera de
 cualquier workspace. No toca `web/`, `api/`, `infra/` ni Docker. **No hace llamadas de red en ejecución:** no usa
-CDN, fuentes, texturas ni modelos remotos. La nebulosa, la nave y las esferas de la selección se generan en el
+CDN, fuentes, texturas ni modelos remotos. La nebulosa, la nave y la galaxia de la selección se generan en el
 navegador. Las cinco texturas de referencia (NASA y Solar System Scope, 140 KB) van empaquetadas y se sirven desde
 el mismo origen. La fuente es la del sistema, como en el visor. Funciona sin conexión.
 
@@ -56,9 +56,12 @@ Además, baja de nivel por debajo de 50 FPS en vez de 46. En Linux y macOS no ca
 
 ## Uso
 
-- **Selección:** nebulosa y tres capas de estrellas con paralaje que siguen al cursor. Los sectores son cuerpos
-  renderizados con halo y órbita. Con hover, foco (Tab) o toque aparece la tarjeta. Clic o Enter salta al sector.
-  Hoy solo β es navegable; α y ε muestran «Próximamente».
+- **Selección:** una galaxia espiral inclinada, procedural, que gira muy despacio sobre la nebulosa y tres capas
+  de estrellas con paralaje que siguen al cursor. Cada sector es una **región** de la galaxia (una elipse en el
+  plano del disco, en la posición medida del boceto). En reposo, la región tiene un brillo leve y un borde punteado
+  que recorre un destello. Con el cursor, el foco (Tab) o un toque, la región se ilumina, el borde se vuelve
+  continuo, sale un pulso y aparece la tarjeta. Clic o Enter salta al sector. α y β son navegables; ε muestra
+  «Próximamente». La geometría (`backdrop/galaxy.ts`) la comparten el shader y el HTML, y tiene pruebas.
 - **Salto:** rayas de estrellas y acercamiento (cambio de campo de visión) hacia el sector, un destello, y la cámara
   llega desde atrás con un FOV amplio hasta el primer punto. Con `prefers-reduced-motion` solo hay un fundido.
 - **Vuelo libre:** se mantiene pulsada la tecla o el botón:
@@ -260,7 +263,7 @@ src/
     motion.ts               # salto, llegada, empuje de FOV, ajuste a pantalla vertical, empuje del motor
     dpad.ts, routeMap.ts    # estados de la cruceta y plano de la ruta
     scatter.ts, noise.ts, random.ts, easing.ts
-  backdrop/                 # fondo de la selección en WebGL puro (sin three) y esferas en canvas 2D
+  backdrop/                 # fondo de la selección en WebGL puro (sin three): nebulosa, estrellas y galaxia
   screens/                  # SectorSelect, NavigationScreen, DPad, RouteMap, NoWebGL, sceneLoader, webgl
   audio/                    # motor de sonido WebAudio y botón
   scene/                    # three (chunk diferido): planetas, cielo, estación, cuerpos, nave, estela, bloom
@@ -291,7 +294,7 @@ independiente (`main.tsx`) y no viaja con `<Explorar />`.
 ## Rendimiento
 
 - **Un solo chunk diferido para three.** La selección no carga three: su fondo es WebGL puro (un triángulo a
-  pantalla completa) y las esferas son canvas 2D. El chunk de la escena empieza a descargarse al pasar el cursor o
+  pantalla completa) y dibuja también la galaxia y sus regiones. El chunk de la escena empieza a descargarse al pasar el cursor o
   enfocar β, así que el salto se solapa con la descarga.
 - **Instancias y pocos draw calls.** Las estrellas son un único `Points`; los cuerpos pequeños, tres
   `InstancedMesh` (uno por forma base); la estela, otro `Points`. Los planetas usan esferas de 64×48 y la nave unos mil

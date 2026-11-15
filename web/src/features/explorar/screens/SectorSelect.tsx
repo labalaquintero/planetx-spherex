@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { Backdrop, type BackdropInput } from '../backdrop/Backdrop'
-import { sphereSprite } from '../backdrop/sphereSprite'
+import { useEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react'
+import { Backdrop, type BackdropArea, type BackdropInput } from '../backdrop/Backdrop'
+import { areaRadius, GALAXY, parseRgb } from '../backdrop/galaxy'
 import type { QualityLevel } from '../engine/quality'
 import type { SectorConfig } from '../engine/types'
 import { calloutSide } from '../sectors/selector'
@@ -33,19 +33,19 @@ interface Props {
 
 export function SectorSelect({ sectors, onEnter, jump, reduced, quality, forced, focusId, extraControls }: Props) {
   const layer = useRef<HTMLElement | null>(null)
-  const input = useRef<BackdropInput>({ pointerX: 0, pointerY: 0, jumpStart: null, jumpX: 0.5, jumpY: 0.5 })
+  const input = useRef<BackdropInput>({ pointerX: 0, pointerY: 0, jumpStart: null, jumpX: 0.5, jumpY: 0.5, hover: -1 })
   const buttons = useRef(new Map<string, HTMLButtonElement>())
-  const [sprites, setSprites] = useState<Record<string, string>>({})
-
-  // Las esferas se dibujan tras el primer pintado para no retrasarlo.
-  useEffect(() => {
-    const id = requestAnimationFrame(() => {
-      const out: Record<string, string> = {}
-      for (const s of sectors) out[s.id] = sphereSprite(s.selector)
-      setSprites(out)
-    })
-    return () => cancelAnimationFrame(id)
-  }, [sectors])
+  // Cada sector es una región de la galaxia (la dibuja el fondo; aquí solo va la zona que se señala).
+  const areas = useMemo<BackdropArea[]>(
+    () => sectors.map((s) => ({ x: s.selector.x, y: s.selector.y, size: s.selector.size, color: parseRgb(s.selector.glow), soon: !s.scene })),
+    [sectors],
+  )
+  const point = (i: number) => {
+    input.current.hover = i
+  }
+  const release = (i: number) => {
+    if (input.current.hover === i) input.current.hover = -1
+  }
 
   useEffect(() => {
     if (!jump || reduced) {
@@ -53,11 +53,12 @@ export function SectorSelect({ sectors, onEnter, jump, reduced, quality, forced,
       return
     }
     input.current.jumpStart = jump.start
+    input.current.hover = sectors.findIndex((s) => s.id === jump.id)
     input.current.jumpX = jump.x
     input.current.jumpY = jump.y
     layer.current?.style.setProperty('--ex-jx', `${(jump.x * 100).toFixed(1)}%`)
     layer.current?.style.setProperty('--ex-jy', `${(jump.y * 100).toFixed(1)}%`)
-  }, [jump, reduced])
+  }, [jump, reduced, sectors])
 
   useEffect(() => {
     if (focusId) buttons.current.get(focusId)?.focus()
@@ -86,14 +87,14 @@ export function SectorSelect({ sectors, onEnter, jump, reduced, quality, forced,
         input.current.pointerY = 0
       }}
     >
-      <Backdrop input={input} layer={layer} animate={!reduced} quality={quality} forced={forced} />
+      <Backdrop input={input} areas={areas} layer={layer} animate={!reduced} quality={quality} forced={forced} />
 
       <header className="ex-select-head">
         <span className="ex-chip">Mapa</span>
         <h2 id="ex-select-title" className="ex-select-title">
           Elige un sector
         </h2>
-        <p className="ex-select-sub">Vuela libremente en nave por una región ilustrativa.</p>
+        <p className="ex-select-sub">Señala una región de la galaxia y entra a volar en nave.</p>
       </header>
 
       <div className="ex-select-actions">
@@ -102,13 +103,15 @@ export function SectorSelect({ sectors, onEnter, jump, reduced, quality, forced,
       </div>
 
       <ul className="ex-sector-list">
-        {sectors.map((s) => {
+        {sectors.map((s, i) => {
           const soon = !s.scene
           const cardId = `ex-card-${s.id}`
           const style = {
             left: `${s.selector.x}%`,
             top: `${s.selector.y}%`,
-            '--ex-size': `${s.selector.size}`,
+            '--ex-r': `${areaRadius(s.selector.size)}`,
+            '--ex-ratio': `${GALAXY.areaRatio}`,
+            '--ex-tilt': `${-GALAXY.angleDeg}deg`,
             '--ex-glow': s.selector.glow,
           } as CSSProperties
           return (
@@ -125,31 +128,26 @@ export function SectorSelect({ sectors, onEnter, jump, reduced, quality, forced,
                   else buttons.current.delete(s.id)
                 }}
                 type="button"
-                className="ex-body"
+                className="ex-area"
                 data-soon={soon || undefined}
                 aria-label={`${s.name}${soon ? ', próximamente' : ', entrar'}`}
                 aria-describedby={cardId}
                 aria-disabled={soon || undefined}
                 onPointerEnter={() => {
+                  point(i)
                   if (!soon) void loadScene().catch(() => {})
                 }}
+                onPointerLeave={() => release(i)}
                 onFocus={() => {
+                  point(i)
                   if (!soon) void loadScene().catch(() => {})
                 }}
+                onBlur={() => release(i)}
                 onClick={() => enter(s)}
-              >
-                <span className="ex-body-halo" aria-hidden="true" />
-                <svg className="ex-orbit" viewBox="-50 -50 100 100" aria-hidden="true" focusable="false">
-                  <ellipse cx="0" cy="0" rx="48" ry="15" />
-                </svg>
-                {sprites[s.id] ? (
-                  <img className="ex-body-img" src={sprites[s.id]} alt="" draggable={false} />
-                ) : (
-                  <span className="ex-body-img ex-body-placeholder" />
-                )}
-              </button>
-              <span className="ex-body-label" aria-hidden="true">
-                {s.symbol}
+              />
+              <span className="ex-area-label" aria-hidden="true">
+                <span className="ex-area-name">{s.name}</span>
+                <span className="ex-area-state">{soon ? 'Próximamente' : 'Disponible'}</span>
               </span>
               <div className="ex-card" id={cardId} role="tooltip">
                 <div className="ex-card-head">
