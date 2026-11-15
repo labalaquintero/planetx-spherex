@@ -16,11 +16,18 @@ export function DeepSky({ bounds, stars, layers, cube, animate }: { bounds: Boun
     () => [0, 1, 2].map((i) => (bounds.min[i]! + bounds.max[i]!) / 2) as [number, number, number],
     [bounds],
   )
+  // Radio que envuelve todo el sector (del centro a una esquina del área de vuelo). Estrellas cercanas y
+  // nebulosa van por fuera: así quedan siempre detrás de los planetas (no se pintan encima de los lejanos)
+  // y la nave nunca sale de la nebulosa (no se ve como una bola desde fuera).
+  const reach = useMemo(
+    () => Math.max(760, 0.5 * Math.hypot(bounds.max[0] - bounds.min[0], bounds.max[1] - bounds.min[1], bounds.max[2] - bounds.min[2])),
+    [bounds],
+  )
   return (
     <group position={center}>
-      {stars > 0 && <NearStars count={stars} animate={animate} />}
+      {stars > 0 && <NearStars count={stars} animate={animate} inner={reach * 1.02} />}
       {Array.from({ length: layers }, (_, i) => (
-        <NebulaShell key={i} index={i} cube={cube} />
+        <NebulaShell key={i} index={i} cube={cube} radius={reach * 1.1 + i * 260} />
       ))}
     </group>
   )
@@ -54,7 +61,7 @@ void main() {
 }
 `
 
-function NearStars({ count, animate }: { count: number; animate: boolean }) {
+function NearStars({ count, animate, inner }: { count: number; animate: boolean; inner: number }) {
   const height = useThree((s) => s.size.height)
   const geometry = useMemo(() => {
     const r = mulberry32(909)
@@ -64,11 +71,11 @@ function NearStars({ count, animate }: { count: number; animate: boolean }) {
     const col = new Float32Array(count * 3)
     const tmp = new Color()
     for (let i = 0; i < count; i++) {
-      // Capa entre 260 y 760 unidades del centro del sector (fuera del área de vuelo).
+      // Capa justo por fuera del sector (desde `inner`, unas 500 unidades de grosor).
       const z = r() * 2 - 1
       const a = r() * Math.PI * 2
       const k = Math.sqrt(1 - z * z)
-      const d = 260 + Math.pow(r(), 0.7) * 500
+      const d = inner + Math.pow(r(), 0.7) * 500
       pos[i * 3] = Math.cos(a) * k * d
       pos[i * 3 + 1] = z * d
       pos[i * 3 + 2] = Math.sin(a) * k * d
@@ -87,7 +94,7 @@ function NearStars({ count, animate }: { count: number; animate: boolean }) {
     g.setAttribute('aPhase', new BufferAttribute(phase, 1))
     g.setAttribute('aColor', new BufferAttribute(col, 3))
     return g
-  }, [count])
+  }, [count, inner])
   const material = useMemo(
     () =>
       new ShaderMaterial({
@@ -143,7 +150,7 @@ void main() {
 `
 
 /** Capa de nebulosa (cáscara esférica vista por dentro): violeta–magenta y turquesa apagados. */
-function NebulaShell({ index, cube }: { index: number; cube: number }) {
+function NebulaShell({ index, cube, radius }: { index: number; cube: number; radius: number }) {
   const gl = useThree((s) => s.gl)
   // En un efecto (no en useMemo): con StrictMode, el cubemap desechado no se reutiliza vacío.
   const [baked, setBaked] = useState<WebGLCubeRenderTarget | null>(null)
@@ -182,7 +189,7 @@ function NebulaShell({ index, cube }: { index: number; cube: number }) {
   material.uniforms.uNeb!.value = baked.texture
   return (
     <mesh material={material} renderOrder={-1} frustumCulled={false} rotation={[0.3 * index, 1.1 * index, 0]}>
-      <sphereGeometry args={[820 + index * 260, 48, 24]} />
+      <sphereGeometry args={[radius, 48, 24]} />
     </mesh>
   )
 }

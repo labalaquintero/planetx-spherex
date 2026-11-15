@@ -26,12 +26,11 @@ export function Credits() {
           </button>
         </div>
         <p className="ex-credits-note">
-          Representación ilustrativa: los planetas y la nave son inventados. Algunas superficies usan
-          mapas reales como textura, sin pretender ser esos cuerpos.
+          Representación ilustrativa. Varias superficies usan mapas reales de la NASA y de SPHEREx como textura.
         </p>
         <ul className="ex-credits-list">
           {ASSET_CREDITS.map((c) => (
-            <li key={c.url}>
+            <li key={c.what}>
               <p className="ex-credits-what">{c.what}</p>
               <p className="ex-credits-meta">
                 {c.author} · <span className="ex-chip ex-chip-muted">{c.license}</span>

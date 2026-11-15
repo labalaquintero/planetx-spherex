@@ -19,7 +19,7 @@ export const ASSET_CREDITS: readonly Credit[] = [
     license: 'CC BY 4.0',
     url: 'https://www.solarsystemscope.com/textures/',
     assets: ['bandas-saturno', 'anillo-saturno'],
-    note: 'Reducidas a 1024 px, convertidas a WebP y teñidas hacia la paleta de Orun (planeta ilustrativo).',
+    note: 'Reducidas a 1024 px y convertidas a WebP. Superficie de los planetas ilustrativos Orun (teñida hacia su paleta), Calder y Argento (solo su luminancia).',
   },
   {
     what: 'Mapa de color y de relieve de la Luna (CGI Moon Kit)',
@@ -46,7 +46,7 @@ export const ASSET_CREDITS: readonly Credit[] = [
     note:
       'Son la superficie de los planetas ilustrativos «Cielo infrarrojo» (el mapa del cielo reproyectado sobre la esfera), ' +
       '«Vela» y «Polvo de Vela» (la imagen de Vela sin estrellas, en franjas), «Plano galáctico» (el perfil de color de la ' +
-      'Vía Láctea), «Burbuja», «Lazos galácticos» y «Filamentos» (recortes del mapa) y «Nebulosa de Vela». ' +
+      'Vía Láctea), «Burbuja», «Lazos galácticos» y «Filamentos» (recortes del mapa), «Nebulosa de Vela» y «Abisal» (el mapa del cielo, solo su luminancia). ' +
       'Generadas con tools/texturas_spherex.py.',
   },
   {
@@ -70,8 +70,33 @@ export const ASSET_CREDITS: readonly Credit[] = [
     ],
     note:
       'Son la superficie de los planetas ilustrativos de α (Óxido, Hielo rayado, Azufre, Surcos, Radar y Cráter) y, ' +
-      'solo por su luminancia y recoloreados, de cuatro planetas de β (Brasa, Jade, Ceniza y Marea). ' +
+      'solo por su luminancia y recoloreados, de seis planetas de β (Brasa, Jade, Ceniza, Marea, Escarcha y Hollín). ' +
       'Reducidos a 1024 × 512 y convertidos a WebP con tools/alpha/texturas_nasa.py; Europa, Ganímedes y Fobos se recolorean.',
+  },
+  {
+    what: 'Mapas globales de Neptuno, Encélado, Japeto, Calisto, Tetis, Mimas y de la Tierra en relieve (Voyager y otras misiones)',
+    author: 'NASA/JPL-Caltech/USGS — Solar System Simulator de JPL (David Seal)',
+    license: 'Courtesy NASA/JPL-Caltech (política de uso de imágenes de JPL)',
+    url: 'https://maps.jpl.nasa.gov/tmaps/',
+    assets: [
+      'neptuno-voyager',
+      'encelado-voyager',
+      'japeto-voyager',
+      'calisto-voyager',
+      'tetis-voyager',
+      'mimas-voyager',
+      'tierra-relieve',
+      'neptuno-voyager-original',
+      'encelado-voyager-original',
+      'japeto-voyager-original',
+      'calisto-voyager-original',
+      'tetis-voyager-original',
+      'mimas-voyager-original',
+      'tierra-relieve-original',
+    ],
+    note:
+      'Superficie de siete planetas de β (Cobalto, Nácar, Jano, Ónix, Grieta, Vigía y Pangea). Reducidos a 1024 × 512 y ' +
+      'convertidos a WebP con tools/texturas_nasa_beta.py; algunos se recolorean.',
   },
 ]
 

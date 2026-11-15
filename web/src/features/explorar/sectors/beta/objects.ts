@@ -108,6 +108,22 @@ const CIELO_DEPTH = 235
 const cieloAncla = objetoBoceto('ancla').ancla
 
 /**
+ * Posición alrededor de la entrada (que está en el origen y mira a −Z) por rumbo, altura y distancia:
+ * `az` en grados desde el frente, positivo a la derecha (0 = frente, 90 = derecha, 180 = detrás);
+ * `el` en grados sobre el horizonte (negativo = abajo). Así los planetas se reparten en los 360° y a
+ * distintas alturas, y la nave (que gira y cabecea) los descubre en todas direcciones.
+ */
+export function around(az: number, el: number, dist: number): [number, number, number] {
+  const a = (az * Math.PI) / 180
+  const e = (el * Math.PI) / 180
+  const r = (v: number) => Math.round(v) + 0 // + 0: sin «-0»
+  return [r(Math.sin(a) * Math.cos(e) * dist), r(Math.sin(e) * dist), r(-Math.cos(a) * Math.cos(e) * dist)]
+}
+
+/** Calder y su luna Sora van juntos. */
+const CALDER = around(40, 44, 560)
+
+/**
  * Planetas añadidos que no están en el boceto. Salvo «Cielo infrarrojo» (en el sitio de la estación
  * retirada), se colocan fuera de la vista inicial (detrás de la entrada o muy a los lados), así que la
  * primera vista sigue siendo la del boceto; se descubren al volar.
@@ -131,7 +147,7 @@ const EXTRA_DEFS: SceneObject[] = [
     id: 'vela',
     kind: 'planet',
     label: 'Vela',
-    position: [-330, -10, -260],
+    position: around(-62, 20, 430),
     radius: 26,
     seed: 89,
     palette: ['#bfdbfe', '#1d4ed8', '#0b1030'],
@@ -144,7 +160,7 @@ const EXTRA_DEFS: SceneObject[] = [
     id: 'burbuja',
     kind: 'planet',
     label: 'Burbuja',
-    position: [390, 25, 120],
+    position: around(96, -24, 440),
     radius: 22,
     seed: 97,
     palette: ['#cffafe', '#0e7490', '#0b1020'],
@@ -158,10 +174,11 @@ const EXTRA_DEFS: SceneObject[] = [
     id: 'franjas',
     kind: 'planet',
     label: 'Plano galáctico',
-    position: [-390, -30, 60],
+    position: around(-100, 6, 500),
     radius: 34,
     seed: 101,
-    palette: ['#e0e7ff', '#7c3aed', '#1e1b4b'],
+    // El tono más claro es lavanda (no casi blanco): la textura es muy brillante y se veía como una bola blanca.
+    palette: ['#c4b5fd', '#5b21b6', '#1e1b4b'],
     surface: 'bands',
     atmosphere: '#c4b5fd',
     texture: { map: 'plano-galactico', mode: 'palette' },
@@ -171,7 +188,7 @@ const EXTRA_DEFS: SceneObject[] = [
     id: 'polvo',
     kind: 'planet',
     label: 'Polvo de Vela',
-    position: [140, -50, 430],
+    position: around(160, -32, 460),
     radius: 17,
     seed: 103,
     palette: ['#cbd5e1', '#64748b', '#1e293b'],
@@ -184,7 +201,7 @@ const EXTRA_DEFS: SceneObject[] = [
     id: 'lazos',
     kind: 'planet',
     label: 'Lazos galácticos',
-    position: [530, 15, -170],
+    position: around(72, 28, 600),
     radius: 24,
     seed: 107,
     palette: ['#f1f5f9', '#9a3412', '#1c0a06'],
@@ -197,7 +214,7 @@ const EXTRA_DEFS: SceneObject[] = [
     id: 'nebulosa',
     kind: 'planet',
     label: 'Nebulosa de Vela',
-    position: [-510, 35, -60],
+    position: around(-132, 36, 620),
     radius: 28,
     seed: 109,
     palette: ['#fbcfe8', '#be185d', '#2a0a1a'],
@@ -211,7 +228,7 @@ const EXTRA_DEFS: SceneObject[] = [
     id: 'filamentos',
     kind: 'planet',
     label: 'Filamentos',
-    position: [-40, 45, 610],
+    position: around(186, 42, 680),
     radius: 20,
     seed: 113,
     palette: ['#fecdd3', '#9f1239', '#140611'],
@@ -223,7 +240,7 @@ const EXTRA_DEFS: SceneObject[] = [
     id: 'tessa',
     kind: 'planet',
     label: 'Tessa',
-    position: [-170, 25, 230],
+    position: around(-152, -14, 320),
     radius: 16,
     seed: 61,
     palette: ['#d6a59a', '#8a4b3f', '#2e1713'],
@@ -235,7 +252,7 @@ const EXTRA_DEFS: SceneObject[] = [
     id: 'calder',
     kind: 'planet',
     label: 'Calder',
-    position: [360, -20, -330],
+    position: CALDER,
     radius: 30,
     seed: 71,
     palette: ['#a5f3fc', '#2b7a8c', '#0b2a33'],
@@ -247,7 +264,7 @@ const EXTRA_DEFS: SceneObject[] = [
     id: 'sora',
     kind: 'sphere',
     label: 'Sora',
-    position: [300, 8, -270],
+    position: [CALDER[0] + 46, CALDER[1] - 12, CALDER[2] + 30],
     radius: 5,
     seed: 79,
     palette: ['#f1f5f9', '#94a3b8', '#334155'],
@@ -261,7 +278,7 @@ const EXTRA_DEFS: SceneObject[] = [
     id: 'brasa',
     kind: 'planet',
     label: 'Brasa',
-    position: [-780, 20, -480],
+    position: around(-34, -50, 720),
     radius: 30,
     seed: 127,
     palette: ['#fca5a5', '#b91c1c', '#1c0702'],
@@ -275,7 +292,7 @@ const EXTRA_DEFS: SceneObject[] = [
     id: 'jade',
     kind: 'planet',
     label: 'Jade',
-    position: [820, -30, 420],
+    position: around(126, 12, 920),
     radius: 26,
     seed: 131,
     palette: ['#d1fae5', '#059669', '#022c22'],
@@ -288,7 +305,7 @@ const EXTRA_DEFS: SceneObject[] = [
     id: 'ceniza',
     kind: 'planet',
     label: 'Ceniza',
-    position: [960, 35, -200],
+    position: around(-76, -36, 980),
     radius: 34,
     seed: 137,
     palette: ['#f5f5f4', '#78716c', '#1c1917'],
@@ -301,13 +318,157 @@ const EXTRA_DEFS: SceneObject[] = [
     id: 'marea',
     kind: 'planet',
     label: 'Marea',
-    position: [-700, -40, 660],
+    position: around(-160, -44, 860),
     radius: 24,
     seed: 139,
     palette: ['#ccfbf1', '#0f766e', '#042f2e'],
     surface: 'rocky',
     atmosphere: '#5eead4',
     texture: { map: 'marte-viking', mode: 'palette' },
+  },
+  // Cuatro planetas más, arriba, abajo y lejos: el sector se recorre también en altura.
+  {
+    // Superficie: el mapa de Europa (hielo rayado), solo por su luminancia, en lilas de escarcha.
+    id: 'escarcha',
+    kind: 'planet',
+    label: 'Escarcha',
+    position: around(14, 60, 400),
+    radius: 18,
+    seed: 149,
+    palette: ['#fae8ff', '#a21caf', '#2e1065'],
+    surface: 'rocky',
+    atmosphere: '#f0abfc',
+    texture: { map: 'europa-voyager', mode: 'palette', bump: 'luna-relieve' },
+  },
+  {
+    // Superficie: el mapa de Fobos (cráteres), en grises de hollín. Una esfera pequeña justo debajo.
+    id: 'hollin',
+    kind: 'sphere',
+    label: 'Hollín',
+    position: around(-8, -64, 300),
+    radius: 9,
+    seed: 151,
+    palette: ['#d6d3d1', '#57534e', '#0c0a09'],
+    surface: 'rocky',
+    texture: { map: 'fobos-viking', mode: 'palette', bump: 'luna-relieve' },
+  },
+  {
+    // Con anillo: bandas y anillo de Saturno en grises plateados (solo su luminancia).
+    id: 'argento',
+    kind: 'ringedPlanet',
+    label: 'Argento',
+    position: around(142, 50, 740),
+    radius: 24,
+    seed: 157,
+    palette: ['#e2e8f0', '#64748b', '#0f172a'],
+    surface: 'bands',
+    atmosphere: '#cbd5e1',
+    ring: { inner: 1.3, outer: 2.4, tiltDeg: 22 },
+    texture: { map: 'bandas-saturno', mode: 'palette', ringMap: 'anillo-saturno' },
+  },
+  {
+    // Superficie: el mapa de todo el cielo de SPHEREx, solo por su luminancia, en azules abisales.
+    id: 'abisal',
+    kind: 'planet',
+    label: 'Abisal',
+    position: around(-106, -56, 780),
+    radius: 28,
+    seed: 163,
+    palette: ['#bfdbfe', '#1e3a8a', '#020617'],
+    surface: 'bands',
+    atmosphere: '#60a5fa',
+    texture: { map: 'cielo-spherex', mode: 'palette' },
+  },
+  // Siete planetas más con mapas globales de NASA/JPL (tools/texturas_nasa_beta.py), repartidos en altura.
+  {
+    // Gigante gaseoso azul: el mapa de Neptuno de la Voyager 2, con su color.
+    id: 'cobalto',
+    kind: 'planet',
+    label: 'Cobalto',
+    position: around(200, -8, 1100),
+    radius: 44,
+    seed: 167,
+    palette: ['#c7d2fe', '#3730a3', '#0b0f2e'],
+    surface: 'bands',
+    atmosphere: '#93c5fd',
+    texture: { map: 'neptuno-voyager', mode: 'color' },
+  },
+  {
+    // Luna de hielo brillante: el mapa de Encélado, casi blanco.
+    id: 'nacar',
+    kind: 'sphere',
+    label: 'Nácar',
+    position: around(60, -42, 380),
+    radius: 13,
+    seed: 173,
+    palette: ['#f8fafc', '#94a3b8', '#1e293b'],
+    surface: 'rocky',
+    atmosphere: '#e0f2fe',
+    texture: { map: 'encelado-voyager', mode: 'palette', bump: 'luna-relieve' },
+  },
+  {
+    // Dos caras, una oscura y otra clara: el mapa de Japeto.
+    id: 'jano',
+    kind: 'planet',
+    label: 'Jano',
+    position: around(-42, 52, 640),
+    radius: 22,
+    seed: 179,
+    // En paleta: la cara oscura queda en café muy oscuro (como el material de Japeto), no en negro puro.
+    palette: ['#f5f5f4', '#8a7f75', '#3a2a22'],
+    surface: 'rocky',
+    texture: { map: 'japeto-voyager', mode: 'palette', bump: 'luna-relieve' },
+  },
+  {
+    // Oscuro y lleno de cráteres claros: el mapa de Calisto, con su color.
+    id: 'onix',
+    kind: 'planet',
+    label: 'Ónix',
+    position: around(225, 22, 820),
+    radius: 26,
+    seed: 181,
+    palette: ['#e5e7eb', '#4b5563', '#030712'],
+    surface: 'rocky',
+    atmosphere: '#9ca3af',
+    texture: { map: 'calisto-voyager', mode: 'color', bump: 'luna-relieve' },
+  },
+  {
+    // Hielo cruzado por un gran cañón: el mapa de Tetis, en azules.
+    id: 'grieta',
+    kind: 'planet',
+    label: 'Grieta',
+    position: around(-120, -20, 1000),
+    radius: 20,
+    seed: 191,
+    palette: ['#e0f2fe', '#0369a1', '#082f49'],
+    surface: 'rocky',
+    atmosphere: '#7dd3fc',
+    texture: { map: 'tetis-voyager', mode: 'palette', bump: 'luna-relieve' },
+  },
+  {
+    // Luna pequeña con un cráter enorme, casi en la vertical de la entrada: el mapa de Mimas.
+    id: 'vigia',
+    kind: 'sphere',
+    label: 'Vigía',
+    position: around(-14, 80, 520),
+    radius: 12,
+    seed: 193,
+    palette: ['#f1f5f9', '#64748b', '#0f172a'],
+    surface: 'rocky',
+    texture: { map: 'mimas-voyager', mode: 'color', bump: 'luna-relieve' },
+  },
+  {
+    // Continentes y océanos: el relieve de la Tierra, teñido de cian y violeta.
+    id: 'pangea',
+    kind: 'planet',
+    label: 'Pangea',
+    position: around(100, 40, 1050),
+    radius: 32,
+    seed: 197,
+    palette: ['#a5f3fc', '#7c3aed', '#140a2e'],
+    surface: 'rocky',
+    atmosphere: '#a5b4fc',
+    texture: { map: 'tierra-relieve', mode: 'palette' },
   },
 ]
 const EXTRAS: readonly SceneObject[] = EXTRA_DEFS.map((o) => (BETA_INFO[o.id] ? { ...o, info: BETA_INFO[o.id] } : o))

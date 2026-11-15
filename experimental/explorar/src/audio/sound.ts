@@ -17,6 +17,8 @@ export interface SoundEngine {
   impact(strength: number): void
   /** Tic suave al señalar una región en la selección. */
   hover(): void
+  /** Escaneo de un planeta: barrido ascendente con tics y dos notas al terminar. */
+  scan(): void
   /** Paso de un visitante: «fiu» corto de estrella fugaz, soplo largo de cometa, roce grave de asteroide. */
   visitor(kind: 'comet' | 'meteor' | 'asteroid'): void
   dispose(): void
@@ -196,6 +198,24 @@ export function createSound(factory: () => Ctx | null = defaultFactory): SoundEn
     },
     hover() {
       blip(1320, 0, 0.09, 0.06)
+    },
+    scan() {
+      if (!on || !ctx || !master) return
+      const t = ctx.currentTime
+      const o = ctx.createOscillator()
+      o.type = 'sine'
+      o.frequency.setValueAtTime(280, t)
+      o.frequency.exponentialRampToValueAtTime(1500, t + 1.4)
+      const g = ctx.createGain()
+      g.gain.setValueAtTime(0.0001, t)
+      g.gain.exponentialRampToValueAtTime(0.05, t + 0.15)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 1.5)
+      o.connect(g).connect(master)
+      o.start(t)
+      o.stop(t + 1.55)
+      for (let i = 0; i < 6; i++) blip(1760, 0.1 + i * 0.22, 0.05, 0.04)
+      blip(990, 1.62, 0.16, 0.1)
+      blip(1320, 1.76, 0.26, 0.09)
     },
     visitor(kind) {
       if (kind === 'meteor') swoosh(0.55, 1400, 5200, 0.09)

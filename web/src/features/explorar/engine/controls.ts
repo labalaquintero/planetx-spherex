@@ -1,7 +1,7 @@
 import type { FlightInput } from './flight'
 
 /** Acciones de vuelo (teclado y botones en pantalla usan las mismas). */
-export type FlightAction = 'forward' | 'back' | 'left' | 'right' | 'up' | 'down'
+export type FlightAction = 'forward' | 'back' | 'left' | 'right' | 'up' | 'down' | 'boost'
 
 /** Teclas (KeyboardEvent.code) → acción. Independiente de la distribución del teclado. */
 export const FLIGHT_KEYS: Readonly<Record<string, FlightAction>> = {
@@ -17,6 +17,8 @@ export const FLIGHT_KEYS: Readonly<Record<string, FlightAction>> = {
   Space: 'up',
   KeyQ: 'down',
   KeyC: 'down',
+  ShiftLeft: 'boost',
+  ShiftRight: 'boost',
 }
 
 export const ACTION_LABELS: Readonly<Record<FlightAction, { key: string; label: string }>> = {
@@ -26,10 +28,11 @@ export const ACTION_LABELS: Readonly<Record<FlightAction, { key: string; label: 
   right: { key: 'D', label: 'Girar a la derecha' },
   up: { key: 'E', label: 'Subir' },
   down: { key: 'Q', label: 'Bajar' },
+  boost: { key: 'Shift', label: 'Turbo' },
 }
 
 /** Entrada de vuelo a partir de las acciones mantenidas (opuestas se anulan). */
 export function inputFrom(held: ReadonlySet<FlightAction>): FlightInput {
   const v = (a: FlightAction, b: FlightAction) => (held.has(a) ? 1 : 0) - (held.has(b) ? 1 : 0)
-  return { thrust: v('forward', 'back'), turn: v('left', 'right'), lift: v('up', 'down') }
+  return { thrust: v('forward', 'back'), turn: v('left', 'right'), lift: v('up', 'down'), boost: held.has('boost') }
 }

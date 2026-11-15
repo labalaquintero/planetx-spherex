@@ -15,6 +15,8 @@ export interface FlightInput {
   readonly turn: number
   /** -1 (bajar) .. 1 (subir). */
   readonly lift: number
+  /** Turbo (Shift): más velocidad máxima para cruzar zonas lejanas. */
+  readonly boost?: boolean
 }
 
 export const NO_INPUT: FlightInput = { thrust: 0, turn: 0, lift: 0 }
@@ -49,6 +51,11 @@ export interface Obstacle {
 
 export const FLIGHT = {
   maxSpeed: 30,
+  /** Turbo: la velocidad máxima y la aceleración se multiplican (un poco más rápido, no mucho). */
+  boostFactor: 1.6,
+  boostAccel: 1.4,
+  /** Al soltar el turbo, el exceso de velocidad se apaga con esta tasa (1/s), sin frenazo. */
+  boostRelease: 1.2,
   maxReverse: 9,
   accel: 16,
   brake: 26,
@@ -136,10 +143,15 @@ export function stepFlight(
   let vUp = v[0] * up[0] + v[1] * up[1] + v[2] * up[2]
   const sideKeep = Math.exp(-4 * dt)
   const lat = [0, 1, 2].map((i) => (v[i]! - along * fwd[i]! - vUp * up[i]!) * sideKeep)
-  if (thrust > 0) along += thrust * FLIGHT.accel * dt
+  const boost = Boolean(input.boost) && thrust > 0
+  const top = FLIGHT.maxSpeed * (boost ? FLIGHT.boostFactor : 1)
+  // Acelerar nunca lleva por encima del tope; si ya iba más rápido (acaba de soltar el turbo), no suma.
+  if (thrust > 0) along = Math.min(along + thrust * FLIGHT.accel * (boost ? FLIGHT.boostAccel : 1) * dt, Math.max(top, along))
   else if (thrust < 0) along += thrust * (along > 0 ? FLIGHT.brake : FLIGHT.accel * 0.6) * dt
   else along *= Math.exp(-FLIGHT.drag * dt)
-  along = clamp(along, -FLIGHT.maxReverse, FLIGHT.maxSpeed)
+  // Por encima del tope (al soltar el turbo) baja suave hacia él; por debajo, el tope de siempre.
+  if (along > top) along = top + (along - top) * Math.exp(-FLIGHT.boostRelease * dt)
+  along = Math.max(along, -FLIGHT.maxReverse)
 
   if (lift !== 0) vUp += lift * FLIGHT.climbAccel * dt
   else vUp *= Math.exp(-2.5 * dt)

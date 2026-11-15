@@ -6,8 +6,8 @@ después se **vuela libremente** en nave por todo el sector, en una escena 3D. *
 El proyecto vive aislado en `experimental/explorar/`, con su propio `package.json` y `pnpm-lock.yaml`, fuera de
 cualquier workspace. No toca `web/`, `api/`, `infra/` ni Docker. **No hace llamadas de red en ejecución:** no usa
 CDN, fuentes, texturas ni modelos remotos. La nebulosa, la nave y la galaxia de la selección se generan en el
-navegador. Las cinco texturas de referencia (NASA y Solar System Scope, 140 KB) van empaquetadas y se sirven desde
-el mismo origen. La fuente es la del sistema, como en el visor. Funciona sin conexión.
+navegador. Las texturas de referencia (NASA, SPHEREx y Solar System Scope; ver ATTRIBUTIONS.md) van empaquetadas, se sirven
+desde el mismo origen y solo se descargan al entrar en un sector. La fuente es la del sistema, como en el visor. Funciona sin conexión.
 
 La composición de la escena y de la selección **sale de medir los bocetos**
 (`docs/referencias/layout.json`); ver «Fidelidad a los bocetos».
@@ -77,6 +77,11 @@ Además, baja de nivel por debajo de 50 FPS en vez de 46. En Linux y macOS no ca
   Con **clic derecho y arrastrar** se dirige la nave: arrastrar a los lados cambia el rumbo y arriba o abajo cambia
   el cabeceo (hasta ±60°). La nave sigue igual en pantalla; lo que cambia es hacia dónde avanza.
 
+  **Clic en la vista** bloquea el puntero, como en los juegos de vuelo: el ratón dirige la nave sin arrastrar.
+  **Esc** suelta el puntero y otro **Esc** sale del sector. Dentro de la vista no hay acciones del navegador:
+  ni arrastrar imágenes («descargar»), ni autodesplazamiento con la rueda pulsada, ni selección de texto.
+  **Shift** es el turbo: el tope pasa de 30 a 48 u/s y al soltarlo baja suave.
+
   La nave mira al frente y la cámara la sigue desde atrás. Se alabea al girar y se inclina al subir o bajar. Los
   controles en pantalla (abajo a la derecha, la cruz del boceto más «Subir» y «Bajar») funcionan igual y sirven en
   pantallas táctiles. `Esc` o «Volver a sectores» regresan a la selección con el foco en el sector visitado.
@@ -98,6 +103,15 @@ Además, baja de nivel por debajo de 50 FPS en vez de 46. En Linux y macOS no ca
   efecto: no hay daño ni puntuación.
 - **Ficha del objeto:** a menos de 120 u de un objeto con nombre, el panel izquierdo muestra su contexto y, si la
   hay, la imagen de la que se sacó (por ejemplo, las dos épocas de WISE 0855 para Ilmara).
+- **Escaneo (tecla R):** cerca de un planeta, luna o planeta con anillo (cuando aparece su ficha), **R** o el
+  botón «Escanear» abren un panel que crece hasta casi toda la pantalla. En el centro está el modelo 3D del
+  cuerpo, con las mismas texturas, colores, atmósfera y anillo que en la escena, iluminado por la estrella del
+  sector. Se gira arrastrando con el ratón (con inercia) y la rueda acerca o aleja. Primero, una retícula y un
+  anillo barren el cuerpo de polo a polo. Después se muestran la lectura (tipo, diámetro, distancia,
+  superficie, atmósfera, anillo y mapa de origen) y la ficha con su imagen. **R**, **Esc** o «Cerrar» lo
+  cierran. Mientras está abierto, la nave se queda quieta y la escena deja de dibujarse. `?escanear=<id>`
+  abre el escaneo de ese objeto al entrar (capturas y demo). La lógica está en `engine/scan.ts` y la vista en
+  `scene/ScanView.tsx`, en un chunk aparte que solo se descarga al escanear.
 - **HUD:** muestra el sector, el objeto con nombre más cercano (tipo y distancia) y la velocidad. El **mapa del
   área** (200 px; 120 px en pantallas estrechas) es una vista cenital del rectángulo visitable con los objetos a
   escala y con nombre, la nave como flecha con su cono de visión, y una barra de altura.

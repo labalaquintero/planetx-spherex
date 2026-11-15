@@ -21,7 +21,7 @@ export function InfoCard({ info }: Props) {
         <div className="ex-info-images" data-count={info.images.length}>
           {info.images.map((img) => (
             <figure key={img.caption} className="ex-info-figure">
-              <img src={img.src} alt={img.caption} data-pixelated={img.pixelated || undefined} loading="lazy" />
+              <img src={img.src} alt={img.caption} data-pixelated={img.pixelated || undefined} loading="lazy" draggable={false} />
               <figcaption>{img.caption}</figcaption>
             </figure>
           ))}

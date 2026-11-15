@@ -102,10 +102,10 @@ vec3 galaxy(vec2 p) {
   float n = fbm(gr * 5.0 + 3.0);
   float n2 = fbm(gr * 13.0 + 7.0);
   float phase = 2.0 * th - 4.4 * lr + (n - 0.5) * 1.6;
-  float arm = pow(0.5 + 0.5 * cos(phase), 2.4) * (0.55 + 0.9 * n);
+  float arm = pow(max(0.5 + 0.5 * cos(phase), 0.0), 2.4) * (0.55 + 0.9 * n);
   float disk = exp(-r * 2.4);
   float bulge = exp(-r * r * 90.0) * 1.1 + exp(-r * 9.0) * 0.32;
-  float lane = pow(0.5 + 0.5 * cos(phase + 0.95), 7.0) * smoothstep(0.06, 0.28, r) * (1.0 - smoothstep(0.75, 1.15, r));
+  float lane = pow(max(0.5 + 0.5 * cos(phase + 0.95), 0.0), 7.0) * smoothstep(0.06, 0.28, r) * (1.0 - smoothstep(0.75, 1.15, r));
   vec3 armCol = mix(vec3(0.52, 0.66, 1.0), vec3(0.78, 0.6, 1.0), smoothstep(0.35, 0.75, n2));
   vec3 col = vec3(1.0, 0.84, 0.6) * bulge;
   col += armCol * arm * disk * 1.6;
@@ -145,14 +145,17 @@ vec3 areas(vec2 p, vec3 col) {
     col *= 1.0 + inner * hv * 0.55;
     col += c * inner * (0.07 + 0.2 * hv) * dim;
     float wr = 1.4 * px / a.z;
-    float ring = exp(-pow((e - 1.0) / wr, 2.0));
+    float rd = (e - 1.0) / wr;
+    float ring = exp(-rd * rd);
     float dash = smoothstep(0.25, 0.65, 0.5 + 0.5 * cos(ang * 22.0 - uTime * 1.4));
-    float sweep = 0.35 + 0.65 * pow(0.5 + 0.5 * cos(ang - uTime * 0.8 + float(i) * 2.1), 4.0);
+    float sweep = 0.35 + 0.65 * pow(max(0.5 + 0.5 * cos(ang - uTime * 0.8 + float(i) * 2.1), 0.0), 4.0);
     col += c * ring * mix(dash * (0.35 + 0.65 * sweep), 1.0, hv) * (0.6 + 0.6 * hv) * dim;
-    float halo = exp(-pow((e - 1.0) / (wr * 9.0), 2.0));
+    float hd = (e - 1.0) / (wr * 9.0);
+    float halo = exp(-hd * hd);
     col += c * halo * 0.12 * hv;
     float pr = fract(uTime * 0.5 + float(i) * 0.31);
-    float pulse = exp(-pow((e - 1.0 - pr * 0.45) / (wr * 2.0), 2.0)) * (1.0 - pr) * hv;
+    float pd = (e - 1.0 - pr * 0.45) / (wr * 2.0);
+    float pulse = exp(-pd * pd) * (1.0 - pr) * hv;
     col += c * pulse * 0.45;
   }
   return col;

@@ -31,6 +31,15 @@ export function spawnPointParam(search: string, validIds: readonly string[]): st
 }
 
 /**
+ * ?escanear=<id de objeto>: abre al entrar el escaneo de ese objeto (capturas y demo de planetas lejanos).
+ * Sin valor, o si el id no está entre los escaneables, no se abre nada.
+ */
+export function scanParam(search: string, validIds: readonly string[]): string | null {
+  const v = new URLSearchParams(search).get('escanear')?.trim()
+  return v && validIds.includes(v) ? v : null
+}
+
+/**
  * ?perfil=windows|general fuerza el perfil de rendimiento (para probar el de Windows en otro sistema,
  * o para quitarlo). Sin valor válido, se detecta la plataforma.
  */

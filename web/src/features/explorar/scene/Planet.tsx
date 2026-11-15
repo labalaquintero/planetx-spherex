@@ -16,13 +16,20 @@ interface Props {
   spin: boolean
   /** Octavas del ruido de superficie (calidad). */
   octaves: number
+  /** Subdivisiones de la esfera (de cerca, en el escaneo, conviene más). */
+  segments?: readonly [number, number]
+  /**
+   * Fuerza del relieve. De cerca, el mapa de relieve (512 px) se ve en escalones si el relieve es fuerte:
+   * el escaneo lo suaviza.
+   */
+  bumpScale?: number
 }
 
 /**
  * Planeta o esfera con superficie procedural por ruido (en GPU, sin texturas), atmósfera fresnel
  * y, si tiene, anillo translúcido con sombra mutua planeta ↔ anillo. Todo iluminado por LIGHT_DIR.
  */
-export function Planet({ o, spin, octaves }: Props) {
+export function Planet({ o, spin, octaves, segments: detail, bumpScale = 0.9 }: Props) {
   const spinRef = useRef<Group>(null)
   const ring = o.ring
   const center = useMemo(() => new Vector3(...o.position), [o])
@@ -75,7 +82,7 @@ export function Planet({ o, spin, octaves }: Props) {
           uMapMode: { value: o.texture?.mode === 'palette' ? 1 : 0 },
           uBump: { value: null },
           uHasBump: { value: 0 },
-          uBumpScale: { value: 0.9 },
+          uBumpScale: { value: bumpScale },
           uRingMap: { value: null },
           uHasRingMap: { value: 0 },
         },
@@ -85,7 +92,8 @@ export function Planet({ o, spin, octaves }: Props) {
   )
   useEffect(() => {
     surface.uniforms.uOct!.value = octaves
-  }, [surface, octaves])
+    surface.uniforms.uBumpScale!.value = bumpScale
+  }, [surface, octaves, bumpScale])
 
   const atmosphere = useMemo(
     () =>
@@ -175,7 +183,8 @@ export function Planet({ o, spin, octaves }: Props) {
     surface.uniforms.uTime!.value = state.clock.elapsedTime
   })
 
-  const segments = o.radius > 6 ? [64, 48] : [32, 24]
+  // Más subdivisiones en los grandes: de cerca la silueta ya no se ve poligonal.
+  const segments = detail ?? (o.radius > 12 ? [96, 64] : o.radius > 6 ? [64, 48] : [32, 24])
   return (
     <group position={[...o.position]}>
       <group ref={spinRef} rotation={[0, 0, (ring ? ring.tiltDeg : 8) * DEG * 0.5]}>
@@ -183,8 +192,9 @@ export function Planet({ o, spin, octaves }: Props) {
           <sphereGeometry args={[o.radius, segments[0], segments[1]]} />
         </mesh>
       </group>
+      {/* Atmósfera fina: más gruesa se veía como un segundo disco corrido, sobre todo de lejos. */}
       {atmosphere && (
-        <mesh material={atmosphere} scale={o.surface === 'storms' ? 1.035 : 1.075}>
+        <mesh material={atmosphere} scale={o.surface === 'storms' ? 1.035 : 1.045}>
           <sphereGeometry args={[o.radius, 48, 32]} />
         </mesh>
       )}
