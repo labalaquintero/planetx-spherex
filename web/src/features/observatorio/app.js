@@ -1,18 +1,19 @@
 import {
   articles, comparisonLink, comparisonMode, coordinateParams, dateMark, daysBetween, escapeHtml, fieldLabel,
-  fold, formatBand, fullDate, nasaSky, nasaVela, prepared, targets,
+  fold, formatBand, nasaSky, prepared, targets,
 } from './datos.js';
 import {
   accountView, avatar, bindAccount, bindModeration, bindReport, bindSettings, confirmationView,
-  moderationView, pdfButton, profileView, publicProfileView, reportEvidence, reportView, settingsView,
+  moderationView, profileView, publicProfileView, reportView, settingsView,
 } from './espacio.js';
+import { articleView, bindArticle, blogCommunity, blogView } from './blog.js';
 import { back, badge, dataRows, miniPair, missingView, pageHeading } from './ui.js';
 import {
   bindComparisonSlider, bindInspector, bindViewer, cancelSearch, comparisonFor, comparisonSlider,
   inspectorView, prefetchPrepared, preparedState, stopPlayback, viewerExamples, viewerView,
 } from './visor.js';
 import { bindReportAnnotations } from './anotaciones.js';
-import { loadForView, readSharedPage, reportById, setSharedPage, sharedPage } from './colaboracion.js';
+import { loadForView, readSharedPage, setSharedPage, sharedPage } from './colaboracion.js';
 import { bindEvidenceImages, readWorkspace } from './workspace.js';
 
 const main = document.querySelector('main');
@@ -289,79 +290,6 @@ function targetView(id) {
     </div>`;
 }
 
-function blogView(_id, params) {
-  const [featured, ...guides] = articles;
-  const localPublished = readWorkspace().reports.filter((report) => report.status === 'published');
-  const published = sharedPage.publications ?? [];
-  const page = Math.min(1000000, Math.max(0, Number.parseInt(params.get('pagina'), 10) || 0));
-  return `${pageHeading('Blog de observación', 'Guías para usar el visor, interpretar las imágenes y documentar una observación.')}
-    <article class="panel featured-article">
-      <img src="/observatorio/vela-spherex.jpg" alt="" loading="lazy">
-      <div>
-        <p class="eyebrow">${featured.category}</p>
-        <h2>${featured.title}</h2>
-        <p>${featured.summary}</p>
-        <a class="button primary" href="#articulo/${featured.id}">Leer guía <span aria-hidden="true">→</span></a>
-      </div>
-      <a class="photo-credit" href="${nasaVela}" target="_blank" rel="noopener">Región de Vela · NASA/JPL-Caltech <span aria-hidden="true">↗</span></a>
-    </article>
-    <div class="article-grid guide-grid">
-      ${guides.map((article) => `<article class="panel article-tile">
-        <p class="eyebrow">${article.category}</p>
-        <h2>${article.title}</h2>
-        <p>${article.summary}</p>
-        <a class="text-link" href="#articulo/${article.id}">Leer guía <span aria-hidden="true">→</span></a>
-      </article>`).join('')}
-    </div>
-    ${sharedPage.enabled ? `<section class="home-section" aria-labelledby="community-heading">
-      <div class="section-heading"><h2 id="community-heading">Observaciones de la comunidad</h2></div>
-      ${published.length ? `<div class="article-grid">${published.map((report) => `<article class="panel article-tile">
-        <h2>${escapeHtml(report.title)}</h2>
-        <p>Por ${escapeHtml(report.author)} · ${dateMark(report.publishedAt)}</p>
-        <a class="text-link" href="#articulo/${report.id}">Leer ficha <span aria-hidden="true">→</span></a>
-      </article>`).join('')}</div>` : '<p class="muted">Aquí aparecerán las fichas que publique el equipo.</p>'}
-      ${page || published.length === 30 ? `<nav class="row form-actions" aria-label="Páginas de fichas">
-        ${page ? `<a class="button secondary" href="#blog?pagina=${page - 1}">← Anteriores</a>` : ''}
-        ${published.length === 30 ? `<a class="button secondary" href="#blog?pagina=${page + 1}">Siguientes →</a>` : ''}
-      </nav>` : ''}
-    </section>` : ''}
-    ${localPublished.length ? `<section class="home-section" aria-label="Reportes publicados en este navegador">
-      <div class="section-heading"><h2>Reportes publicados en esta sesión</h2></div>
-      <div class="article-grid">${localPublished.map((report) => `<article class="panel article-tile">
-        ${badge('Publicación local de prueba', 'success', false)}
-        <h2>${escapeHtml(report.title)}</h2>
-        <p>Por ${escapeHtml(report.author)} · ${dateMark(report.created)}</p>
-        <a class="text-link" href="#articulo/${report.id}">Leer reporte <span aria-hidden="true">→</span></a>
-      </article>`).join('')}</div>
-    </section>` : ''}`;
-}
-
-function articleView(id) {
-  const article = articles.find((item) => item.id === id);
-  if (article) {
-    return `<article class="reading">
-      ${back('#blog', 'Blog')}
-      ${pageHeading(article.title, article.summary, article.category, true)}
-      ${article.sections.map(([title, content]) => `<section class="panel">
-        <h2>${title}</h2><p>${content}</p>
-      </section>`).join('')}
-      <a class="button primary" href="#visor/wise-0855">Probar con WISE 0855 <span aria-hidden="true">→</span></a>
-    </article>`;
-  }
-  const report = reportById(id);
-  if (report?.status !== 'published') return missingView();
-  return `<article class="reading">
-    ${back('#blog', 'Blog')}
-    ${pageHeading(report.title, `Por ${report.author} · ${fullDate(report.publishedAt ?? report.created)}`,
-      report.shared ? 'Observación de la comunidad' : 'Publicación local de prueba', true)}
-    <section class="panel"><h2>Observación</h2>
-      <p class="preserve-lines">${escapeHtml(report.notes || `Documento PDF: ${report.fileName}`)}</p>
-    </section>
-    ${pdfButton(report)}
-    ${reportEvidence(report.comparison ?? prepared, report.annotations, { reportId: report.id, from: 'articulo' })}
-  </article>`;
-}
-
 function stateGalleryView() {
   return `${pageHeading('Estados del visor', 'Abre cada ejemplo para revisar su comportamiento y su vista en móvil. Los casos simulados están identificados.')}
     <div class="state-cards">
@@ -404,7 +332,7 @@ const views = {
   imagen: { html: inspectorView, bind: bindInspector, nav: 'visor', title: 'Imagen ampliada' },
   estados: { html: stateGalleryView, nav: 'visor', title: 'Estados del visor' },
   blog: { html: blogView, nav: 'blog', title: 'Blog' },
-  articulo: { html: articleView, nav: 'blog', title: 'Artículo' },
+  articulo: { html: articleView, bind: bindArticle, nav: 'blog', title: 'Artículo' },
   ficha: { html: reportView, bind: bindReport, title: 'Ficha de observación' },
   confirmacion: { html: confirmationView, title: 'Confirmación' },
   acceso: { html: accountView, bind: bindAccount, title: 'Acceso y registro' },
@@ -457,9 +385,9 @@ function renderRoute() {
   setMenu(false);
   if (search.open) search.close();
   const params = new URLSearchParams(query);
-  const show = () => {
+  const show = (options) => {
     renderAccountLink(view);
-    main.innerHTML = selected.html(id, params);
+    main.innerHTML = selected.html(id, params, options);
     selected.bind?.(id, params);
     bindEvidenceImages(main);
     bindReportAnnotations(main);
@@ -468,13 +396,22 @@ function renderRoute() {
   if (runtime.collaboration && loadForView(view, id, params)) {
     const request = new AbortController();
     routeRequest = request;
-    main.innerHTML = '<p class="callout info" role="status">Cargando…</p>';
+    if (view === 'blog') show({ loadingCommunity: true });
+    else main.innerHTML = '<p class="callout info" role="status">Cargando…</p>';
     readSharedPage(view, id, params, AbortSignal.any([request.signal, AbortSignal.timeout(12000)])).then((page) => {
       if (request !== routeRequest) return;
       setSharedPage(page);
-      show();
+      if (view === 'blog') {
+        renderAccountLink(view);
+        main.querySelector('#blog-community').innerHTML = blogCommunity(params);
+        if (params.has('pagina')) main.querySelector('#community-heading')?.scrollIntoView();
+      } else show();
     }).catch(() => {
       if (request !== routeRequest) return;
+      if (view === 'blog') {
+        main.querySelector('#blog-community').innerHTML = blogCommunity(params, { unavailable: true });
+        return;
+      }
       const localParams = new URLSearchParams(params);
       localParams.set('local', '1');
       const localRoute = view === 'ficha' ? `#${path}?${localParams}` : '#perfil?local=1';
