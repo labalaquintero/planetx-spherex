@@ -12,7 +12,7 @@ import {
   type FlightInput,
   type FlightState,
 } from '../engine/flight'
-import { dragLook, newLook, type Look } from '../engine/orbit'
+import { STEER_SENSITIVITY } from '../engine/orbit'
 import { AdaptiveQuality, type QualityLevel } from '../engine/quality'
 import { spawnPointParam } from '../params'
 import type { SectorConfig, SectorScene as SectorSceneData, Vec3 } from '../engine/types'
@@ -87,8 +87,8 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
   const start = scene.waypoints.find((w) => w.id === (spawnId ?? scene.startId))!
   const flight = useRef<FlightState>(spawnBehind(start.position, start.yawDeg, CHASE.up, CHASE.back))
   const input = useRef<FlightInput>(NO_INPUT)
-  // Mirada libre: clic derecho y arrastrar gira la cámara alrededor de la nave.
-  const look = useRef<Look>(newLook())
+  // Dirigir con el ratón: clic derecho y arrastrar cambia la dirección de vuelo (rumbo y cabeceo).
+  const aim = useRef({ dYaw: 0, dPitch: 0 })
   const drag = useRef<{ id: number; x: number; y: number } | null>(null)
   const [held, setHeld] = useState<ReadonlySet<FlightAction>>(new Set())
 
@@ -171,23 +171,22 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
           if (e.button !== 2) return
           e.currentTarget.setPointerCapture?.(e.pointerId)
           drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY }
-          look.current = { ...look.current, dragging: true }
         }}
         onPointerMove={(e) => {
           const d = drag.current
           if (!d || d.id !== e.pointerId) return
-          look.current = dragLook(look.current, e.clientX - d.x, e.clientY - d.y)
+          // Arrastrar a la derecha gira a la derecha; hacia arriba, apunta hacia arriba.
+          aim.current.dYaw -= (e.clientX - d.x) * STEER_SENSITIVITY
+          aim.current.dPitch -= (e.clientY - d.y) * STEER_SENSITIVITY
           d.x = e.clientX
           d.y = e.clientY
         }}
         onPointerUp={(e) => {
           if (drag.current?.id !== e.pointerId) return
           drag.current = null
-          look.current = { ...look.current, dragging: false, idleMs: 0 }
         }}
         onLostPointerCapture={() => {
           drag.current = null
-          look.current = { ...look.current, dragging: false }
         }}
       >
         {webgl ? (
@@ -197,7 +196,7 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
                 scene={scene}
                 flight={flight}
                 input={input}
-                look={look}
+                aim={aim}
                 bounds={bounds}
                 obstacles={obstacles}
                 animate={!reduced}
@@ -272,7 +271,7 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
           <p className="ex-disclaimer-inline">Representación ilustrativa, no son datos reales de SPHEREx.</p>
           <p className="ex-hint" aria-hidden="true">
             <kbd>W</kbd>/<kbd>S</kbd> acelerar y frenar · <kbd>A</kbd>/<kbd>D</kbd> girar · <kbd>E</kbd>/<kbd>Q</kbd> subir y
-            bajar · clic derecho y arrastra: mirar alrededor · <kbd>Esc</kbd> volver
+            bajar · clic derecho y arrastra: dirigir la nave · <kbd>Esc</kbd> volver
           </p>
         </div>
         {webgl && <FlightPad held={held} onHold={hold} />}
