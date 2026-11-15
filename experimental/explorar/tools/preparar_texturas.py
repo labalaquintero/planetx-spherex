@@ -31,7 +31,6 @@ SVS = "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/"
 
 # (archivo de origen, url, salida, tamaño, modo, calidad)
 RECURSOS = [
-    ("2k_jupiter.jpg", SSS + "2k_jupiter.jpg", "bandas-jupiter.webp", (1024, 512), "RGB", 80),
     ("2k_saturn.jpg", SSS + "2k_saturn.jpg", "bandas-saturno.webp", (1024, 512), "RGB", 80),
     ("2k_saturn_ring_alpha.png", SSS + "2k_saturn_ring_alpha.png", "anillo-saturno.webp", (1024, 64), "RGBA", 90),
     ("lroc_color_poles_1k.jpg", SVS + "lroc_color_poles_1k.jpg", "luna-color.webp", (1024, 512), "RGB", 80),

@@ -6,33 +6,32 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
-import { VignetteShader } from 'three/examples/jsm/shaders/VignetteShader.js'
+import { LENS_SHADER } from './shaders/lens'
 
 /**
  * Postproceso con los pases de three (sin dependencias nuevas): antialiasing MSAA en el
- * composer, brillo (bloom) sutil solo en lo muy brillante y viñeta suave. Al desmontarse,
+ * composer, brillo (bloom) suave en lo muy brillante y un pase de lente (aberración cromática
+ * ligera, grano fino y viñeta). Al desmontarse,
  * react-three-fiber vuelve a pintar la escena sin composer.
  */
-export function Bloom({ strength, samples }: { strength: number; samples: number }) {
+export function Bloom({ strength, samples, chromatic, grain }: { strength: number; samples: number; chromatic: number; grain: number }) {
   const gl = useThree((s) => s.gl)
   const scene = useThree((s) => s.scene)
   const camera = useThree((s) => s.camera)
   const size = useThree((s) => s.size)
   const dpr = useThree((s) => s.viewport.dpr)
 
-  const { composer, bloom } = useMemo(() => {
+  const { composer, bloom, lens } = useMemo(() => {
     const target = new WebGLRenderTarget(1, 1, { type: HalfFloatType, samples })
     const composer = new EffectComposer(gl, target)
     composer.addPass(new RenderPass(scene, camera))
     // UnrealBloomPass trabaja internamente en mips de media resolución y menos.
-    const bloom = new UnrealBloomPass(new Vector2(256, 256), strength, 0.55, 0.88)
+    const bloom = new UnrealBloomPass(new Vector2(256, 256), strength, 0.75, 0.9)
     composer.addPass(bloom)
     composer.addPass(new OutputPass())
-    const vignette = new ShaderPass(VignetteShader)
-    vignette.uniforms.offset!.value = 1.05
-    vignette.uniforms.darkness!.value = 1.15
-    composer.addPass(vignette)
-    return { composer, bloom }
+    const lens = new ShaderPass(LENS_SHADER)
+    composer.addPass(lens)
+    return { composer, bloom, lens }
     // strength se aplica en su propio efecto, sin recrear el composer.
   }, [gl, scene, camera, samples])
   useEffect(() => {
@@ -41,9 +40,14 @@ export function Bloom({ strength, samples }: { strength: number; samples: number
   }, [composer, size, dpr])
   useEffect(() => {
     bloom.strength = strength
-  }, [bloom, strength])
+    lens.uniforms.uCA!.value = chromatic
+    lens.uniforms.uGrain!.value = grain
+  }, [bloom, lens, strength, chromatic, grain])
   useEffect(() => () => composer.dispose(), [composer])
 
-  useFrame((_, delta) => composer.render(delta), 1)
+  useFrame((state, delta) => {
+    lens.uniforms.uTime!.value = state.clock.elapsedTime
+    composer.render(delta)
+  }, 1)
   return null
 }

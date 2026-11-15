@@ -10,6 +10,10 @@ import {
   NO_INPUT,
   obstaclesOf,
   sectorBounds,
+  spawnBehind,
+  applyImpact,
+  steerFlight,
+  upOf,
   speedOf,
   stepFlight,
   type Bounds,
@@ -169,6 +173,125 @@ describe('el sector β como área de vuelo', () => {
     expect(near.distance).toBeGreaterThan(0)
     expect(boundaryProximity([0, 0, 0], b)).toBe(0)
     expect(boundaryProximity([b.max[0], 0, 0], b)).toBe(1)
+  })
+})
+
+describe('acercamiento suave a un objeto', () => {
+  const planet = [{ id: 'p', center: [0, 0, -120] as const, radius: 30 }]
+
+  it('de frente a toda velocidad: frena poco a poco en la zona cercana, sin parar en seco ni atravesarlo', () => {
+    let s: FlightState = { ...initialFlight([0, 0, 0]), velocity: [0, 0, -FLIGHT.maxSpeed] }
+    const inward: number[] = []
+    for (let t = 0; t < 8; t += 1 / 60) {
+      s = stepFlight(s, { thrust: 1, turn: 0, lift: 0 }, 1 / 60, BIG, planet)
+      const d = Math.hypot(s.position[0], s.position[1], s.position[2] + 120)
+      expect(d).toBeGreaterThanOrEqual(30 - 1e-6)
+      if (d < 30 + Math.max(FLIGHT.softMin, 30 * FLIGHT.softFraction)) inward.push(-s.velocity[2])
+    }
+    // Pasa varios cuadros frenando dentro de la zona suave...
+    expect(inward.length).toBeGreaterThan(10)
+    // ...y ningún cuadro pierde de golpe más de un tercio de la velocidad máxima.
+    for (let i = 1; i < inward.length; i++) expect(inward[i - 1]! - inward[i]!).toBeLessThan(FLIGHT.maxSpeed / 3)
+    // Se acerca mucho: a menos de la zona suave del borde.
+    const closest = Math.hypot(s.position[0], s.position[1], s.position[2] + 120) - 30
+    expect(closest).toBeLessThan(Math.max(FLIGHT.softMin, 30 * FLIGHT.softFraction) / 2)
+  })
+
+  it('si el rumbo roza el planeta, la nave lo rodea por el borde y sigue (no se queda atascada)', () => {
+    let s: FlightState = initialFlight([-24, 0, 0])
+    let minD = Infinity
+    for (let t = 0; t < 12; t += 1 / 60) {
+      s = stepFlight(s, { thrust: 1, turn: 0, lift: 0 }, 1 / 60, BIG, planet)
+      minD = Math.min(minD, Math.hypot(s.position[0], s.position[1], s.position[2] + 120))
+    }
+    expect(minD).toBeGreaterThanOrEqual(30 - 1e-6)
+    expect(minD).toBeLessThan(30 + FLIGHT.softMin) // pasó muy cerca
+    expect(s.position[2]).toBeLessThan(-150) // y lo dejó atrás
+  })
+
+  it('el roce sube al tocar la zona y luego vuelve a cero', () => {
+    let s: FlightState = { ...initialFlight([0, 0, -82]), velocity: [0, 0, -20] }
+    let peak = 0
+    for (let t = 0; t < 1; t += 1 / 60) {
+      s = stepFlight(s, NO_INPUT, 1 / 60, BIG, planet)
+      peak = Math.max(peak, s.contact)
+    }
+    expect(peak).toBeGreaterThan(0.1)
+    s = { ...s, position: [0, 0, 0], velocity: [0, 0, 0] }
+    for (let t = 0; t < 4; t += 1 / 60) s = stepFlight(s, NO_INPUT, 1 / 60, BIG, planet)
+    expect(s.contact).toBeLessThan(0.01)
+  })
+})
+
+describe('impacto de un cometa o meteorito', () => {
+  it('empuja la nave en la dirección del golpe y deja una sacudida', () => {
+    const s = applyImpact(initialFlight([0, 0, 0]), [1, 0, 0], 0.8)
+    expect(s.velocity[0]).toBeGreaterThan(5)
+    expect(s.jolt).toBeCloseTo(0.8)
+    expect(s.yawRate).not.toBe(0)
+  })
+  it('la nave se recupera sola: sin entrada, la sacudida y la velocidad vuelven a casi cero', () => {
+    let s = applyImpact(initialFlight([0, 0, 0]), [0, 0.3, 1], 1)
+    s = run(s, NO_INPUT, 6)
+    expect(s.jolt).toBeLessThan(0.01)
+    expect(speedOf(s)).toBeLessThan(1)
+    expect(Math.abs(s.yawRate)).toBeLessThan(0.01)
+  })
+  it('golpes nulos o inválidos no cambian nada', () => {
+    const s = initialFlight([0, 0, 0])
+    expect(applyImpact(s, [0, 0, 0], 1)).toBe(s)
+    expect(applyImpact(s, [1, 0, 0], 0)).toBe(s)
+    expect(applyImpact(s, [1, 0, 0], Number.NaN)).toBe(s)
+  })
+})
+
+describe('dirigir con el ratón (cabeceo de la dirección de vuelo)', () => {
+  it('apuntar hacia arriba y acelerar hace subir a la nave en esa dirección', () => {
+    const aimed = steerFlight(initialFlight([0, 0, 0]), 0, Math.PI / 6) // 30° arriba
+    const s = run(aimed, { thrust: 1, turn: 0, lift: 0 }, 4)
+    expect(s.position[1]).toBeGreaterThan(20)
+    expect(s.position[2]).toBeLessThan(-30)
+    const dir = s.velocity.map((v) => v / speedOf(s))
+    expect(dir[1]).toBeCloseTo(Math.sin(Math.PI / 6), 2)
+  })
+
+  it('apuntar hacia abajo hace bajar; el cabeceo se queda donde se dejó (no vuelve solo)', () => {
+    const aimed = steerFlight(initialFlight([0, 0, 0]), 0, -0.4)
+    const s = run(aimed, { thrust: 1, turn: 0, lift: 0 }, 3)
+    expect(s.position[1]).toBeLessThan(-10)
+    expect(s.pitch).toBeCloseTo(-0.4)
+  })
+
+  it('el cabeceo está acotado y arrastrar a los lados gira el rumbo', () => {
+    expect(steerFlight(initialFlight([0, 0, 0]), 0, 10).pitch).toBe(FLIGHT.maxAimPitch)
+    expect(steerFlight(initialFlight([0, 0, 0]), 0, -10).pitch).toBe(-FLIGHT.maxAimPitch)
+    expect(steerFlight(initialFlight([0, 0, 0]), 0.3, 0).yaw).toBeCloseTo(0.3)
+    const s = initialFlight([0, 0, 0])
+    expect(steerFlight(s, Number.NaN, 0)).toBe(s)
+    expect(steerFlight(s, 0, 0)).toBe(s)
+  })
+
+  it('adelante y arriba de la nave son perpendiculares y unitarios para cualquier dirección', () => {
+    for (const [y, p] of [[0, 0], [1, 0.5], [-2, -0.9], [3, 1]] as const) {
+      const f = forwardOf(y, p)
+      const u = upOf(y, p)
+      expect(f[0] * u[0] + f[1] * u[1] + f[2] * u[2]).toBeCloseTo(0, 12)
+      expect(Math.hypot(...f)).toBeCloseTo(1, 12)
+      expect(Math.hypot(...u)).toBeCloseTo(1, 12)
+    }
+  })
+})
+
+describe('spawnBehind', () => {
+  it('con rumbo 0, la nave queda delante y debajo del punto (igual que antes)', () => {
+    expect(spawnBehind([0, 0, 0], 0, 2.5, 8).position).toEqual([0, -2.5, -8])
+  })
+  it('con otro rumbo, la nave queda delante del punto en esa dirección', () => {
+    const s = spawnBehind([10, 5, -40], 90, 2.5, 8) // 90° = mira a -X
+    expect(s.position[0]).toBeCloseTo(2)
+    expect(s.position[1]).toBeCloseTo(2.5)
+    expect(s.position[2]).toBeCloseTo(-40)
+    expect(s.yaw).toBeCloseTo(Math.PI / 2)
   })
 })
 

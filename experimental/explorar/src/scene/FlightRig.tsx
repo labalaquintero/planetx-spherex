@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, type MutableRefObject } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Euler, MathUtils, Quaternion, Vector3, type Group, type PerspectiveCamera } from 'three'
-import { attitudeOf, speedOf, stepFlight, FLIGHT, type Bounds, type FlightInput, type FlightState, type Obstacle } from '../engine/flight'
+import { attitudeOf, speedOf, steerFlight, stepFlight, FLIGHT, type Bounds, type FlightInput, type FlightState, type Obstacle } from '../engine/flight'
 import { approach, arrivalOffset, cameraFit } from '../engine/motion'
+import { orbitOffset } from '../engine/orbit'
 import { CHASE } from './chase'
-import { NOZZLE, Ship } from './Ship'
+import { Shield } from './Shield'
+import { NOZZLES, Ship } from './Ship'
 import { Trail, type Emitter } from './Trail'
 
 const DEG = Math.PI / 180
@@ -17,6 +19,8 @@ interface Props {
   animate: boolean
   arrive: boolean
   trailParticles: number
+  /** Dirección pendiente de aplicar (rad), acumulada por la pantalla al arrastrar con clic derecho. */
+  aim: MutableRefObject<{ dYaw: number; dPitch: number }>
 }
 
 /**
@@ -24,48 +28,60 @@ interface Props {
  * La cámara sigue a la nave con suavizado: al girar, la nave se adelanta y luego la cámara la
  * alcanza. Con movimiento reducido el seguimiento es rígido y sin oscilación ni empuje de FOV.
  */
-export function FlightRig({ state, input, bounds, obstacles, animate, arrive, trailParticles }: Props) {
+export function FlightRig({ state, input, bounds, obstacles, animate, arrive, trailParticles, aim }: Props) {
   const ship = useRef<Group>(null)
   const camera = useThree((s) => s.camera) as PerspectiveCamera
   const invalidate = useThree((s) => s.invalidate)
   const aspect = useThree((s) => s.size.width / Math.max(1, s.size.height))
   const fit = useMemo(() => cameraFit(aspect), [aspect])
   const arrivalStart = useRef<number | null>(null)
-  const cam = useRef({ pos: new Vector3(), yaw: 0, ready: false })
+  const cam = useRef({ pos: new Vector3(), yaw: 0, pitch: 0, roll: 0, look: 0, ready: false })
   const tmp = useMemo(() => ({ v: new Vector3(), q: new Quaternion(), e: new Euler(0, 0, 0, 'YXZ'), w: new Vector3() }), [])
   // En pantallas verticales la nave se aleja un poco para que quepa.
   const portrait = Math.min(1, Math.max(0, (1.2 - aspect) / 0.7))
   const back = CHASE.back * (1 + 0.45 * portrait)
   const up = CHASE.up * (1 + 0.3 * portrait)
 
-  const emitter = useRef<Emitter>({ origin: new Vector3(), direction: new Vector3(0, 0, 1), velocity: new Vector3(), thrust: 0.3 })
+  // Una estela por tobera (dos motores).
+  const makeEmitter = (): Emitter => ({ origin: new Vector3(), direction: new Vector3(0, 0, 1), velocity: new Vector3(), thrust: 0.3 })
+  const emitterL = useRef<Emitter>(makeEmitter())
+  const emitterR = useRef<Emitter>(makeEmitter())
 
   // Con movimiento reducido el render es «bajo demanda»: se pide cuadro mientras haya entrada o velocidad.
   useEffect(() => {
     if (animate) return
     const id = setInterval(() => {
       const i = input.current
-      if (i.thrust || i.turn || i.lift || speedOf(state.current) > 0.05) invalidate()
+      const a = aim.current
+      if (i.thrust || i.turn || i.lift || speedOf(state.current) > 0.05 || a.dYaw || a.dPitch) invalidate()
     }, 50)
     return () => clearInterval(id)
-  }, [animate, input, state, invalidate])
+  }, [animate, input, state, invalidate, aim])
 
   useFrame((frame, delta) => {
-    const s = stepFlight(state.current, input.current, Math.min(delta, 0.1), bounds, obstacles)
+    // Dirección con el ratón: se aplica lo acumulado desde el cuadro anterior.
+    const a = aim.current
+    const steered = steerFlight(state.current, a.dYaw, a.dPitch)
+    a.dYaw = 0
+    a.dPitch = 0
+    const s = stepFlight(steered, input.current, Math.min(delta, 0.1), bounds, obstacles)
     state.current = s
     const g = ship.current
     if (!g) return
     const att = attitudeOf(s)
     g.position.set(...s.position)
-    g.rotation.set(animate ? att.pitchDeg * DEG : 0, s.yaw, animate ? att.bankDeg * DEG : 0, 'YXZ')
+    g.rotation.set(s.pitch + (animate ? att.pitchDeg * DEG : 0), s.yaw, animate ? att.bankDeg * DEG : 0, 'YXZ')
 
     // Cámara: detrás y arriba según el rumbo, con suavizado.
     const dtMs = Math.min(delta, 0.1) * 1000
     const c = cam.current
-    const target = tmp.w.set(0, up, back).applyAxisAngle(new Vector3(0, 1, 0), s.yaw).add(g.position)
+    // La cámara sigue detrás de la nave también en cabeceo: la nave se ve igual y el horizonte gira.
+    const off = orbitOffset(up, back, { yaw: 0, pitch: s.pitch })
+    const target = tmp.w.set(off[0], off[1], off[2]).applyAxisAngle(new Vector3(0, 1, 0), s.yaw).add(g.position)
     if (!c.ready || !animate) {
       c.pos.copy(target)
       c.yaw = s.yaw
+      c.pitch = s.pitch
       c.ready = true
     } else {
       c.pos.set(
@@ -74,8 +90,13 @@ export function FlightRig({ state, input, bounds, obstacles, animate, arrive, tr
         approach(c.pos.z, target.z, dtMs, CHASE.posHalfLifeMs),
       )
       c.yaw = approach(c.yaw, s.yaw, dtMs, CHASE.yawHalfLifeMs)
+      c.pitch = approach(c.pitch, s.pitch, dtMs, CHASE.yawHalfLifeMs)
     }
-    tmp.e.set(CHASE.pitchDeg * DEG, c.yaw, 0, 'YXZ')
+    // Pulido de cámara: se inclina un poco con el alabeo de la nave y mira levemente hacia
+    // donde gira (anticipación). Con movimiento reducido, nada de eso.
+    c.roll = animate ? approach(c.roll, att.bankDeg * 0.3, dtMs, 220) : 0
+    c.look = animate ? approach(c.look, s.yawRate * 0.14, dtMs, 260) : 0
+    tmp.e.set(CHASE.pitchDeg * DEG + c.pitch, c.yaw + c.look, c.roll * DEG, 'YXZ')
     camera.quaternion.setFromEuler(tmp.e)
     camera.position.copy(c.pos)
 
@@ -88,9 +109,19 @@ export function FlightRig({ state, input, bounds, obstacles, animate, arrive, tr
       if (a.back > 0) camera.position.add(tmp.v.set(0, 0, a.back).applyQuaternion(camera.quaternion))
       if (a.back > 0) frame.invalidate()
     }
+    // Temblor sutil al rozar un objeto, más marcado en un impacto (decae solo con el estado).
+    if (animate && (s.contact > 0.01 || s.jolt > 0.01)) {
+      const t = frame.clock.elapsedTime
+      const amp = s.contact * 0.05 + s.jolt * 0.4
+      camera.position.x += amp * (Math.sin(t * 37.3) + 0.5 * Math.sin(t * 61.7))
+      camera.position.y += amp * (Math.sin(t * 43.1) + 0.5 * Math.sin(t * 29.9))
+      camera.rotateZ(s.jolt * 0.03 * Math.sin(t * 31.0))
+    }
     if (animate) {
       const t = frame.clock.elapsedTime
-      camera.position.y += Math.sin(t * 0.9) * 0.04
+      // Oscilación muy leve, en dos frecuencias (no periódica a simple vista).
+      camera.position.y += Math.sin(t * 0.9) * 0.035 + Math.sin(t * 2.17) * 0.01
+      camera.position.x += Math.sin(t * 0.63) * 0.02
     }
     const speed = speedOf(s)
     const fov = fit.fovDeg + arrivalFov + (animate ? CHASE.speedFovDeg * Math.min(1, speed / FLIGHT.maxSpeed) : 0)
@@ -100,24 +131,31 @@ export function FlightRig({ state, input, bounds, obstacles, animate, arrive, tr
     }
 
     // Emisor de la estela: tobera en el mundo, hacia atrás de la nave.
-    const e = emitter.current
     g.updateMatrixWorld()
-    e.origin.set(NOZZLE[0], NOZZLE[1], NOZZLE[2]).applyMatrix4(g.matrixWorld)
-    e.direction.set(0, 0, 1).applyQuaternion(g.quaternion).normalize()
-    e.velocity.set(...s.velocity)
     const i = input.current
-    e.thrust = MathUtils.clamp(0.25 + 0.75 * Math.max(0, i.thrust) * (0.5 + 0.5 * speed / FLIGHT.maxSpeed) + 0.2 * Math.abs(i.lift), 0, 1)
+    const k = MathUtils.clamp(0.25 + 0.75 * Math.max(0, i.thrust) * (0.5 + 0.5 * speed / FLIGHT.maxSpeed) + 0.2 * Math.abs(i.lift), 0, 1)
+    ;[emitterL.current, emitterR.current].forEach((e, n) => {
+      const nz = NOZZLES[n]!
+      e.origin.set(nz[0], nz[1], nz[2]).applyMatrix4(g.matrixWorld)
+      e.direction.set(0, 0, 1).applyQuaternion(g.quaternion).normalize()
+      e.velocity.set(...s.velocity)
+      e.thrust = k
+    })
     if (speed > 0.05 || i.thrust || i.turn || i.lift) frame.invalidate()
   })
 
   return (
     <>
       <group ref={ship} scale={CHASE.shipScale}>
-        <Ship thrust={emitter} />
-        {/* Relleno suave desde arriba y detrás: la nave se ve a contraluz de la estrella. */}
-        <pointLight position={[0, 4, 5]} intensity={6} distance={18} decay={1} color="#bae6fd" />
+        <Ship thrust={emitterL} />
+        <Shield state={state} animate={animate} />
+        {/* Relleno suave desde arriba y detrás (lado de la cámara). */}
+        <pointLight position={[0, 4, 5]} intensity={2.6} distance={18} decay={1} color="#bae6fd" />
+        {/* Contraluz: fría, delante y arriba de la nave; dibuja su silueta contra el fondo. */}
+        <pointLight position={[0, 1.2, -11]} intensity={4.5} distance={18} decay={1.4} color="#a5b4fc" />
       </group>
-      <Trail count={trailParticles} emitter={emitter} animate={animate} />
+      <Trail count={Math.ceil(trailParticles / 2)} emitter={emitterL} animate={animate} />
+      <Trail count={Math.ceil(trailParticles / 2)} emitter={emitterR} animate={animate} />
     </>
   )
 }

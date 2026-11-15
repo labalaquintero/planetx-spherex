@@ -36,7 +36,9 @@ export function SpaceDust({ count, animate }: { count: number; animate: boolean 
     vel.current.set((c.x - prev.current.x) / dt, (c.y - prev.current.y) / dt, (c.z - prev.current.z) / dt)
     prev.current.copy(c)
     if (vel.current.length() > 200) vel.current.set(0, 0, 0) // teletransporte (llegada): sin raya
-    const streak = animate ? 0.035 : 0
+    // Solo hay raya con movimiento real (la leve oscilación de la cámara no cuenta como velocidad).
+    const speed = vel.current.length()
+    const streak = animate && speed > 4 ? 0.035 * Math.min(1, (speed - 4) / 6) : 0
     const a = geometry.attributes.position!.array as Float32Array
     for (let i = 0; i < count; i++) {
       // Posición envuelta en una caja que acompaña a la cámara.
@@ -47,7 +49,7 @@ export function SpaceDust({ count, animate }: { count: number; animate: boolean 
       a[i * 6] = x
       a[i * 6 + 1] = y
       a[i * 6 + 2] = z
-      a[i * 6 + 3] = x - vel.current.x * streak - 0.02
+      a[i * 6 + 3] = x - vel.current.x * streak - 0.03
       a[i * 6 + 4] = y - vel.current.y * streak
       a[i * 6 + 5] = z - vel.current.z * streak
     }

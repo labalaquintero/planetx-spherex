@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { MathUtils, PerspectiveCamera, Vector3 } from 'three'
-import { NAVE_MEDIDA, OBJETOS_BOCETO, SELECCION_BOCETO } from '../../boceto'
+import { NAVE_MEDIDA, SELECCION_BOCETO } from '../../boceto'
+import { OBJETOS_BOCETO } from './boceto'
 import { cameraFit } from '../../engine/motion'
 import { REFERENCE_ASPECT, screenToWorld, worldToScreen } from '../../engine/projection'
 import { nearbyObject } from '../../engine/nearest'

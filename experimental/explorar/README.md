@@ -35,7 +35,8 @@ pnpm build && pnpm preview  # build de producción: http://localhost:4173
 
 | Parámetro                  | Efecto                                                                         |
 | -------------------------- | ------------------------------------------------------------------------------ |
-| `?quality=low` / `?quality=high` | Fija la calidad y desactiva el ajuste automático. Otro valor = automático. |
+| `?quality=low` / `medium` / `high` | Fija la calidad y desactiva el ajuste automático. Otro valor = automático. |
+| `?punto=<id>`              | Sale desde ese punto de ruta del sector (por ejemplo, `der_f`); sirve para capturas comparables y para la demo. |
 | `?debug`                   | Muestra el contador de FPS y el nivel de calidad en la navegación.            |
 
 Se pueden combinar: `?quality=low&debug`.
@@ -57,13 +58,22 @@ Se pueden combinar: `?quality=low&debug`.
   | Subir | `E` o `Espacio` |
   | Bajar | `Q` o `C` |
 
+  Con **clic derecho y arrastrar** se dirige la nave: arrastrar a los lados cambia el rumbo y arriba o abajo cambia
+  el cabeceo (hasta ±60°). La nave sigue igual en pantalla; lo que cambia es hacia dónde avanza.
+
   La nave mira al frente y la cámara la sigue desde atrás. Se alabea al girar y se inclina al subir o bajar. Los
   controles en pantalla (abajo a la derecha, la cruz del boceto más «Subir» y «Bajar») funcionan igual y sirven en
   pantallas táctiles. `Esc` o «Volver a sectores» regresan a la selección con el foco en el sector visitado.
 - **Área visitable:** es la caja que contiene todo el sector (todos los objetos, con margen), así que se puede
   llegar a cualquiera. Cerca del borde la nave frena sola, aparece el aviso «Límite del sector» y el borde del mapa
-  se pone amarillo. Planetas, estación y rocas no se atraviesan: la nave se desliza por su borde. Los anillos sí se
-  cruzan, porque son partículas.
+  se pone amarillo. Planetas, estación y rocas no se atraviesan, pero uno se puede acercar mucho: solo muy cerca de
+  la superficie la nave frena poco a poco y se desvía por el borde, con un destello muy leve del escudo y una
+  pequeña sacudida. Los anillos sí se cruzan, porque son partículas.
+- **Cometas y meteoritos:** de vez en cuando un cometa cruza la vista con su cola (que apunta lejos de la estrella)
+  y pasan meteoritos. A veces uno viene directo: la nave recibe un impacto (empujón, sacudida, destello y aviso) y
+  se estabiliza sola en unos segundos. Es solo un efecto: no hay daño ni puntuación.
+- **Ficha del objeto:** a menos de 120 u de un objeto con nombre, el panel izquierdo muestra su contexto y, si la
+  hay, la imagen de la que se sacó (por ejemplo, las dos épocas de WISE 0855 para Ilmara).
 - **HUD:** muestra el sector, el objeto con nombre más cercano (tipo y distancia) y la velocidad. El **mapa del
   área** (200 px; 120 px en pantallas estrechas) es una vista cenital del rectángulo visitable con los objetos a
   escala y con nombre, la nave como flecha con su cono de visión, y una barra de altura.
@@ -191,7 +201,8 @@ para que se puedan señalar con comodidad.
 Se usan cinco texturas de fuentes con licencia verificada en su propia página (detalle en **ATTRIBUTIONS.md**;
 panel «Créditos» en la interfaz):
 
-- Solar System Scope (CC BY 4.0): bandas de Júpiter para Ilmara, Saturno y su anillo con transparencia para Orun.
+- Solar System Scope (CC BY 4.0): Saturno y su anillo con transparencia para Orun.
+- Ilmara no usa textura: es un mundo frío procedural inspirado en WISE 0855 (ver más abajo).
 - NASA SVS, CGI Moon Kit (dominio público): color y relieve lunares para Veshta y la esfera menor, coloreados con
   su propia paleta y con relieve por derivadas.
 
@@ -200,12 +211,11 @@ siendo ilustrativos.
 
 | Recurso | Peso |
 | --- | --- |
-| `bandas-jupiter.webp` | 35,6 KB |
 | `bandas-saturno.webp` | 8,4 KB |
 | `anillo-saturno.webp` | 3,0 KB (va incrustado en el chunk) |
 | `luna-color.webp` | 73,9 KB |
 | `luna-relieve.webp` | 22,1 KB |
-| **Total** | **≈ 143 KB**, solo al entrar en un sector; presupuesto fijado en 300 KB |
+| **Total** | **≈ 107 KB**, solo al entrar en un sector; presupuesto fijado en 300 KB |
 
 **Cielo real de SPHEREx (etapa 4): omitido.** El registro de HiPS del CDS (MocServer) anuncia
 `CDS/P/SPHEREx/QR2/color` en `https://alasky.cds.unistra.fr/SPHEREx/color` con teselas PNG. Sin embargo, el
@@ -285,6 +295,28 @@ independiente (`main.tsx`) y no viaja con `<Explorar />`.
 
 El chunk principal crece por `layout.json` (~10 kB): la selección y los datos de β lo leen.
 
+## Etapa de calidad visual (β)
+
+- **Nave nueva** (procedural, sin modelos externos):
+  - casco PBR con paneles generados y cabina con reflejo;
+  - alas con diedro y aletas;
+  - dos motores con brillo y estela;
+  - luces de navegación.
+- **Ilmara deja de parecer Júpiter:** ahora es un mundo frío inspirado en WISE 0855, con vórtices, brillo
+  propio tenue y atmósfera fina. Se retiró la textura de bandas de Júpiter del paquete y de los créditos.
+- **Render:**
+  - contraluz para la nave, bloom más suave y pase de lente (aberración cromática, grano y viñeta);
+  - estrellas cercanas con paralaje y capas de nebulosa;
+  - polvo sin rayas en reposo;
+  - cámara con inclinación y anticipación.
+- **Calidad:** nuevos campos por nivel (`chromatic`, `grain`, `nebulaLayers`, `nearStars`).
+  - En «baja» no hay bloom, lente ni nebulosa extra.
+  - La degradación automática no cambió.
+- **Sin dependencias nuevas.** El chunk diferido de la escena pasa de 975,56 kB (262,23 kB gzip) a 985,13 kB
+  (265,67 kB gzip), y las texturas bajan de ≈143 KB a ≈107 KB.
+
+Detalle del sector en `src/sectors/beta/README.md`.
+
 ## Decisiones
 
 - **No se añadieron dependencias.** El bloom usa `EffectComposer`, `RenderPass`, `UnrealBloomPass` y `OutputPass`,
@@ -303,10 +335,16 @@ El chunk principal crece por `layout.json` (~10 kB): la selección y los datos d
   menos de 14 unidades de la ruta** ni dentro de planetas, anillos o la estación (probado), y no aparece en la vista
   inicial, para que esta reproduzca el boceto. Al bajar la calidad solo se quitan cuerpos, no se mueven.
 - **Vuelo** (`engine/flight.ts`, puro y probado):
-  - El modelo es «arcade»: rumbo, empuje y altura, sin cabeceo controlable, para que sea fácil de manejar.
+  - El modelo es «arcade»: rumbo, empuje, altura y un cabeceo que solo se dirige con clic derecho (hasta ±60°).
   - Velocidad máxima 30 u/s y 9 u/s marcha atrás; giro de hasta 60°/s con respuesta suave.
   - La nave no derrapa (sigue su morro) y se frena sola al soltar.
-  - Límites con margen suave de 30 u y tope duro; colisiones de esfera con deslizamiento.
+  - Límites con margen suave de 30 u y tope duro.
+  - Acercamiento suave a los obstáculos: la velocidad hacia el objeto se reduce poco a poco solo dentro de una
+    franja muy cercana a la superficie (el 20 % del radio, mínimo 8 u), y se conserva la tangencial, así que la nave
+    se desvía en lugar de pararse en seco.
+  - Impactos (`applyImpact`): empujón y giro breves que se disipan solos en unos segundos.
+- **Visitantes** (`engine/visitors.ts`, puro, determinista y probado): un cometa cada 35–60 s y un meteorito cada
+  12–22 s. Entran por delante de la nave y cruzan la vista; un 35 % viene directo y choca.
 - **Cámara de persecución** (`scene/chase.ts`):
   - Detrás y arriba de la nave (2,5 u arriba, 8 u atrás), mirando 6° hacia abajo; la nave queda en el tercio
     inferior.
@@ -400,7 +438,8 @@ en Chrome y, ya cargada, **desconecta la red** (Wi-Fi apagado) y recarga.
 | 2  | Tab hasta β, luego Enter                    | Aparece la tarjeta; rayas, destello y llegada fluida (~1,1 s + ~1,5 s)                     |
 | 3  | Leer el contador `?debug` en el vuelo       | **≥ 55 FPS en «alta»: ideal. 45–55: aceptable. < 42 sostenidos:** a los ~4 s debe bajar sola a «media» |
 | 4  | Volar con W/A/S/D, E/Q y con los botones    | Aceleración y frenado suaves, giro con alabeo, cámara que sigue sin tirones, polvo y estela con la velocidad |
-| 4b | Ir hasta el borde del mapa y hacia un planeta | Frena sola en el borde («Límite del sector»), no atraviesa planetas, rocas ni la estación |
+| 4b | Ir hasta el borde del mapa y hacia un planeta | Frena sola en el borde («Límite del sector»); junto al planeta frena despacio y se desvía, sin atravesarlo |
+| 4d | Esperar unos 10–20 s en vuelo               | Un cometa cruza la vista; un meteorito que viene directo empuja la nave y ella se recupera |
 | 4c | Mirar hacia la estrella clave (arriba a la derecha) | Brillo y reflejos en la nave sin quemar la imagen |
 | 5  | Pulsar Esc                                  | Vuelve a la selección con el foco en β                                                     |
 | 6  | Botón «Silencio» → «Sonido»                 | Zumbido bajo; barrido en cada tramo y en el salto; vuelve a silencio al pulsarlo           |
@@ -433,7 +472,8 @@ Verificado con Chrome sin interfaz y render **por software** (SwiftShader), con 
 
 ## Límites conocidos
 
-- Las pruebas cubren la lógica (167): **vuelo libre** (aceleración, frenado, giro, altura, límites, obstáculos,
+- Las pruebas cubren la lógica (204): **vuelo libre** (aceleración, frenado, giro, cabeceo, altura, límites,
+  acercamiento suave, impactos, cometas y meteoritos, obstáculos,
   determinismo), controles, mapa del área, área visitable del sector, calidad adaptativa, parámetros de URL,
   dispersión, curvas de movimiento, ruido, sonido, encapsulación del CSS, proyección del boceto (objetos, tamaños,
   nave en la primera vista, selección) y créditos. El motor de puntos de ruta (`graph`, `navigation`, `pose`,

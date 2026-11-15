@@ -71,7 +71,14 @@ export function Minimap({ bounds, objects, position, yaw, edge, size }: Props) {
           {statics.map(({ o, p, r, left, ly }) => (
             <g key={o.id}>
               {o.ring && <ellipse cx={p.x} cy={p.y} rx={r * 1.6} ry={r * 0.55} fill="none" stroke={KIND_COLOR[o.kind]} strokeOpacity="0.6" />}
-              <circle cx={p.x} cy={p.y} r={r} fill={KIND_COLOR[o.kind]} fillOpacity={o.label ? 0.9 : 0.6} />
+              {/* Planetas con su propio color (el más claro de su paleta); el resto, por tipo. */}
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={r}
+                fill={o.kind === 'planet' || o.kind === 'ringedPlanet' ? o.palette[0] : KIND_COLOR[o.kind]}
+                fillOpacity={o.label ? 0.9 : 0.6}
+              />
               {o.label && (
                 // A la izquierda del punto si está en la mitad derecha, para no salirse del mapa.
                 <text

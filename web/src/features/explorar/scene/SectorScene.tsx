@@ -5,6 +5,7 @@ import type { Bounds, FlightInput, FlightState, Obstacle } from '../engine/fligh
 import type { AdaptiveQuality, QualitySettings } from '../engine/quality'
 import type { SectorScene as SectorSceneData } from '../engine/types'
 import { smallBodiesOf } from './bodies'
+import { DeepSky } from './DeepSky'
 import { Bloom } from './Effects'
 import { FlightRig } from './FlightRig'
 import { LIGHT_DIR } from './light'
@@ -14,11 +15,15 @@ import { SkyEnvironment } from './SkyEnvironment'
 import { SmallBodies } from './SmallBodies'
 import { SpaceDust } from './SpaceDust'
 import { Station } from './Station'
+import { Visitors } from './Visitors'
+import type { VisitorEvent } from '../engine/visitors'
 
 interface Props {
   scene: SectorSceneData
   flight: MutableRefObject<FlightState>
   input: MutableRefObject<FlightInput>
+  /** Dirección acumulada con clic derecho (rad). */
+  aim: MutableRefObject<{ dYaw: number; dPitch: number }>
   bounds: Bounds
   /** Obstáculos de los objetos (los cuerpos pequeños se añaden aquí, según la calidad). */
   obstacles: readonly Obstacle[]
@@ -29,6 +34,8 @@ interface Props {
   quality: AdaptiveQuality
   onQualityChange: () => void
   onFps?: (fps: number) => void
+  /** Cometas y meteoritos: aparición e impactos (para el HUD y el sonido). */
+  onVisitorEvent?: (e: VisitorEvent) => void
 }
 
 /** Mide cada cuadro y alimenta la calidad adaptativa. */
@@ -52,7 +59,7 @@ function Governor({ quality, onChange, onFps }: { quality: AdaptiveQuality; onCh
 
 /** Escena 3D de un sector con vuelo libre. Es la única parte que importa three (carga diferida). */
 export default function SectorScene(props: Props) {
-  const { scene, flight, input, bounds, obstacles, animate, arrive, settings, quality, onQualityChange, onFps } = props
+  const { scene, flight, input, aim, bounds, obstacles, animate, arrive, settings, quality, onQualityChange, onFps, onVisitorEvent } = props
   const light = LIGHT_DIR.clone().multiplyScalar(200)
   const bodies = useMemo(() => smallBodiesOf(scene, settings.debris), [scene, settings.debris])
   // Las rocas también son obstáculos (con su holgura): no se atraviesan.
@@ -74,6 +81,7 @@ export default function SectorScene(props: Props) {
       <hemisphereLight args={['#7dd3fc', '#0f172a', 0.35]} />
       <directionalLight position={[light.x, light.y, light.z]} intensity={2.7} color="#fff1dc" />
       <Sky stars={settings.stars} octaves={settings.nebulaOctaves} animate={animate} />
+      <DeepSky bounds={bounds} stars={settings.nearStars} layers={settings.nebulaLayers} animate={animate} />
       {scene.objects.map((o) => {
         switch (o.kind) {
           case 'planet':
@@ -88,6 +96,7 @@ export default function SectorScene(props: Props) {
       })}
       <SmallBodies bodies={bodies} palette={scene.field?.palette ?? ['#9a9083', '#6b6358', '#3d3832']} spin={animate} />
       <SpaceDust count={settings.level === 'low' ? 160 : settings.level === 'medium' ? 320 : 520} animate={animate} />
+      <Visitors flight={flight} animate={animate} onEvent={onVisitorEvent} />
       <FlightRig
         state={flight}
         input={input}
@@ -96,8 +105,9 @@ export default function SectorScene(props: Props) {
         animate={animate}
         arrive={arrive}
         trailParticles={settings.trailParticles}
+        aim={aim}
       />
-      {settings.bloom && <Bloom strength={settings.bloomStrength} samples={samples} />}
+      {settings.bloom && <Bloom strength={settings.bloomStrength} samples={samples} chromatic={settings.chromatic} grain={settings.grain} />}
       <Governor quality={quality} onChange={onQualityChange} onFps={onFps} />
     </Canvas>
   )

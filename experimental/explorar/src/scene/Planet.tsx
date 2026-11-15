@@ -4,6 +4,7 @@ import { AdditiveBlending, Color, DoubleSide, Euler, Quaternion, RingGeometry, S
 import type { SceneObject } from '../engine/types'
 import { AMBIENT_RGB, LIGHT_DIR } from './light'
 import { loadTexture } from './textureCache'
+import { mulberry32 } from '../engine/random'
 import { ATMOS_FRAG, ATMOS_VERT, PLANET_FRAG, PLANET_VERT, RING_FRAG, RING_VERT } from './shaders/planet'
 
 const DEG = Math.PI / 180
@@ -33,6 +34,16 @@ export function Planet({ o, spin, octaves }: Props) {
   }, [ring])
   const ringNormal = useMemo(() => new Vector3(0, 0, 1).applyQuaternion(ringQuat), [ringQuat])
   const colors = useMemo(() => o.palette.map((c) => new Color(c)), [o])
+  // Tres vórtices en direcciones sembradas (solo los usa el modo «storms»).
+  const vortices = useMemo(() => {
+    const r = mulberry32(o.seed * 7 + 3)
+    return [0, 1, 2].map(() => {
+      const z = r() * 1.4 - 0.7 // lejos de los polos
+      const a = r() * Math.PI * 2
+      const k = Math.sqrt(1 - z * z)
+      return new Vector3(Math.cos(a) * k, z, Math.sin(a) * k)
+    })
+  }, [o])
 
   const surface = useMemo(
     () =>
@@ -43,7 +54,10 @@ export function Planet({ o, spin, octaves }: Props) {
           uC0: { value: colors[2] },
           uC1: { value: colors[1] },
           uC2: { value: colors[0] },
-          uBands: { value: o.surface === 'bands' ? 1 : 0 },
+          uMode: { value: o.surface === 'storms' ? 2 : o.surface === 'bands' ? 1 : 0 },
+          uVortex: { value: vortices },
+          uGlow: { value: new Color(o.glow ?? '#000000') },
+          uGlowStrength: { value: o.glow ? 0.14 : 0 },
           uSeed: { value: o.seed },
           uLight: { value: LIGHT_DIR },
           uAmbient: { value: new Color(...AMBIENT_RGB) },
@@ -67,7 +81,7 @@ export function Planet({ o, spin, octaves }: Props) {
         },
       }),
     // octaves no es dependencia: se actualiza abajo sin recrear el material.
-    [o, colors, center, ring, ringNormal],
+    [o, colors, center, ring, ringNormal, vortices],
   )
   useEffect(() => {
     surface.uniforms.uOct!.value = octaves
@@ -82,7 +96,9 @@ export function Planet({ o, spin, octaves }: Props) {
             uniforms: {
               uColor: { value: new Color(o.atmosphere) },
               uLight: { value: LIGHT_DIR },
-              uIntensity: { value: 1.6 },
+              // Mundo frío: atmósfera fina (borde estrecho) y algo más tenue.
+              uIntensity: { value: o.surface === 'storms' ? 1.3 : 1.6 },
+              uPower: { value: o.surface === 'storms' ? 4.2 : 2.6 },
             },
             transparent: true,
             blending: AdditiveBlending,
@@ -168,7 +184,7 @@ export function Planet({ o, spin, octaves }: Props) {
         </mesh>
       </group>
       {atmosphere && (
-        <mesh material={atmosphere} scale={1.075}>
+        <mesh material={atmosphere} scale={o.surface === 'storms' ? 1.035 : 1.075}>
           <sphereGeometry args={[o.radius, 48, 32]} />
         </mesh>
       )}

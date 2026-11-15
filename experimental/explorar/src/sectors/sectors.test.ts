@@ -3,9 +3,12 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { validateGraph } from '../engine/graph'
 import { nearbyObject, nearestLabelled, validateFocus } from '../engine/nearest'
+import { InfoCard } from '../screens/InfoCard'
 import { SectorSelect } from '../screens/SectorSelect'
 import { SECTORS, getSector } from './index'
 import beta from './beta'
+import { ENTRY_CAMERA, EXTRA_IDS, SKETCH_IDS } from './beta/objects'
+import { worldToScreen } from '../engine/projection'
 import { fromView } from './view'
 
 describe('registro de sectores', () => {
@@ -74,6 +77,122 @@ describe('registro de sectores', () => {
   })
 })
 
+/** Tono (0–360°), saturación y luminosidad HSL de un color #rrggbb. */
+function hsl(hex: string): { h: number; s: number; l: number } {
+  const n = parseInt(hex.slice(1), 16)
+  const r = ((n >> 16) & 255) / 255
+  const g = ((n >> 8) & 255) / 255
+  const b = (n & 255) / 255
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const l = (max + min) / 2
+  const d = max - min
+  if (d === 0) return { h: 0, s: 0, l }
+  const s = d / (1 - Math.abs(2 * l - 1))
+  const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4
+  return { h: (h * 60 + 360) % 360, s, l }
+}
+
+describe('Ilmara: mundo frío inspirado en WISE 0855 (no un gigante tipo Júpiter)', () => {
+  const ilmara = beta.scene!.objects.find((o) => o.id === 'ilmara')!
+
+  it('superficie procedural de tormentas, sin textura de bandas', () => {
+    expect(ilmara.surface).toBe('storms')
+    expect(ilmara.texture).toBeUndefined()
+  })
+
+  it('paleta oscura y fría: ningún color naranja o crema claro (tono 15–65° con saturación y luz altas)', () => {
+    for (const c of ilmara.palette) {
+      const { h, s, l } = hsl(c)
+      expect(h >= 15 && h <= 65 && s > 0.3 && l > 0.4).toBe(false)
+    }
+    // El tono más claro es violáceo o magenta (frío), no cálido.
+    const light = hsl(ilmara.palette[0])
+    expect(light.h > 250 || light.h < 10).toBe(true)
+    // El más oscuro es casi negro.
+    expect(hsl(ilmara.palette[2]).l).toBeLessThan(0.12)
+  })
+
+  it('tiene brillo propio tenue y atmósfera (borde Fresnel)', () => {
+    expect(ilmara.glow).toBeTruthy()
+    expect(ilmara.atmosphere).toBeTruthy()
+  })
+
+  it('ningún objeto de β usa una textura de bandas tipo Júpiter', () => {
+    for (const o of beta.scene!.objects) expect(o.texture?.map ?? '').not.toMatch(/jupiter/i)
+  })
+})
+
+describe('planetas añadidos fuera del boceto', () => {
+  const extras = beta.scene!.objects.filter((o) => EXTRA_IDS.includes(o.id))
+
+  it('hay al menos tres, con nombre, y solo de los tipos del boceto', () => {
+    expect(extras.length).toBeGreaterThanOrEqual(3)
+    for (const o of extras) {
+      expect(o.label).toBeTruthy()
+      expect(['planet', 'ringedPlanet', 'sphere']).toContain(o.kind)
+    }
+  })
+
+  it('no aparecen en la vista inicial, que sigue siendo la del boceto', () => {
+    for (const o of extras) {
+      const s = worldToScreen(o.position, ENTRY_CAMERA)
+      // Margen: su radio aparente no debe asomar al encuadre.
+      const r = s.depth > 0 ? o.radius / (s.depth * Math.tan((ENTRY_CAMERA.fovDeg * Math.PI) / 360)) / 2 : 0
+      const visible = s.depth > 0 && s.u + r * 0.6 > 0 && s.u - r * 0.6 < 1 && s.v + r > 0 && s.v - r < 1
+      expect(visible, o.id).toBe(false)
+    }
+  })
+
+  it('no se parecen a Júpiter: ninguna paleta naranja o crema clara', () => {
+    for (const o of extras) {
+      for (const c of o.palette) {
+        const { h, s, l } = hsl(c)
+        expect(h >= 15 && h <= 65 && s > 0.3 && l > 0.6, `${o.id} ${c}`).toBe(false)
+      }
+    }
+  })
+})
+
+describe('fichas de contexto de β (panel izquierdo al acercarse)', () => {
+  const named = beta.scene!.objects.filter((o) => o.label)
+
+  it('cada objeto con nombre tiene ficha con título, resumen y datos', () => {
+    for (const o of named) {
+      expect(o.info, o.id).toBeDefined()
+      expect(o.info!.title.length).toBeGreaterThan(3)
+      expect(o.info!.summary.length).toBeGreaterThan(40)
+      expect(o.info!.facts.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('Ilmara muestra los dos recortes reales de WISE 0855, con crédito', () => {
+    const info = named.find((o) => o.id === 'ilmara')!.info!
+    expect(info.summary).toMatch(/WISE 0855/)
+    expect(info.images).toHaveLength(2)
+    for (const img of info.images) expect(img.src).toMatch(/wise0855-2025-(05-06|10-31)/)
+    expect(info.credit).toMatch(/NASA\/JPL-Caltech/)
+  })
+
+  it('la ficha de Ilmara se dibuja con sus dos imágenes pixeladas, pies de foto y crédito', () => {
+    const info = named.find((o) => o.id === 'ilmara')!.info!
+    const html = renderToStaticMarkup(createElement(InfoCard, { info }))
+    expect(html.match(/<img /g)).toHaveLength(2)
+    expect(html.match(/data-pixelated="true"/g)).toHaveLength(2)
+    expect(html).toContain('SPHEREx · 6 may 2025')
+    expect(html).toContain('SPHEREx · 31 oct 2025')
+    expect(html).toContain('NASA/JPL-Caltech')
+  })
+
+  it('toda ficha con imagen indica su crédito y deja claro que el objeto es inventado o ilustrativo', () => {
+    for (const o of named) {
+      const info = o.info!
+      if (info.images.length > 0) expect(info.credit, o.id).toBeTruthy()
+      expect(`${info.summary} ${info.facts.join(' ')}`, o.id).toMatch(/inventad|ilustra/i)
+    }
+  })
+})
+
 describe('objetos del sector β', () => {
   const objects = beta.scene!.objects
 
@@ -84,7 +203,8 @@ describe('objetos del sector β', () => {
   })
 
   it('composición del boceto: 2 planetas, 1 con anillo, 1 estación, 1 esfera y varios cuerpos pequeños', () => {
-    const count = (k: string) => objects.filter((o) => o.kind === k).length
+    // Solo los objetos medidos del boceto; los añadidos fuera de él se prueban aparte.
+    const count = (k: string) => objects.filter((o) => SKETCH_IDS.includes(o.id) && o.kind === k).length
     expect(count('planet')).toBe(2)
     expect(count('ringedPlanet')).toBe(1)
     expect(count('station')).toBe(1)

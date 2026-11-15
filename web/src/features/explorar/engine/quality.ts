@@ -11,6 +11,12 @@ export interface QualitySettings {
   /** Brillo (bloom) y su intensidad; apagado en baja. */
   readonly bloom: boolean
   readonly bloomStrength: number
+  /** Pase de lente: aberración cromática y grano (0 = apagado). */
+  readonly chromatic: number
+  readonly grain: number
+  /** Capas de nebulosa con paralaje y estrellas cercanas con profundidad. */
+  readonly nebulaLayers: number
+  readonly nearStars: number
   /** Partículas de la estela del motor. */
   readonly trailParticles: number
   /** Estrellas de fondo de la escena 3D (un único draw call). */
@@ -28,6 +34,10 @@ export const QUALITY_PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = 
     dprMax: 1,
     bloom: false,
     bloomStrength: 0,
+    chromatic: 0,
+    grain: 0,
+    nebulaLayers: 0,
+    nearStars: 600,
     trailParticles: 60,
     stars: 1200,
     debris: 14,
@@ -39,6 +49,10 @@ export const QUALITY_PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = 
     dprMax: 1.5,
     bloom: true,
     bloomStrength: 0.35,
+    chromatic: 0,
+    grain: 0.025,
+    nebulaLayers: 1,
+    nearStars: 1400,
     trailParticles: 160,
     stars: 2600,
     debris: 26,
@@ -49,7 +63,11 @@ export const QUALITY_PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = 
     level: 'high',
     dprMax: 2,
     bloom: true,
-    bloomStrength: 0.45,
+    bloomStrength: 0.5,
+    chromatic: 0.0016,
+    grain: 0.035,
+    nebulaLayers: 2,
+    nearStars: 2600,
     trailParticles: 280,
     stars: 4200,
     debris: 40,
