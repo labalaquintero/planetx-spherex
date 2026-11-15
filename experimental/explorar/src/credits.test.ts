@@ -32,6 +32,7 @@ describe('créditos de los recursos empaquetados', () => {
   })
 
   it('ningún recurso apunta fuera del propio origen', () => {
-    for (const url of Object.values(TEXTURES)) expect(url).not.toMatch(/^https?:\/\//)
+    // En node la URL es file://; en jsdom, http://localhost. Nunca otro host.
+    for (const url of Object.values(TEXTURES)) expect(url).not.toMatch(/^https?:\/\/(?!localhost[:/]|127\.0\.0\.1[:/])/)
   })
 })
