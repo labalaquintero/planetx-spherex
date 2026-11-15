@@ -7,7 +7,7 @@
 
 - **Ámbito.** Cada caso es **SIMULADO** (fixtures `sintetico-*` interceptados con Playwright; no prueba datos reales) o **REAL** (demo desplegada, mismo SHA que publica Isaac, incógnito y red externa). Los resultados de ambos ámbitos se registran por separado y nunca se sustituyen entre sí: que pase lo simulado no cierra lo real.
 - **Registro por ejecución:** SHA evaluado, fecha/hora UTC, navegador, URL (en REAL), pasos, esperado y observado. Se anota en [F01-matriz.csv](F01-matriz.csv).
-- **Estados:** `pendiente` · `no disponible` (falta UI/API/Playwright) · `pasa` · `falla` · `parcial`.
+- **Estados:** `pendiente` · `no disponible` (falta UI/API/Playwright) · `pasa` · `falla` · `parcial` · `bloqueado` (no se puede probar el resultado esperado por una dependencia ajena todavía no integrada, y el sistema se comporta según el contrato; no es un fallo). En ejecuciones contra la API local se usan `real-local-pasa` y `real-local-pasa-parcial`, para no confundirlas con la demo.
 - Los fixtures usados son **sintéticos y provisionales** ([web/e2e/fixtures/README.md](../../../web/e2e/fixtures/README.md)). Los selectores son **propuestas** ([selectores-propuestos.md](selectores-propuestos.md)).
 - Coordenadas de ejemplo: `ra_deg=10.25`, `dec_deg=-12.5`, campo 0,10°.
 
@@ -94,6 +94,7 @@ Requieren URL pública, SHA publicado por Isaac y datos verificados por César. 
 | F01-R03a | **API directa** (petición de Playwright a `/api/v1/comparisons`, sin UI ni mocks): `422 invalid_coordinates` con parámetro faltante o vacío. |
 | F01-R03b | API directa: `422 invalid_coordinates` con NaN/Infinity. |
 | F01-R03c | API directa: `422 invalid_coordinates` fuera de rango (`ra=360`, `ra=-0.1`, `dec=±90.1`); `ra=0` y `dec=90` no devuelven 422. |
+| F01-R03e | API directa: `422 invalid_coordinates` con formato no decimal (exponente `1e1`, coma `10,25`). De momento sólo se ejecuta a mano (`scripts/ejecutar_api_local.py`); no tiene spec de Playwright. |
 | F01-R03d | API directa: `422 invalid_coordinates` con parámetro repetido (`ra_deg` o `dec_deg` indicado dos veces, p. ej. `?ra_deg=10.25&ra_deg=11&dec_deg=-12.5`). |
 | F01-R04 | Entrada manual de coordenadas libres y consulta en vivo: el resultado es uno de los estados del contrato, con su razón. |
 | F01-R05 | Imagen inexistente (`/api/v1/images/<id inexistente>`) responde `404 image_not_found`. |
@@ -116,6 +117,8 @@ Los casos F01-R03a/b/c/d no usan mocks: se ejecutan contra la API real (local de
 | F01-R11 | WISE 0855 (c) | `verificado` en `spherex_dr1`; `sin cobertura` (`no_observations`) en `spherex_qr3`. | `ready` (la API consulta ambas colecciones y dr1 aporta épocas) | Una consulta **solo** a `qr3` daría `no_coverage` / `no_observations`; no es lo esperado de la API completa. La advertencia de la matriz (§5.3) pide manejar ese estado sin romper el flujo. |
 | F01-R12 | RW Aurigae (d) | `verificado` en `spherex_dr1` y `spherex_qr3`. | `ready` | |
 | F01-R13 | R Draconis (e) | `verificado` en `spherex_dr1` y `spherex_qr3`. | `ready` | La matriz lo recomienda para variabilidad (§5.1). |
+
+**Estado actual de R09–R13: `bloqueado`.** En la ejecución REAL-local del 2026-11-14 ([ejecuciones/2026-11-14-api-local.md](ejecuciones/2026-11-14-api-local.md)) los cinco devolvieron `503 archive_unavailable`: API cumple el contrato (503 archive_unavailable, no no_coverage); búsqueda en vivo aún no integrada. No es un fallo ni una validación de la expectativa `ready`, que sigue sin comprobarse.
 
 Por qué el esperado no es una certeza (y qué otro estado podría aparecer):
 
