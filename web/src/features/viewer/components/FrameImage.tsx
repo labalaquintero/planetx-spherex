@@ -43,7 +43,7 @@ export function FrameImage({ frame, mode, label }: FrameImageProps) {
           draggable={false}
         />
       </div>
-      {(!import.meta.env.PROD || mode === 'fixture') && (
+      {mode === 'fixture' && (
         <span
           className="frame-badge"
           aria-label="Datos de prueba"

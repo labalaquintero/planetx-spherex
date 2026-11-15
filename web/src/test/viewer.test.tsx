@@ -118,7 +118,7 @@ describe('Visor F01 — Pruebas de integración y componentes', () => {
 
       // 1. Sin reproducción automática al cargar:
       const playBtn = screen.getByTestId('btn-play');
-      expect(playBtn).toHaveTextContent('Play');
+      expect(playBtn).toHaveAccessibleName('Reproducir secuencia');
       expect(screen.getByText(/Época A — 1 de 2/)).toBeInTheDocument();
       expect(screen.getByTestId('btn-epoch-a')).toHaveAttribute('aria-pressed', 'true');
       expect(screen.getByTestId('btn-epoch-b')).toHaveAttribute('aria-pressed', 'false');
@@ -159,7 +159,7 @@ describe('Visor F01 — Pruebas de integración y componentes', () => {
 
       // Pausar
       await user.click(screen.getByTestId('btn-play'));
-      expect(screen.getByTestId('btn-play')).toHaveTextContent('Play');
+      expect(screen.getByTestId('btn-play')).toHaveAccessibleName('Reproducir secuencia');
 
       // Al avanzar tiempo, permanece fijo
       act(() => {
@@ -254,7 +254,7 @@ describe('Visor F01 — Pruebas de integración y componentes', () => {
       ).toBeInTheDocument();
 
       // Etiqueta visible de datos de prueba
-      expect(screen.getByTestId('test-data-badge')).toHaveTextContent('Datos de prueba');
+      expect(screen.getAllByTestId('test-data-badge')).toHaveLength(2);
     });
 
     it('estado insufficient: muestra 1 fotograma fijo sin controles de reproducción', async () => {

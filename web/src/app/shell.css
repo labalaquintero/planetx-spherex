@@ -17,8 +17,8 @@
   gap: 12px;
   height: 56px;
   padding: 0 16px;
-  background: #0f172a;
-  border-bottom: 1px solid #1e293b;
+  background: #0b0f1c;
+  border-bottom: 1px solid #253049;
   flex: none;
 }
 .px-shell-badge {
@@ -28,9 +28,9 @@
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #38bdf8;
-  background: rgba(56, 189, 248, 0.15);
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #f4cea3;
+  background: #272331;
+  border: 1px solid #594b4c;
   border-radius: 9999px;
   white-space: nowrap;
 }
@@ -62,15 +62,15 @@
   width: 40px;
   height: 40px;
   color: #cbd5e1;
-  background: #1e293b;
-  border: 1px solid #334155;
+  background: #151d30;
+  border: 1px solid #33435f;
   border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.15s, border-color 0.15s, color 0.15s;
 }
 .px-menu-button:hover {
-  background: #334155;
-  border-color: #475569;
+  background: #202c45;
+  border-color: #7082a4;
   color: #f8fafc;
 }
 .px-menu-button:focus-visible,

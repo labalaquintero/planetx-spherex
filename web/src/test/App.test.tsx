@@ -1,25 +1,39 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import App from '../App.tsx';
-import { resetMockAttempts, setMockDelayMs } from '../features/viewer/api.ts';
+import * as comparisonApi from '../features/viewer/api.ts';
 
 describe('Integración App — Visor F01', () => {
   beforeEach(() => {
-    resetMockAttempts();
-    setMockDelayMs(10); // Pruebas rápidas por defecto
+    comparisonApi.resetMockAttempts();
+    comparisonApi.setMockDelayMs(10); // Pruebas rápidas por defecto
   });
 
-  it('inicia en estado idle con mensaje informativo', () => {
+  it('inicia con el acceso al caso preparado y la búsqueda manual', () => {
     render(<App />);
     expect(screen.getByTestId('empty-state')).toBeInTheDocument();
-    expect(
-      screen.getByText(/Introduzca coordenadas o seleccione uno de los ejemplos/),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Comparar WISE 0855' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Buscar coordenadas' })).toHaveAttribute('href', '#buscar');
+  });
+
+  it('consulta WISE 0855 con la precisión del catálogo y rellena el formulario', async () => {
+    const fetchComparison = vi.spyOn(comparisonApi, 'fetchComparison');
+    try {
+      const user = userEvent.setup();
+      render(<App />);
+      await user.click(screen.getByRole('button', { name: 'Comparar WISE 0855' }));
+
+      expect(screen.getByTestId('ra-input')).toHaveValue('133.795129166667');
+      expect(screen.getByTestId('dec-input')).toHaveValue('-7.245147222222');
+      expect(fetchComparison).toHaveBeenCalledWith(133.795129166667, -7.245147222222, expect.any(AbortSignal));
+    } finally {
+      fetchComparison.mockRestore();
+    }
   });
 
   it('muestra estado cargando mientras la petición está en curso', async () => {
-    setMockDelayMs(200);
+    comparisonApi.setMockDelayMs(200);
     const user = userEvent.setup();
     render(<App />);
 
