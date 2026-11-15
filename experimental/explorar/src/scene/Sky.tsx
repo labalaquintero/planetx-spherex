@@ -1,41 +1,74 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { BackSide, BufferAttribute, BufferGeometry, ShaderMaterial, type Mesh, type Points } from 'three'
+import { BackSide, BufferAttribute, BufferGeometry, ShaderMaterial, type Mesh, type Points, type WebGLCubeRenderTarget } from 'three'
 import { mulberry32 } from '../engine/random'
 import { LIGHT_DIR } from './light'
-import { SKY_FRAG, SKY_VERT, STARS_FRAG, STARS_VERT } from './shaders/sky'
+import { bakeCube, bakedAllFaces } from './bake'
+import { SKY_BAKE_FRAG, SKY_CUBE_FRAG, SKY_FRAG, SKY_VERT, STARS_FRAG, STARS_VERT } from './shaders/sky'
 
 interface Props {
   stars: number
   octaves: number
+  /** Resolución por cara del cubemap donde se hornea la nebulosa. */
+  cube: number
   animate: boolean
 }
 
 /**
  * Fondo: esfera de cielo (nebulosa tenue y estrella clave) que acompaña a la cámara, y un campo de
- * estrellas en un único draw call (Points con atributos por estrella: tamaño, color y fase).
+ * estrellas en un único draw call (Points con atributos por estrella: tamaño, color y fase). La
+ * nebulosa se hornea una vez en un cubemap; la estrella clave se calcula al vuelo (es nítida).
  */
-export function Sky({ stars, octaves, animate }: Props) {
+export function Sky({ stars, octaves, cube, animate }: Props) {
+  const gl = useThree((s) => s.gl)
   const camera = useThree((s) => s.camera)
   const dpr = useThree((s) => s.viewport.dpr)
   const skyRef = useRef<Mesh>(null)
   const starsRef = useRef<Points>(null)
 
+  // En un efecto (no en useMemo): con StrictMode, el cubemap desechado no se reutiliza vacío.
+  // 'live': el horneado falló en esta GPU y se usa el shader al vuelo (más caro, pero sin huecos negros).
+  const [baked, setBaked] = useState<WebGLCubeRenderTarget | 'live' | null>(null)
+  useEffect(() => {
+    let rt: WebGLCubeRenderTarget | null = null
+    try {
+      rt = bakeCube(gl, SKY_BAKE_FRAG, { uOct: { value: Math.min(octaves, 4) } }, cube)
+    } catch {
+      rt = null
+    }
+    if (rt && bakedAllFaces(gl, rt)) {
+      setBaked(rt)
+    } else {
+      rt?.dispose()
+      rt = null
+      setBaked('live')
+    }
+    return () => rt?.dispose()
+  }, [gl, octaves, cube])
   const skyMat = useMemo(
     () =>
       new ShaderMaterial({
         vertexShader: SKY_VERT,
-        fragmentShader: SKY_FRAG,
-        uniforms: { uLight: { value: LIGHT_DIR }, uOct: { value: octaves }, uStarGain: { value: 1 } },
+        fragmentShader: SKY_CUBE_FRAG,
+        uniforms: { uSky: { value: null }, uLight: { value: LIGHT_DIR }, uStarGain: { value: 1 } },
         side: BackSide,
         depthWrite: false,
       }),
-    // octaves se aplica abajo sin recrear el material.
     [],
   )
-  useEffect(() => {
-    skyMat.uniforms.uOct!.value = Math.min(octaves, 4)
-  }, [skyMat, octaves])
+  const liveMat = useMemo(
+    () =>
+      new ShaderMaterial({
+        vertexShader: SKY_VERT,
+        fragmentShader: SKY_FRAG,
+        uniforms: { uLight: { value: LIGHT_DIR }, uOct: { value: 4 }, uStarGain: { value: 1 } },
+        side: BackSide,
+        depthWrite: false,
+      }),
+    [],
+  )
+  liveMat.uniforms.uOct!.value = Math.min(octaves, 4)
+  if (baked && baked !== 'live') skyMat.uniforms.uSky!.value = baked.texture
 
   const geometry = useMemo(() => {
     const rnd = mulberry32(2024)
@@ -83,9 +116,10 @@ export function Sky({ stars, octaves, animate }: Props) {
   useEffect(
     () => () => {
       skyMat.dispose()
+      liveMat.dispose()
       starsMat.dispose()
     },
-    [skyMat, starsMat],
+    [skyMat, liveMat, starsMat],
   )
 
   useFrame((state) => {
@@ -98,9 +132,11 @@ export function Sky({ stars, octaves, animate }: Props) {
 
   return (
     <>
-      <mesh ref={skyRef} material={skyMat} renderOrder={-2} frustumCulled={false}>
-        <sphereGeometry args={[1800, 48, 24]} />
-      </mesh>
+      {baked && (
+        <mesh ref={skyRef} material={baked === 'live' ? liveMat : skyMat} renderOrder={-2} frustumCulled={false}>
+          <sphereGeometry args={[1800, 48, 24]} />
+        </mesh>
+      )}
       <points ref={starsRef} geometry={geometry} material={starsMat} renderOrder={-1} frustumCulled={false} />
     </>
   )
