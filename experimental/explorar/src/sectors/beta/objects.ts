@@ -10,7 +10,7 @@ export const OBJECTS: readonly SceneObject[] = [
   {
     id: 'ilmara',
     kind: 'planet',
-    label: 'Ilmara (planeta)',
+    label: 'Ilmara',
     position: fromView(-0.76, 0.5, 170),
     radius: 20,
     seed: 11,
@@ -21,7 +21,7 @@ export const OBJECTS: readonly SceneObject[] = [
   {
     id: 'veshta',
     kind: 'planet',
-    label: 'Veshta (planeta)',
+    label: 'Veshta',
     position: fromView(-0.7, 0.8, 250),
     radius: 17,
     seed: 23,
@@ -33,7 +33,7 @@ export const OBJECTS: readonly SceneObject[] = [
   {
     id: 'orun',
     kind: 'ringedPlanet',
-    label: 'Orun (planeta con anillo)',
+    label: 'Orun',
     position: fromView(0.58, 0.36, 210),
     radius: 13,
     seed: 37,

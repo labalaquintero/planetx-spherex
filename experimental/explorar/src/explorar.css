@@ -384,6 +384,7 @@
 .ex-nav {
   position: absolute;
   inset: 0;
+  container-type: size;
 }
 .ex-canvas {
   position: absolute;
@@ -428,17 +429,53 @@
   text-align: center;
   color: var(--ex-muted);
 }
+/* Panel = .comparison-viewer del visor, translúcido sobre la escena */
+.ex-panel {
+  background: var(--ex-panel);
+  border: 1px solid var(--ex-border);
+  border-radius: var(--ex-radius-lg);
+  box-shadow: var(--ex-shadow);
+  backdrop-filter: blur(8px);
+}
+/* Botón = controles del visor (.viewer-controls button) */
+.ex-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0.5rem 0.85rem;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--ex-text);
+  background: var(--ex-surface);
+  border: 1px solid var(--ex-border-strong);
+  border-radius: var(--ex-radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+.ex-btn:hover {
+  background: var(--ex-border-strong);
+  color: #fff;
+}
+.ex-btn[aria-pressed='true'] {
+  background: var(--ex-accent-strong);
+  border-color: var(--ex-accent);
+  color: #fff;
+}
 .ex-hud {
   position: absolute;
   left: 0;
   right: 0;
+  z-index: 5;
   display: flex;
   justify-content: space-between;
-  gap: 16px;
-  padding: 14px 16px;
+  gap: 12px;
+  padding: 16px;
   pointer-events: none;
 }
-.ex-hud > * {
+.ex-hud button,
+.ex-hud .ex-panel {
   pointer-events: auto;
 }
 .ex-hud-top {
@@ -449,78 +486,218 @@
   bottom: 0;
   align-items: flex-end;
 }
-.ex-hud-info {
+.ex-hud-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   min-width: 0;
-  padding: 8px 14px;
-  background: var(--ex-panel);
-  border: 1px solid var(--ex-border);
-  border-radius: var(--ex-radius-lg);
-  pointer-events: none;
+}
+.ex-hud-info {
+  min-width: 210px;
+  max-width: 280px;
+  padding: 10px 14px 12px;
 }
 .ex-hud-point {
-  margin: 0;
-  font-weight: 600;
+  margin: 6px 0 6px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--ex-heading);
 }
 .ex-hud-near {
-  min-height: 1.2em;
-  margin: 2px 0 0;
-  font-size: 0.85rem;
-  color: var(--ex-muted);
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--ex-border);
 }
-.ex-back {
-  padding: 8px 14px;
+.ex-hud-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ex-dim);
+}
+.ex-hud-value {
+  font-size: 0.875rem;
   color: var(--ex-text);
-  font: inherit;
-  background: var(--ex-panel);
-  border: 1px solid var(--ex-border);
-  border-radius: var(--ex-radius-lg);
-  cursor: pointer;
 }
-.ex-back:hover {
-  background: var(--ex-border-strong);
-}
-.ex-back kbd {
-  margin-left: 6px;
-  padding: 1px 6px;
-  font: inherit;
-  font-size: 0.75rem;
+.ex-hud-kind {
   color: var(--ex-muted);
-  border: 1px solid var(--ex-border);
-  border-radius: 4px;
+}
+.ex-hud-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+/* Indicador de ruta */
+.ex-route-panel {
+  padding: 8px 10px 6px;
+}
+.ex-route {
+  margin: 0;
+  width: 92px;
+}
+.ex-route svg {
+  display: block;
+  width: 92px;
+  height: 92px;
+  overflow: visible;
+}
+.ex-route line {
+  stroke: var(--ex-border-strong);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.ex-route line[data-live] {
+  stroke: var(--ex-accent);
+  stroke-dasharray: 4 4;
+  animation: ex-route-flow 0.6s linear infinite;
+}
+.ex-route circle {
+  fill: var(--ex-raised);
+  stroke: var(--ex-border-hover);
+  stroke-width: 1.5;
+}
+.ex-route g[data-state='current'] circle,
+.ex-route g[data-state='target'] circle {
+  fill: var(--ex-accent);
+  stroke: var(--ex-accent-pale);
+}
+.ex-route g[data-state='origin'] circle {
+  fill: var(--ex-accent-hover);
+  stroke: var(--ex-accent);
+}
+.ex-route .ex-route-halo {
+  fill: var(--ex-accent-soft);
+  stroke: var(--ex-accent-line);
+  stroke-width: 1;
+}
+.ex-route-caption {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ex-dim);
+}
+.ex-route-count {
+  font-family: var(--ex-mono);
+  color: var(--ex-accent);
+}
+@keyframes ex-route-flow {
+  to {
+    stroke-dashoffset: -8;
+  }
+}
+.ex-hud-notes {
+  min-width: 0;
 }
 .ex-disclaimer-inline,
 .ex-hint {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   color: var(--ex-muted);
   text-shadow: 0 1px 3px #000;
 }
 .ex-hint {
-  margin-top: 4px;
+  margin-top: 6px;
+}
+.ex-hint kbd {
+  margin-right: 2px;
+}
+.ex-debug {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  z-index: 6;
+  margin: 0;
+  padding: 4px 10px;
+  font-family: var(--ex-mono);
+  font-size: 0.78rem;
+  color: var(--ex-accent-pale);
+  background: rgba(3, 7, 18, 0.8);
+  border: 1px solid var(--ex-accent-line);
+  border-radius: var(--ex-radius-sm);
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
-/* Cruceta: cuatro botones con triángulos */
+/* Cruceta: cuatro botones con triángulos y atajo visible */
 .ex-dpad {
+  --ex-key: 50px;
+  position: relative;
   display: grid;
-  grid-template: repeat(3, 46px) / repeat(3, 46px);
-  gap: 4px;
+  grid-template: repeat(3, var(--ex-key)) / repeat(3, var(--ex-key));
+  gap: 6px;
+  flex: none;
+  pointer-events: auto;
+}
+.ex-dpad-hub {
+  grid-area: 2 / 2;
+  align-self: center;
+  justify-self: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ex-raised);
+  border: 1px solid var(--ex-border-strong);
 }
 .ex-dpad-btn {
+  position: relative;
   display: grid;
   place-items: center;
+  padding: 0;
   color: var(--ex-label);
   background: var(--ex-panel);
   border: 1px solid var(--ex-border-strong);
-  border-radius: var(--ex-radius);
+  border-radius: var(--ex-radius-md);
+  box-shadow: var(--ex-shadow), inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
   cursor: pointer;
+  transition: background-color 0.12s, border-color 0.12s, color 0.12s, transform 0.06s;
 }
-.ex-dpad-btn:hover:not(:disabled) {
-  background: var(--ex-border-strong);
+.ex-dpad-key {
+  position: absolute;
+  right: 5px;
+  bottom: 2px;
+  font-family: var(--ex-mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--ex-dim);
+}
+.ex-dpad-btn[data-state='idle']:hover {
+  color: #fff;
+  background: var(--ex-raised);
+  border-color: var(--ex-border-hover);
+}
+.ex-dpad-btn[data-state='pressed'],
+.ex-dpad-btn:active:not(:disabled) {
+  color: #fff;
+  background: var(--ex-accent-hover);
+  border-color: var(--ex-accent);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+  transform: translateY(1px) scale(0.96);
+}
+.ex-dpad-btn[data-state='active'] {
+  color: #fff;
+  background: var(--ex-accent-strong);
+  border-color: var(--ex-accent);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25), 0 0 18px rgba(56, 189, 248, 0.45);
+}
+.ex-dpad-btn[data-state='active'] .ex-dpad-key,
+.ex-dpad-btn[data-state='pressed'] .ex-dpad-key {
+  color: var(--ex-accent-pale);
 }
 .ex-dpad-btn:disabled {
   color: var(--ex-dim);
+  background: rgba(15, 23, 42, 0.5);
   border-color: var(--ex-border);
-  opacity: 0.6;
+  box-shadow: none;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 .ex-dpad-up {
@@ -536,13 +713,81 @@
   grid-area: 3 / 2;
 }
 
-@media (max-width: 560px) {
+/* Sin WebGL: aviso con el estilo de estado de error del visor */
+.ex-nowebgl {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(ellipse at 50% 30%, var(--ex-surface), var(--ex-bg) 70%);
+}
+.ex-nowebgl-card {
+  max-width: 460px;
+  padding: 20px 22px;
+  background: var(--ex-surface-2);
+  border: 1px solid #1f2937;
+  border-radius: var(--ex-radius-lg);
+  box-shadow: var(--ex-shadow);
+}
+.ex-nowebgl-title {
+  margin: 12px 0 6px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ex-heading);
+}
+.ex-nowebgl-text {
+  margin: 0 0 16px;
+  font-size: 0.9rem;
+  color: var(--ex-muted);
+}
+
+/* Pantallas estrechas y verticales: HUD apilado, cruceta táctil más grande, sin ayuda de teclado. */
+@container (max-width: 640px) {
+  .ex-hud {
+    padding: 10px;
+  }
+  .ex-hud-top {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .ex-hud-actions {
+    justify-content: space-between;
+  }
+  .ex-hud-info {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+  }
+  .ex-route,
+  .ex-route svg {
+    width: 64px;
+    height: auto;
+  }
   .ex-hint {
     display: none;
   }
-  .ex-hud-top {
-    flex-direction: column;
-    align-items: stretch;
+  .ex-dpad {
+    --ex-key: 54px;
+  }
+  .ex-hud-bottom {
+    flex-direction: column-reverse;
+    align-items: flex-end;
+  }
+  .ex-hud-notes {
+    align-self: stretch;
+  }
+  .ex-select-head {
+    top: 12px;
+    left: 12px;
+  }
+  .ex-select-foot {
+    left: 12px;
+    right: 12px;
+  }
+  .ex-keys {
+    display: none;
   }
 }
 
@@ -558,5 +803,12 @@
   }
   .ex-sector-list {
     transform: none;
+  }
+  .ex-route line[data-live] {
+    animation: none;
+  }
+  .ex-dpad-btn,
+  .ex-btn {
+    transition: none;
   }
 }

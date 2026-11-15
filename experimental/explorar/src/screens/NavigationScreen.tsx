@@ -1,13 +1,17 @@
-import { lazy, Suspense, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { NavController } from '../engine/controller'
+import { KEY_CODES } from '../engine/dpad'
 import { buildGraph, DIRECTIONS } from '../engine/graph'
 import { MOVE_DURATION_MS } from '../engine/navigation'
 import { nearbyObject } from '../engine/nearest'
+import { AdaptiveQuality, type QualityLevel } from '../engine/quality'
 import type { Direction, SectorConfig, SectorScene as SectorSceneData } from '../engine/types'
 import { DPad } from './DPad'
 import { ErrorBoundary } from './ErrorBoundary'
+import { NoWebGL } from './NoWebGL'
+import { RouteMap } from './RouteMap'
 import { loadScene } from './sceneLoader'
-import { AdaptiveQuality, type QualityLevel } from '../engine/quality'
+import { detectWebGL } from './webgl'
 
 // three (y react-three-fiber) viven en un chunk aparte: no pesan hasta que se entra a un sector.
 const SectorScene = lazy(loadScene)
@@ -21,25 +25,25 @@ interface Props {
   quality: QualityLevel
   forced: boolean
   debug: boolean
-}
-
-const KEYS: Readonly<Record<string, Direction>> = {
-  KeyW: 'forward',
-  ArrowUp: 'forward',
-  KeyS: 'back',
-  ArrowDown: 'back',
-  KeyA: 'left',
-  ArrowLeft: 'left',
-  KeyD: 'right',
-  ArrowRight: 'right',
+  /** Ranura para controles extra en la barra superior del HUD (p. ej., sonido). */
+  extraControls?: ReactNode
 }
 
 function isTextField(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
 }
 
-export function NavigationScreen({ sector, onExit, arrive, reduced, quality: initialLevel, forced, debug }: Props) {
+const KIND_LABEL: Record<string, string> = {
+  planet: 'Planeta',
+  ringedPlanet: 'Planeta con anillo',
+  station: 'Estación',
+  sphere: 'Esfera',
+  smallBody: 'Cuerpo menor',
+}
+
+export function NavigationScreen({ sector, onExit, arrive, reduced, quality: initialLevel, forced, debug, extraControls }: Props) {
   const { scene } = sector
+  const webgl = useMemo(() => detectWebGL(), [])
   const adaptive = useMemo(() => new AdaptiveQuality(initialLevel, forced), [initialLevel, forced])
   const [settings, setSettings] = useState(adaptive.settings)
   const [fps, setFps] = useState(0)
@@ -51,28 +55,50 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
   const shownId = snap.movingTo ?? snap.at
   const node = graph.nodes.get(shownId)
   const near = node ? nearbyObject(node, scene.objects) : undefined
-  const available = useMemo(
-    () => new Set(DIRECTIONS.filter((d) => node?.links[d] !== undefined)),
-    [node],
-  )
+  const available = useMemo(() => new Set(DIRECTIONS.filter((d) => node?.links[d] !== undefined)), [node])
+  const moving = snap.movingTo ? (controller.state.transition?.direction ?? null) : null
+  const [pressed, setPressed] = useState<ReadonlySet<Direction>>(new Set())
 
-  // Teclado: mismo manejador que los botones. Mientras se mueve, controller.move ignora la entrada.
+  const press = useCallback((dir: Direction, down: boolean) => {
+    setPressed((prev) => {
+      if (prev.has(dir) === down) return prev
+      const next = new Set(prev)
+      if (down) next.add(dir)
+      else next.delete(dir)
+      return next
+    })
+  }, [])
+
+  // Teclado: mismo manejador que los botones. Mientras se mueve, controller.move ignora la entrada;
+  // mantener la tecla encadena el siguiente tramo al llegar.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
+    const onDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || isTextField(e.target)) return
       if (e.key === 'Escape') {
         e.preventDefault()
         onExit()
         return
       }
-      const dir = KEYS[e.code]
+      const dir = KEY_CODES[e.code]
       if (!dir) return
       e.preventDefault() // evita que las flechas desplacen la página
+      press(dir, true)
       controller.move(dir)
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [controller, onExit])
+    const onUp = (e: KeyboardEvent) => {
+      const dir = KEY_CODES[e.code]
+      if (dir) press(dir, false)
+    }
+    const clear = () => setPressed(new Set())
+    window.addEventListener('keydown', onDown)
+    window.addEventListener('keyup', onUp)
+    window.addEventListener('blur', clear)
+    return () => {
+      window.removeEventListener('keydown', onDown)
+      window.removeEventListener('keyup', onUp)
+      window.removeEventListener('blur', clear)
+    }
+  }, [controller, onExit, press])
 
   return (
     <section
@@ -82,36 +108,49 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
       data-fade-in={arrive ? undefined : ''}
     >
       <div className="ex-canvas">
-        <ErrorBoundary
-          fallback={
-            <p className="ex-fallback" role="alert">
-              No se pudo iniciar la vista 3D en este equipo (se necesita WebGL).
-            </p>
-          }
-        >
-          <Suspense fallback={<p className="ex-fallback">Cargando escena…</p>}>
-            <SectorScene
-              scene={scene}
-              controller={controller}
-              animate={!reduced}
-              arrive={arrive}
-              settings={settings}
-              quality={adaptive}
-              onQualityChange={() => setSettings(adaptive.settings)}
-              onFps={debug ? setFps : undefined}
-            />
-          </Suspense>
-        </ErrorBoundary>
+        {webgl ? (
+          <ErrorBoundary fallback={<NoWebGL onExit={onExit} reason="La vista 3D se detuvo por un error del navegador." />}>
+            <Suspense fallback={<p className="ex-fallback">Cargando escena…</p>}>
+              <SectorScene
+                scene={scene}
+                controller={controller}
+                animate={!reduced}
+                arrive={arrive}
+                settings={settings}
+                quality={adaptive}
+                onQualityChange={() => setSettings(adaptive.settings)}
+                onFps={debug ? setFps : undefined}
+              />
+            </Suspense>
+          </ErrorBoundary>
+        ) : (
+          <NoWebGL onExit={onExit} />
+        )}
       </div>
 
       <div className="ex-hud ex-hud-top">
-        <div className="ex-hud-info">
-          <p className="ex-hud-point">{node?.name}</p>
-          <p className="ex-hud-near">{near ? `Cerca: ${near.label}` : ' '}</p>
+        <div className="ex-hud-left">
+          <div className="ex-panel ex-hud-info">
+            <span className="ex-chip ex-chip-muted">{sector.name}</span>
+            <p className="ex-hud-point">{node?.name}</p>
+            <p className="ex-hud-near">
+              <span className="ex-hud-label">Objeto cercano</span>
+              <span className="ex-hud-value">
+                {near ? near.label : '—'}
+                {near && <span className="ex-hud-kind"> · {KIND_LABEL[near.kind]}</span>}
+              </span>
+            </p>
+          </div>
+          <div className="ex-panel ex-route-panel">
+            <RouteMap waypoints={scene.waypoints} at={snap.at} movingTo={snap.movingTo} />
+          </div>
         </div>
-        <button type="button" className="ex-back" onClick={onExit}>
-          ← Volver a sectores <kbd>Esc</kbd>
-        </button>
+        <div className="ex-hud-actions">
+          {extraControls}
+          <button type="button" className="ex-btn" onClick={onExit}>
+            <span aria-hidden="true">←</span> Volver a sectores <kbd>Esc</kbd>
+          </button>
+        </div>
       </div>
 
       {debug && (
@@ -127,11 +166,16 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
       </p>
 
       <div className="ex-hud ex-hud-bottom">
-        <div>
+        <div className="ex-hud-notes">
           <p className="ex-disclaimer-inline">Representación ilustrativa, no son datos reales de SPHEREx.</p>
-          <p className="ex-hint">W/↑ avanzar · S/↓ retroceder · A/← y D/→ laterales</p>
+          <p className="ex-hint" aria-hidden="true">
+            <kbd>W</kbd>
+            <kbd>A</kbd>
+            <kbd>S</kbd>
+            <kbd>D</kbd> o flechas para moverte · <kbd>Esc</kbd> volver
+          </p>
         </div>
-        <DPad available={available} onMove={(d) => controller.move(d)} />
+        {webgl && <DPad available={available} moving={moving} pressed={pressed} onMove={(d) => controller.move(d)} onPress={press} />}
       </div>
     </section>
   )
