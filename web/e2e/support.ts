@@ -13,9 +13,12 @@ const PNG_PLACEHOLDER = Buffer.from(
 const COMPARISONS = /\/api\/v1\/comparisons(\?.*)?$/;
 const IMAGES = /\/api\/v1\/images\/[^/?]+$/;
 
+// Los fixtures `comparacion-*` son los CANÓNICOS de Alexis (web/src/contracts/fixtures/): sólo se
+// leen, nunca se editan. El resto (`sintetico-*`) son míos y cubren lo que los canónicos no cubren.
 export function loadFixture(name: string): string {
+  const dir = name.startsWith("comparacion-") ? "../src/contracts/fixtures/" : "./fixtures/";
   return readFileSync(
-    fileURLToPath(new URL(`./fixtures/${name}.json`, import.meta.url)),
+    fileURLToPath(new URL(`${dir}${name}.json`, import.meta.url)),
     "utf-8",
   );
 }

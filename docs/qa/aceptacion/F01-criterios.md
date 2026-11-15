@@ -25,7 +25,7 @@ Dado `ready` con 6 fotogramas en orden cronológico. Cuando se ejecuta la búsqu
 Dado `insufficient` con 1 fotograma. Cuando se ejecuta la búsqueda. Entonces se puede ver la imagen individual, la reproducción y el A/B están deshabilitados y se explica la razón (una sola época).
 
 **F01-C04 · `insufficient` / `no_common_band`.**
-Dado `insufficient`, lista vacía y `band: null`. Entonces se muestra «cobertura insuficiente» con la razón de banda no común; sin imágenes, sin reproducción; no se presenta como «sin cobertura» ni como error.
+Dado `insufficient`, lista vacía y `band: null` (el contrato admite como máximo un fotograma en este caso; el fixture sintético usa la lista vacía). Entonces se muestra «cobertura insuficiente» con la razón de banda no común; sin imágenes, sin reproducción; no se presenta como «sin cobertura» ni como error.
 
 **F01-C05 · `insufficient` / `no_usable_frames`.**
 Dado `insufficient`, lista vacía. Entonces estado de cobertura insuficiente con la razón de fotogramas no utilizables; distinto de `no_coverage` y de fallo temporal.
@@ -94,8 +94,8 @@ Requieren URL pública, SHA publicado por Isaac y datos verificados por César. 
 | F01-R03a | **API directa** (petición de Playwright a `/api/v1/comparisons`, sin UI ni mocks): `422 invalid_coordinates` con parámetro faltante o vacío. |
 | F01-R03b | API directa: `422 invalid_coordinates` con NaN/Infinity. |
 | F01-R03c | API directa: `422 invalid_coordinates` fuera de rango (`ra=360`, `ra=-0.1`, `dec=±90.1`); `ra=0` y `dec=90` no devuelven 422. |
-| F01-R03e | API directa: `422 invalid_coordinates` con formato no decimal (exponente `1e1`, coma `10,25`). De momento sólo se ejecuta a mano (`scripts/ejecutar_api_local.py`); no tiene spec de Playwright. |
-| F01-R03d | API directa: `422 invalid_coordinates` con parámetro repetido (`ra_deg` o `dec_deg` indicado dos veces, p. ej. `?ra_deg=10.25&ra_deg=11&dec_deg=-12.5`). |
+| F01-R03e | API directa: `422 invalid_coordinates` con formato no decimal (exponente `1e1`, coma `10,25`). De momento sólo se ejecuta a mano (`scripts/ejecutar_api_local.py`); no tiene spec de Playwright. **Regla no explícita en el contrato** (que dice «no numérica» y «con punto decimal», sin mencionar el exponente): el 422 viene de la implementación (`api/planetx/http/coordinates.py`). |
+| F01-R03d | API directa: `422 invalid_coordinates` con parámetro repetido (`ra_deg` o `dec_deg` indicado dos veces, p. ej. `?ra_deg=10.25&ra_deg=11&dec_deg=-12.5`). **Regla no explícita en el contrato** (no lista el parámetro repetido entre los casos de 422): viene de la implementación de la API (`api/planetx/http/coordinates.py`); conviene que Alexis la incorpore al contrato. |
 | F01-R04 | Entrada manual de coordenadas libres y consulta en vivo: el resultado es uno de los estados del contrato, con su razón. |
 | F01-R05 | Imagen inexistente (`/api/v1/images/<id inexistente>`) responde `404 image_not_found`. |
 | F01-R06 | Incógnito y red externa: cargan web, API, PNG y fuentes; sin fixtures visibles; mismo SHA en todas las pruebas. |

@@ -7,7 +7,7 @@ import { loadFixture, mockComparisons, mockImages } from "./support";
 test.describe("F01 transversales [SIMULADO]", () => {
   test.fixme("F01-C17 · teclado y foco @simulado", async ({ page }) => {
     await mockImages(page);
-    await mockComparisons(page, "sintetico-ready-2");
+    await mockComparisons(page, "comparacion-ready");
     await page.goto("/");
 
     await page.getByRole("textbox", { name: "RA (grados)" }).focus();
@@ -27,7 +27,7 @@ test.describe("F01 transversales [SIMULADO]", () => {
 
   test.fixme("F01-C18 · vista móvil sin scroll horizontal @simulado", async ({ page }) => {
     await mockImages(page);
-    await mockComparisons(page, "sintetico-ready-2");
+    await mockComparisons(page, "comparacion-ready");
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/");
     await page.getByRole("textbox", { name: "RA (grados)" }).fill("10.25");
@@ -44,7 +44,7 @@ test.describe("F01 transversales [SIMULADO]", () => {
 
   test.fixme("F01-C19 · respuesta tardía descartada @simulado", async ({ page }) => {
     await mockImages(page);
-    // Primera búsqueda: respuesta lenta con fixture A (sintetico-ready-2).
+    // Primera búsqueda: respuesta lenta con fixture A (comparacion-ready).
     // Segunda búsqueda: respuesta inmediata con fixture B (sintetico-prepared).
     let llamada = 0;
     await page.route(/\/api\/v1\/comparisons(\?.*)?$/, async (route) => {
@@ -54,7 +54,7 @@ test.describe("F01 transversales [SIMULADO]", () => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: loadFixture(lenta ? "sintetico-ready-2" : "sintetico-prepared"),
+        body: loadFixture(lenta ? "comparacion-ready" : "sintetico-prepared"),
       });
     });
     await page.goto("/");
@@ -67,7 +67,7 @@ test.describe("F01 transversales [SIMULADO]", () => {
     await expect(page.getByText("Caso preparado")).toBeVisible();
     await page.waitForTimeout(2000); // deja llegar la respuesta antigua
     await expect(page.getByText("Caso preparado")).toBeVisible(); // no fue sobrescrita
-    await expect(page.getByText("sintetico-obs-a")).toHaveCount(0);
+    await expect(page.getByText("fixture-obs-a")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Pausar" })).toHaveCount(0);
   });
 });

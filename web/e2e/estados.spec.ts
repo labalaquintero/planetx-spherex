@@ -14,7 +14,7 @@ async function buscar(page: Page) {
 test.describe("F01 estados 200 [SIMULADO]", () => {
   test.fixme("F01-C01 · ready con 2 fotogramas @simulado", async ({ page }) => {
     await mockImages(page);
-    await mockComparisons(page, "sintetico-ready-2");
+    await mockComparisons(page, "comparacion-ready");
     await buscar(page);
 
     await expect(page.getByRole("heading", { name: "Resultado" })).toBeVisible();
@@ -22,7 +22,7 @@ test.describe("F01 estados 200 [SIMULADO]", () => {
     await expect(page.getByRole("button", { name: "Ver A" })).toBeEnabled();
     await expect(page.getByRole("button", { name: "Ver B" })).toBeEnabled();
     await expect(page.getByText("2026-01-05")).toBeVisible();
-    await expect(page.getByText("sintetico-obs-a")).toBeVisible();
+    await expect(page.getByText("fixture-obs-a")).toBeVisible();
     await expect(page.getByRole("note")).toContainText("no prueba un hallazgo");
     // Sin reproducción automática: sigue ofreciendo «Reproducir», no «Pausar».
     await expect(page.getByRole("button", { name: "Pausar" })).toHaveCount(0);
@@ -43,7 +43,7 @@ test.describe("F01 estados 200 [SIMULADO]", () => {
 
   test.fixme("F01-C03 · insufficient single_epoch @simulado", async ({ page }) => {
     await mockImages(page);
-    await mockComparisons(page, "sintetico-insufficient-single-epoch");
+    await mockComparisons(page, "comparacion-insufficient");
     await buscar(page);
 
     await expect(page.getByRole("img", { name: /Fotograma 1 de 1/ })).toBeVisible();
@@ -105,7 +105,7 @@ test.describe("F01 estados 200 [SIMULADO]", () => {
   });
 
   test.fixme("F01-C07 · no_coverage no_observations @simulado", async ({ page }) => {
-    await mockComparisons(page, "sintetico-no-coverage");
+    await mockComparisons(page, "comparacion-no-coverage");
     await buscar(page);
 
     await expect(page.getByRole("status")).toContainText("Sin cobertura");
@@ -131,7 +131,7 @@ test.describe("F01 estados 200 [SIMULADO]", () => {
 
   test.fixme("F01-C16 · etiqueta «Datos de prueba» con mode fixture @simulado", async ({ page }) => {
     await mockImages(page);
-    await mockComparisons(page, "sintetico-ready-2");
+    await mockComparisons(page, "comparacion-ready");
     await buscar(page);
 
     await expect(page.getByText("Datos de prueba")).toBeVisible();

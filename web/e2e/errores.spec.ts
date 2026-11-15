@@ -65,7 +65,7 @@ test.describe("F01 validación de coordenadas [SIMULADO]", () => {
 
 test.describe("F01 errores de servicio [SIMULADO]", () => {
   for (const [id, fixture] of [
-    ["F01-C12 · 503 archive_unavailable", "sintetico-error-503-archive-unavailable"],
+    ["F01-C12 · 503 archive_unavailable", "comparacion-error-503"],
     ["F01-C13 · 503 query_timeout", "sintetico-error-503-query-timeout"],
   ] as const) {
     test.fixme(`${id} @simulado`, async ({ page }) => {
@@ -88,13 +88,13 @@ test.describe("F01 errores de servicio [SIMULADO]", () => {
   });
 
   test.fixme("F01-C15 · 404 image_not_found en un fotograma @simulado", async ({ page }) => {
-    await mockImages(page, ["sintetico-b"]);
-    await mockComparisons(page, "sintetico-ready-2");
+    await mockImages(page, ["fixture-b"]);
+    await mockComparisons(page, "comparacion-ready");
     await buscar(page, "10.25", "-12.5");
 
     await page.getByRole("button", { name: "Ver B" }).click();
     await expect(page.getByText("Imagen no disponible")).toBeVisible();
-    await expect(page.getByText("sintetico-obs-b")).toBeVisible(); // metadatos siguen visibles
+    await expect(page.getByText("fixture-obs-b")).toBeVisible(); // metadatos siguen visibles
     await expect(page.getByText("Sin cobertura")).toHaveCount(0);
   });
 });
