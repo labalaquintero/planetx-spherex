@@ -66,8 +66,9 @@ def _finalize_payload(payload: Any, source: str, allow_fixtures: bool) -> dict[s
     frames = payload.get("frames", [])
     if not isinstance(frames, list):
         _fail("frames no es una lista")
-    for frame in frames:
-        url = frame.get("image_url") if isinstance(frame, dict) else None
+    products = [*frames, payload["difference"]] if "difference" in payload else frames
+    for product in products:
+        url = product.get("image_url") if isinstance(product, dict) else None
         if not isinstance(url, str) or not IMAGE_URL_RE.fullmatch(url):
             _fail("image_url no es una ruta del mismo origen /api/v1/images/<id>")
     return payload

@@ -115,6 +115,7 @@ const hourFormat = new Intl.DateTimeFormat('es-MX', {
   timeZone: 'UTC', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
 });
 const validDate = (value) => typeof value === 'string' && Number.isFinite(Date.parse(value));
+const imageId = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const shortDate = (date) => validDate(date)
   ? dateFormat.format(new Date(date)).replace(/\./g, '') : 'Fecha no disponible';
 const fullDate = (date) => validDate(date)
@@ -162,6 +163,17 @@ function archiveURL(input) {
   }
 }
 
+function normalizeDifference({ difference, frames, band, mode, status }) {
+  if (!difference || mode !== 'prepared' || status !== 'ready' || !band || frames.length !== 2) return;
+  const { id, image_url, frame_ids, scale_mjy_sr, common_valid_fraction } = difference;
+  if (typeof id !== 'string' || !imageId.test(id) || image_url !== `/api/v1/images/${id}`
+      || !Array.isArray(frame_ids) || frame_ids.length !== 2
+      || !frames.every((frame, index) => frame && frame.id === frame_ids[index] && frame.id !== id)
+      || !Number.isFinite(scale_mjy_sr) || scale_mjy_sr < 0
+      || !Number.isFinite(common_valid_fraction) || common_valid_fraction < 0.5 || common_valid_fraction > 1) return;
+  return { id, image_url, frame_ids, scale_mjy_sr, common_valid_fraction };
+}
+
 function normalizeComparison(data) {
   const { query, band, frames, mode, status, checked_at, science_version } = data ?? {};
   if (!query || !validCoordinates(query.ra_deg, query.dec_deg) || !Number.isFinite(query.fov_deg) || query.fov_deg <= 0
@@ -177,8 +189,9 @@ function normalizeComparison(data) {
     checked_at, science_version, mode, status,
     reason: typeof data.reason === 'string' ? data.reason : null,
     warnings: Array.isArray(data.warnings) ? data.warnings.filter((item) => typeof item === 'string') : [],
+    difference: normalizeDifference(data),
     frames: frames.map((frame) => {
-      if (!frame || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(frame.id)
+      if (!frame || typeof frame.id !== 'string' || !imageId.test(frame.id)
           || frame.image_url !== `/api/v1/images/${frame.id}` || !validDate(frame.observed_at)
           || !['dr1', 'qr3'].includes(frame.release)) {
         throw new Error('La API devolvió datos incompletos de una exposición.');

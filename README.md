@@ -51,6 +51,8 @@ Necesitas Docker con Compose v2 (`docker compose version`).
 
 5. **Parar.** `docker compose down`.
 
+Para abrir **Ver diferencias** en el visor, usa el [caso preparado de comparación científica de WISE 0855](docs/decisiones/comparacion-cientifica-wise0855.md).
+
 | Pieza | Imagen | Notas |
 | --- | --- | --- |
 | `api` | `api/Dockerfile` (Python 3.12 slim) | Uvicorn en `0.0.0.0:8000`, usuario sin privilegios, `/api/health` como healthcheck |

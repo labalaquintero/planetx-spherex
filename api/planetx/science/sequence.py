@@ -52,6 +52,14 @@ class Frame(TypedDict):
 
 
 @dataclass(frozen=True)
+class Difference:
+    id: str
+    frame_ids: tuple[str, str]
+    scale_mjy_sr: float
+    common_valid_fraction: float
+
+
+@dataclass(frozen=True)
 class ScienceResult:
     status: Literal["ready", "insufficient"]
     reason: InsufficientReason | None
@@ -60,6 +68,7 @@ class ScienceResult:
     common_valid_fraction: float
     contrast_mjy_sr: tuple[float, float] | None
     science_version: str = _SCIENCE_VERSION
+    difference: Difference | None = None
 
 
 @dataclass(frozen=True)
@@ -80,8 +89,9 @@ def build_sequence(
     dec_deg: float,
     fov_deg: float,
     cutouts: Iterable[Cutout],
+    include_difference: bool = False,
 ) -> tuple[ScienceResult, dict[str, bytes]]:
-    """Compare two epochs from local MEFs and return metadata and PNG bytes.
+    """Compare two epochs from local MEFs and optionally render their B − A difference.
 
     F01 uses a 0.1 degree field. The caller supplies archive provenance and
     handles HTTP, storage and search outcomes. Unreadable or incompatible
@@ -134,7 +144,14 @@ def build_sequence(
         pngs[frame_id] = png
 
     status = "ready" if reason is None else "insufficient"
-    return ScienceResult(status, reason, band, frames, coverage, contrast), pngs
+    difference = None
+    if include_difference and status == "ready":
+        png, scale = _render_difference(selected[0].image, selected[1].image, valid)
+        frame_ids = (frames[0]["id"], frames[1]["id"])
+        product_id = _difference_id(frame_ids, png)
+        difference = Difference(product_id, frame_ids, scale, coverage)
+        pngs[product_id] = png
+    return ScienceResult(status, reason, band, frames, coverage, contrast, difference=difference), pngs
 
 
 def _comparison_grid(ra_deg: float, dec_deg: float, fov_deg: float) -> WCS:
@@ -258,3 +275,25 @@ def _render_png(
     out = BytesIO()
     Image.fromarray(np.flipud(pixels)).save(out, format="PNG")
     return out.getvalue()
+
+
+def _difference_id(frame_ids: tuple[str, str], png: bytes) -> str:
+    identity = ":".join(("difference-v1", *frame_ids)).encode("ascii")
+    return sha256(identity + png).hexdigest()
+
+
+def _render_difference(
+    earlier: np.ndarray, later: np.ndarray, valid: np.ndarray
+) -> tuple[bytes, float]:
+    delta = later[valid] - earlier[valid]
+    magnitude = np.abs(delta)
+    scale = float(np.percentile(magnitude, 99)) or float(magnitude.max())
+    strength = np.clip(magnitude / scale, 0, 1) if scale else np.zeros_like(delta)
+    neutral = np.array([44, 49, 60])
+    extremes = np.where(delta[:, None] < 0, (90, 201, 255), (255, 177, 99))
+    rgba = np.zeros((*_SHAPE, 4), dtype=np.uint8)
+    rgba[valid, :3] = np.rint(neutral + strength[:, None] * (extremes - neutral))
+    rgba[valid, 3] = 255
+    out = BytesIO()
+    Image.fromarray(np.flipud(rgba)).save(out, format="PNG")
+    return out.getvalue(), scale

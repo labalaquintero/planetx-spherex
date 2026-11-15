@@ -244,6 +244,47 @@ function temporalPlayer(data) {
   </div>`;
 }
 
+const differenceScaleFormat = new Intl.NumberFormat('es-MX', { maximumSignificantDigits: 3 });
+const coverageFormat = new Intl.NumberFormat('es-MX', { style: 'percent', maximumFractionDigits: 1 });
+
+function differenceStage(data) {
+  const { id, image_url, scale_mjy_sr, common_valid_fraction } = data.difference;
+  const scale = differenceScaleFormat.format(scale_mjy_sr);
+  return `<section class="difference-stage" id="live-difference" aria-labelledby="difference-title" hidden>
+    <figure class="frame-tile difference-figure">
+      <div class="difference-image">
+        <img class="science-image" src="${escapeHtml(image_url)}" data-frame-id="${escapeHtml(id)}"
+          width="64" height="64" loading="lazy" alt="Mapa de brillo superficial de la época B menos la época A">
+        <span class="image-error" role="alert" hidden>No se pudo cargar el mapa de diferencias.</span>
+      </div>
+      <figcaption class="frame-foot"><span>64 × 64 px</span><span class="axes"><span>↑ N</span><span>← E</span></span></figcaption>
+    </figure>
+    <div class="difference-description">
+      <div>
+        <h3 id="difference-title">Diferencia entre épocas</h3>
+        <p>Brillo superficial en B menos A</p>
+      </div>
+      ${scale_mjy_sr > 0 ? `<div class="difference-legend">
+        <div class="difference-gradient" aria-hidden="true"></div>
+        <div class="difference-legend-labels">
+          <span>−${scale}<small>Menor en B</small></span>
+          <span>0<small>MJy/sr</small></span>
+          <span>+${scale}<small>Mayor en B</small></span>
+        </div>
+      </div>` : '<p>Diferencia cero en los píxeles válidos.</p>'}
+      <dl class="difference-details">
+        ${data.frames.map((frame, index) => `<div>
+          <dt><span class="epoch-token">${epoch(index)}</span></dt>
+          <dd><a class="text-link" href="${escapeHtml(imageLink(index, data))}">${dateMark(frame.observed_at, true)}</a></dd>
+        </div>`).join('')}
+        <div><dt>Banda común</dt><dd>${formatBand(data.band)}</dd></div>
+      </dl>
+      <p class="difference-quality"><strong>${coverageFormat.format(common_valid_fraction)} del campo en común.</strong>
+        La cuadrícula marca píxeles excluidos. El ruido, el fondo, la resolución y la respuesta espectral pueden producir residuos.</p>
+    </div>
+  </section>`;
+}
+
 function readyComparison(data) {
   const releases = [...new Set(data.frames.map((frame) => frame.release.toUpperCase()))].join(' / ');
   return `<div class="observatory comparison-workspace" data-testid="comparison-viewer">
@@ -255,6 +296,7 @@ function readyComparison(data) {
             <button type="button" data-layout="side" aria-pressed="true">Lado a lado</button>
             <button type="button" data-layout="alternate" aria-pressed="false">Alternar</button>
             <button type="button" data-layout="wipe" aria-pressed="false">Deslizar</button>
+            ${data.difference ? '<button type="button" data-layout="difference" aria-pressed="false">Ver diferencias</button>' : ''}
           </div>
           ${document.fullscreenEnabled ? '<button class="icon-button" type="button" id="comparison-fullscreen" aria-pressed="false" aria-label="Pantalla completa" title="Pantalla completa">⤢</button>' : ''}
         </div>
@@ -264,6 +306,7 @@ function readyComparison(data) {
         <div id="wipe-pair"></div>
         <p class="input-hint">Arrastra el divisor o elige una época en la línea de tiempo.</p>
       </div>
+      ${data.difference ? differenceStage(data) : ''}
       ${temporalPlayer(data)}
     </section>
     ${evidencePanel(data)}
@@ -336,10 +379,14 @@ function updateFrame(announce = false) {
   const slider = panel.querySelector('#epoch-slider');
   const frames = panel.querySelector('#live-frames');
   const first = Math.min(index, data.frames.length - 2);
+  const showingDifference = layout === 'difference';
   frames.classList.toggle('single', layout === 'alternate');
-  frames.hidden = layout === 'wipe';
+  frames.hidden = layout === 'wipe' || showingDifference;
   const wipe = panel.querySelector('#live-wipe');
   wipe.hidden = layout !== 'wipe';
+  const difference = panel.querySelector('#live-difference');
+  if (difference) difference.hidden = !showingDifference;
+  slider.closest('.timeline').hidden = showingDifference;
   if (layout === 'wipe' && wipe.dataset.first !== String(first)) {
     wipe.dataset.first = String(first);
     const container = wipe.querySelector('#wipe-pair');
@@ -494,7 +541,7 @@ function bindViewer(_id, _params, compare) {
     }
   });
   panel.addEventListener('keydown', (event) => {
-    if (viewer.status !== 'ready' || !event.target.matches('.comparison-panel')) return;
+    if (viewer.status !== 'ready' || viewer.layout === 'difference' || !event.target.matches('.comparison-panel')) return;
     const step = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
     const button = step ? panel.querySelector(`[data-step="${step}"]`) : event.key === ' ' ? panel.querySelector('#play-toggle') : null;
     if (!button) return;
