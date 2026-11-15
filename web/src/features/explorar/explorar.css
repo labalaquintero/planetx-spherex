@@ -1,0 +1,1047 @@
+/* Estilos de <Explorar />. Todo cuelga de .explorar y de clases ex-*, para no afectar al visor. */
+.explorar {
+  /* Tokens del visor (web/src/index.css y web/src/App.css), copiados tal cual: mismo azul
+     marino, acento sky, superficies slate, radios y sombras. No es una paleta nueva. */
+  --ex-bg: #030712;
+  --ex-surface: #0f172a;
+  --ex-surface-2: #111827;
+  --ex-inset: #0b0f19;
+  --ex-raised: #1e293b;
+  --ex-border: #1e293b;
+  --ex-border-strong: #334155;
+  --ex-border-hover: #475569;
+  --ex-text: #e2e8f0;
+  --ex-heading: #f8fafc;
+  --ex-label: #cbd5e1;
+  --ex-muted: #94a3b8;
+  --ex-dim: #64748b;
+  --ex-accent: #38bdf8;
+  --ex-accent-light: #7dd3fc;
+  --ex-accent-pale: #bae6fd;
+  --ex-accent-strong: #0284c7;
+  --ex-accent-hover: #0369a1;
+  --ex-accent-soft: rgba(56, 189, 248, 0.15);
+  --ex-accent-faint: rgba(56, 189, 248, 0.08);
+  --ex-accent-line: rgba(56, 189, 248, 0.3);
+  --ex-focus-ring: 0 0 0 3px rgba(56, 189, 248, 0.4);
+  --ex-warn: #facc15;
+  --ex-warn-soft: rgba(250, 204, 21, 0.15);
+  --ex-warn-line: rgba(250, 204, 21, 0.3);
+  --ex-radius-lg: 12px;
+  --ex-radius-md: 10px;
+  --ex-radius: 8px;
+  --ex-radius-sm: 6px;
+  --ex-radius-pill: 9999px;
+  --ex-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+  --ex-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --ex-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  /* Paneles sobre la escena: la superficie del visor con transparencia. */
+  --ex-panel: rgba(15, 23, 42, 0.86);
+
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  overflow: hidden;
+  color: var(--ex-text);
+  background: var(--ex-bg);
+  font-family: var(--ex-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.explorar *,
+.explorar *::before,
+.explorar *::after {
+  box-sizing: border-box;
+}
+.explorar button {
+  font-family: inherit;
+}
+.explorar button:focus-visible {
+  outline: none;
+  box-shadow: var(--ex-focus-ring);
+}
+.ex-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Piezas compartidas (estilo del visor) ---------- */
+/* Chip = .header-badge del visor */
+.ex-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ex-accent);
+  background: var(--ex-accent-soft);
+  border: 1px solid var(--ex-accent-line);
+  border-radius: var(--ex-radius-pill);
+  white-space: nowrap;
+}
+.ex-chip-muted {
+  /* Sin mayúsculas: «β» en mayúscula se lee como «B». */
+  text-transform: none;
+  letter-spacing: 0.02em;
+  color: var(--ex-label);
+  background: var(--ex-raised);
+  border-color: var(--ex-border-strong);
+}
+/* = .frame-badge del visor */
+.ex-chip-warn {
+  color: var(--ex-warn);
+  background: var(--ex-warn-soft);
+  border-color: var(--ex-warn-line);
+}
+.explorar kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0 0.35em;
+  font-family: var(--ex-mono);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--ex-label);
+  background: var(--ex-raised);
+  border: 1px solid var(--ex-border-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+}
+
+/* ---------- Pantalla 1: selección de sector ---------- */
+.ex-select {
+  position: absolute;
+  inset: 0;
+  container-type: size;
+  overflow: hidden;
+  transition: opacity 280ms ease;
+}
+.ex-backdrop,
+.ex-backdrop-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.ex-backdrop-svg {
+  background: radial-gradient(ellipse at 40% 30%, #0f172a 0%, var(--ex-bg) 70%);
+}
+.ex-select-head {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 3;
+  max-width: min(420px, calc(100% - 40px));
+  pointer-events: none;
+  transition: opacity 400ms ease;
+}
+.ex-select-actions {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 3;
+  transition: opacity 400ms ease;
+}
+.ex-select-actions {
+  display: flex;
+  gap: 8px;
+}
+.ex-select[data-jumping] .ex-select-actions {
+  opacity: 0;
+}
+.ex-sound svg {
+  flex: none;
+}
+.ex-select-title {
+  margin: 10px 0 4px;
+  font-size: clamp(1.35rem, 3.2cqmin, 2rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ex-heading);
+}
+.ex-select-sub {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--ex-muted);
+}
+.ex-sector-list {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  /* Paralaje: las esferas se mueven menos que las estrellas cercanas. */
+  transform: translate3d(calc(var(--ex-px, 0) * -12px), calc(var(--ex-py, 0) * -9px), 0);
+}
+.ex-sector-item {
+  --ex-d: max(64px, calc(var(--ex-size) * 1cqmin));
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translate(-50%, -50%);
+  transition: opacity 500ms ease, filter 500ms ease;
+}
+.ex-body {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--ex-d);
+  height: var(--ex-d);
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 260ms cubic-bezier(0.2, 0.7, 0.2, 1), filter 260ms ease;
+}
+.ex-body-halo {
+  position: absolute;
+  inset: -45%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--ex-glow) 0%, transparent 62%);
+  opacity: 0.55;
+  transition: opacity 260ms ease, transform 260ms ease;
+  pointer-events: none;
+}
+.ex-body-img {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  /* Atmósfera: borde iluminado del lado de la luz. */
+  box-shadow:
+    inset 3px 4px 10px -4px rgba(255, 255, 255, 0.45),
+    0 0 18px 2px var(--ex-glow);
+  pointer-events: none;
+  user-select: none;
+}
+.ex-body-placeholder {
+  background: radial-gradient(circle at 35% 30%, var(--ex-border-strong), var(--ex-bg) 75%);
+}
+.ex-orbit {
+  position: absolute;
+  inset: -38%;
+  width: 176%;
+  height: 176%;
+  overflow: visible;
+  transform: rotate(-16deg);
+  pointer-events: none;
+}
+.ex-orbit ellipse {
+  fill: none;
+  stroke: var(--ex-accent);
+  stroke-opacity: 0.32;
+  stroke-width: 0.5;
+  stroke-dasharray: 2 3;
+  vector-effect: non-scaling-stroke;
+  animation: ex-orbit-dash 16s linear infinite;
+}
+.ex-body:hover,
+.ex-body:focus-visible {
+  transform: scale(1.09);
+  filter: brightness(1.15);
+}
+.ex-body:hover .ex-body-halo,
+.ex-body:focus-visible .ex-body-halo {
+  opacity: 1;
+  transform: scale(1.08);
+}
+.ex-body:hover .ex-orbit ellipse,
+.ex-body:focus-visible .ex-orbit ellipse {
+  stroke-opacity: 0.7;
+}
+.ex-body:focus-visible {
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.55), 0 0 0 7px rgba(56, 189, 248, 0.15);
+}
+.ex-body[data-soon] {
+  cursor: default;
+  filter: saturate(0.5) brightness(0.72);
+}
+.ex-body[data-soon]:hover,
+.ex-body[data-soon]:focus-visible {
+  transform: scale(1.04);
+  filter: saturate(0.6) brightness(0.85);
+}
+.ex-body-label {
+  margin-top: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ex-heading);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+/* Tarjeta = tarjeta del visor (.app-form-section) */
+/* Llamada como en el boceto 1: a la derecha del sector, centrada en vertical, con una línea guía. */
+.ex-card {
+  position: absolute;
+  top: calc(var(--ex-d) / 2);
+  left: calc(50% + var(--ex-d) / 2 + 26px);
+  z-index: 5;
+  width: min(290px, 78cqw);
+  padding: 14px 16px;
+  text-align: left;
+  background: rgba(17, 24, 39, 0.94);
+  border: 1px solid #1f2937;
+  border-radius: var(--ex-radius-lg);
+  box-shadow: var(--ex-shadow), 0 18px 40px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  transform: translate(-6px, -50%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 160ms ease, transform 160ms ease, visibility 160ms;
+}
+.ex-sector-item:hover .ex-card,
+.ex-sector-item:focus-within .ex-card {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(0, -50%);
+}
+.ex-card::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  width: 22px;
+  border-top: 1px solid var(--ex-accent-line);
+}
+.ex-sector-item[data-callout='left'] .ex-card {
+  left: auto;
+  right: calc(50% + var(--ex-d) / 2 + 26px);
+  transform: translate(6px, -50%);
+}
+.ex-sector-item[data-callout='left']:hover .ex-card,
+.ex-sector-item[data-callout='left']:focus-within .ex-card {
+  transform: translate(0, -50%);
+}
+.ex-sector-item[data-callout='left'] .ex-card::before {
+  right: auto;
+  left: 100%;
+}
+.ex-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.ex-card-text {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--ex-label);
+}
+.ex-card-meta {
+  margin: 10px 0 0;
+  padding-top: 8px;
+  font-family: var(--ex-mono);
+  font-size: 0.78rem;
+  color: var(--ex-muted);
+  border-top: 1px solid var(--ex-border);
+}
+.ex-card-cta {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ex-accent);
+}
+.ex-select-foot {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 14px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+  pointer-events: none;
+  transition: opacity 400ms ease;
+}
+.ex-disclaimer,
+.ex-keys {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ex-dim);
+}
+/* Salto: las demás esferas se apagan, la elegida crece y llega el destello. */
+.ex-select-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: radial-gradient(
+    circle at var(--ex-jx, 50%) var(--ex-jy, 50%),
+    rgba(224, 242, 254, 0.98) 0%,
+    rgba(125, 211, 252, 0.75) 30%,
+    rgba(3, 7, 18, 0) 75%
+  );
+  opacity: var(--ex-jump, 0);
+  pointer-events: none;
+}
+.ex-select[data-jumping] .ex-select-head,
+.ex-select[data-jumping] .ex-select-foot,
+.ex-select[data-jumping] .ex-card {
+  opacity: 0;
+}
+.ex-select[data-jumping] .ex-sector-item:not([data-target]) {
+  opacity: 0;
+  filter: blur(4px);
+}
+.ex-select[data-jumping] .ex-sector-item[data-target] .ex-body {
+  transform: scale(2.6);
+  filter: brightness(1.4);
+  transition: transform 1100ms cubic-bezier(0.55, 0, 0.9, 0.4), filter 1100ms ease;
+}
+.ex-select[data-jumping] .ex-body-label {
+  opacity: 0;
+}
+.ex-select[data-fading] {
+  opacity: 0;
+}
+@keyframes ex-orbit-dash {
+  to {
+    stroke-dashoffset: -50;
+  }
+}
+
+/* ---------- Pantalla 2: navegación en nave ---------- */
+.ex-nav {
+  position: absolute;
+  inset: 0;
+  container-type: size;
+}
+.ex-canvas {
+  position: absolute;
+  inset: 0;
+}
+/* Llegada: destello que se apaga (con movimiento reducido, solo un fundido). */
+.ex-nav[data-arrive]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: radial-gradient(circle at 50% 45%, rgba(224, 242, 254, 0.95), rgba(56, 189, 248, 0.55) 45%, rgba(3, 7, 18, 0.9));
+  pointer-events: none;
+  animation: ex-arrive-flash 900ms ease-out forwards;
+}
+.ex-nav[data-fade-in] {
+  animation: ex-fade-in 280ms ease-out;
+}
+@keyframes ex-arrive-flash {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes ex-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.ex-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 24px;
+  text-align: center;
+  color: var(--ex-muted);
+}
+/* Panel = .comparison-viewer del visor, translúcido sobre la escena */
+.ex-panel {
+  background: var(--ex-panel);
+  border: 1px solid var(--ex-border);
+  border-radius: var(--ex-radius-lg);
+  box-shadow: var(--ex-shadow);
+  backdrop-filter: blur(8px);
+}
+/* Botón = controles del visor (.viewer-controls button) */
+.ex-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0.5rem 0.85rem;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--ex-text);
+  background: var(--ex-surface);
+  border: 1px solid var(--ex-border-strong);
+  border-radius: var(--ex-radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+.ex-btn:hover {
+  background: var(--ex-border-strong);
+  color: #fff;
+}
+.ex-btn[aria-pressed='true'] {
+  background: var(--ex-accent-strong);
+  border-color: var(--ex-accent);
+  color: #fff;
+}
+.ex-hud {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  pointer-events: none;
+}
+.ex-hud button,
+.ex-hud .ex-panel {
+  pointer-events: auto;
+}
+.ex-hud-top {
+  top: 0;
+  align-items: flex-start;
+}
+.ex-hud-bottom {
+  bottom: 0;
+  align-items: flex-end;
+}
+.ex-hud-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+.ex-hud-info {
+  min-width: 210px;
+  max-width: 280px;
+  padding: 10px 14px 12px;
+}
+.ex-hud-point {
+  margin: 6px 0 6px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--ex-heading);
+}
+.ex-hud-near {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--ex-border);
+}
+.ex-hud-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ex-dim);
+}
+.ex-hud-value {
+  font-size: 0.875rem;
+  color: var(--ex-text);
+}
+.ex-hud-kind {
+  color: var(--ex-muted);
+}
+.ex-hud-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+/* Indicador de ruta */
+.ex-route-panel {
+  padding: 8px 10px 6px;
+}
+.ex-route {
+  margin: 0;
+  width: 92px;
+}
+.ex-route svg {
+  display: block;
+  width: 92px;
+  height: 92px;
+  overflow: visible;
+}
+.ex-route line {
+  stroke: var(--ex-border-strong);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.ex-route line[data-live] {
+  stroke: var(--ex-accent);
+  stroke-dasharray: 4 4;
+  animation: ex-route-flow 0.6s linear infinite;
+}
+.ex-route circle {
+  fill: var(--ex-raised);
+  stroke: var(--ex-border-hover);
+  stroke-width: 1.5;
+}
+.ex-route g[data-state='current'] circle,
+.ex-route g[data-state='target'] circle {
+  fill: var(--ex-accent);
+  stroke: var(--ex-accent-pale);
+}
+.ex-route g[data-state='origin'] circle {
+  fill: var(--ex-accent-hover);
+  stroke: var(--ex-accent);
+}
+.ex-route .ex-route-halo {
+  fill: var(--ex-accent-soft);
+  stroke: var(--ex-accent-line);
+  stroke-width: 1;
+}
+.ex-route-caption {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ex-dim);
+}
+.ex-route-count {
+  font-family: var(--ex-mono);
+  color: var(--ex-accent);
+}
+@keyframes ex-route-flow {
+  to {
+    stroke-dashoffset: -8;
+  }
+}
+.ex-hud-notes {
+  min-width: 0;
+}
+.ex-disclaimer-inline,
+.ex-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ex-muted);
+  text-shadow: 0 1px 3px #000;
+}
+.ex-hint {
+  margin-top: 6px;
+}
+.ex-hint kbd {
+  margin-right: 2px;
+}
+.ex-debug {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  z-index: 6;
+  margin: 0;
+  padding: 4px 10px;
+  font-family: var(--ex-mono);
+  font-size: 0.78rem;
+  color: var(--ex-accent-pale);
+  background: rgba(3, 7, 18, 0.8);
+  border: 1px solid var(--ex-accent-line);
+  border-radius: var(--ex-radius-sm);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* Cruceta: cuatro botones con triángulos y atajo visible */
+.ex-dpad {
+  --ex-key: 50px;
+  position: relative;
+  display: grid;
+  grid-template: repeat(3, var(--ex-key)) / repeat(3, var(--ex-key));
+  gap: 6px;
+  flex: none;
+  pointer-events: auto;
+}
+.ex-dpad-hub {
+  grid-area: 2 / 2;
+  align-self: center;
+  justify-self: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ex-raised);
+  border: 1px solid var(--ex-border-strong);
+}
+.ex-dpad-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--ex-label);
+  background: var(--ex-panel);
+  border: 1px solid var(--ex-border-strong);
+  border-radius: var(--ex-radius-md);
+  box-shadow: var(--ex-shadow), inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: background-color 0.12s, border-color 0.12s, color 0.12s, transform 0.06s;
+}
+.ex-dpad-key {
+  position: absolute;
+  right: 5px;
+  bottom: 2px;
+  font-family: var(--ex-mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--ex-dim);
+}
+.ex-dpad-btn[data-state='idle']:hover {
+  color: #fff;
+  background: var(--ex-raised);
+  border-color: var(--ex-border-hover);
+}
+.ex-dpad-btn[data-state='pressed'],
+.ex-dpad-btn:active:not(:disabled) {
+  color: #fff;
+  background: var(--ex-accent-hover);
+  border-color: var(--ex-accent);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+  transform: translateY(1px) scale(0.96);
+}
+.ex-dpad-btn[data-state='active'] {
+  color: #fff;
+  background: var(--ex-accent-strong);
+  border-color: var(--ex-accent);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25), 0 0 18px rgba(56, 189, 248, 0.45);
+}
+.ex-dpad-btn[data-state='active'] .ex-dpad-key,
+.ex-dpad-btn[data-state='pressed'] .ex-dpad-key {
+  color: var(--ex-accent-pale);
+}
+.ex-dpad-btn:disabled {
+  color: var(--ex-dim);
+  background: rgba(15, 23, 42, 0.5);
+  border-color: var(--ex-border);
+  box-shadow: none;
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ex-dpad-up {
+  grid-area: 1 / 2;
+}
+.ex-dpad-left {
+  grid-area: 2 / 1;
+}
+.ex-dpad-right {
+  grid-area: 2 / 3;
+}
+.ex-dpad-down {
+  grid-area: 3 / 2;
+}
+
+/* Vuelo libre: datos del HUD, mapa del área y controles con subir/bajar */
+.ex-hud-stats {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 2px 14px;
+  margin: 6px 0 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--ex-border);
+}
+.ex-hud-stats div {
+  display: grid;
+}
+.ex-hud-stats dt {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ex-dim);
+}
+.ex-hud-stats dd {
+  margin: 0;
+  font-family: var(--ex-mono);
+  font-size: 0.85rem;
+  color: var(--ex-text);
+  white-space: nowrap;
+}
+.ex-hud-edge {
+  margin: 8px 0 0;
+}
+.ex-minimap {
+  margin: 0;
+}
+.ex-minimap-body {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.ex-minimap svg {
+  display: block;
+}
+.ex-minimap-bounds {
+  fill: none;
+  stroke: var(--ex-accent-line);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+.ex-minimap-bounds[data-edge] {
+  stroke: var(--ex-warn);
+  stroke-dasharray: none;
+}
+.ex-minimap-label {
+  font-family: var(--ex-sans);
+  font-size: 9px;
+  fill: var(--ex-label);
+  paint-order: stroke;
+  stroke: rgba(3, 7, 18, 0.85);
+  stroke-width: 3px;
+}
+.ex-minimap-alt {
+  position: relative;
+  width: 6px;
+  margin: 10px 0;
+  border-radius: 3px;
+  background: linear-gradient(to top, var(--ex-raised), var(--ex-border-strong));
+}
+.ex-minimap-alt-mark {
+  position: absolute;
+  left: -4px;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--ex-accent);
+  transform: translateY(50%);
+}
+.ex-pad {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: auto;
+}
+.ex-pad-vertical {
+  display: grid;
+  gap: 6px;
+}
+.ex-pad-vertical .ex-dpad-btn {
+  width: 64px;
+  height: 40px;
+}
+.ex-pad-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.ex-dpad-btn {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Créditos: diálogo con el estilo de tarjeta del visor */
+.ex-credits {
+  width: min(560px, calc(100% - 32px));
+  max-height: min(80vh, 640px);
+  padding: 18px 20px;
+  color: var(--ex-text);
+  font-family: var(--ex-sans);
+  background: var(--ex-surface-2);
+  border: 1px solid #1f2937;
+  border-radius: var(--ex-radius-lg);
+  box-shadow: var(--ex-shadow), 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+.ex-credits::backdrop {
+  background: rgba(3, 7, 18, 0.7);
+}
+.ex-credits-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ex-credits-title {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--ex-heading);
+}
+.ex-credits-note {
+  margin: 10px 0 12px;
+  font-size: 0.85rem;
+  color: var(--ex-muted);
+}
+.ex-credits-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ex-credits-list li {
+  padding: 10px 12px;
+  background: var(--ex-surface);
+  border: 1px solid var(--ex-border);
+  border-radius: var(--ex-radius);
+}
+.ex-credits-what {
+  margin: 0 0 4px;
+  font-weight: 600;
+  color: var(--ex-heading);
+}
+.ex-credits-meta,
+.ex-credits-url {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: var(--ex-label);
+}
+.ex-credits-url {
+  font-family: var(--ex-mono);
+  color: var(--ex-accent);
+  word-break: break-all;
+}
+
+/* Sin WebGL: aviso con el estilo de estado de error del visor */
+.ex-nowebgl {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(ellipse at 50% 30%, var(--ex-surface), var(--ex-bg) 70%);
+}
+.ex-nowebgl-card {
+  max-width: 460px;
+  padding: 20px 22px;
+  background: var(--ex-surface-2);
+  border: 1px solid #1f2937;
+  border-radius: var(--ex-radius-lg);
+  box-shadow: var(--ex-shadow);
+}
+.ex-nowebgl-title {
+  margin: 12px 0 6px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ex-heading);
+}
+.ex-nowebgl-text {
+  margin: 0 0 16px;
+  font-size: 0.9rem;
+  color: var(--ex-muted);
+}
+
+/* Pantallas estrechas y verticales: HUD apilado, cruceta táctil más grande, sin ayuda de teclado. */
+@container (max-width: 640px) {
+  .ex-hud {
+    padding: 10px;
+  }
+  .ex-hud-top {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .ex-hud-actions {
+    justify-content: space-between;
+  }
+  .ex-hud-info {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+  }
+  .ex-route,
+  .ex-route svg {
+    width: 64px;
+    height: auto;
+  }
+  .ex-minimap svg {
+    width: 120px;
+    height: 120px;
+  }
+  .ex-hud-stats {
+    gap: 2px 8px;
+  }
+  .ex-hud-stats dd {
+    font-size: 0.75rem;
+  }
+  .ex-route-caption {
+    gap: 6px;
+  }
+  .ex-minimap-label {
+    display: none;
+  }
+  .ex-hint {
+    display: none;
+  }
+  .ex-dpad {
+    --ex-key: 54px;
+  }
+  .ex-hud-bottom {
+    flex-direction: column-reverse;
+    align-items: flex-end;
+  }
+  .ex-hud-notes {
+    align-self: stretch;
+  }
+  .ex-select-head {
+    top: 12px;
+    left: 12px;
+    max-width: calc(100% - 140px);
+  }
+  .ex-select-actions {
+    top: 12px;
+    right: 12px;
+  }
+  .ex-select-foot {
+    left: 12px;
+    right: 12px;
+  }
+  .ex-keys {
+    display: none;
+  }
+  .ex-sector-item .ex-card,
+  .ex-sector-item[data-callout='left'] .ex-card {
+    top: calc(100% + 10px);
+    left: 50%;
+    right: auto;
+    transform: translate(-50%, 6px);
+  }
+  .ex-sector-item:hover .ex-card,
+  .ex-sector-item:focus-within .ex-card {
+    transform: translate(-50%, 0);
+  }
+  .ex-card::before {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ex-body,
+  .ex-card,
+  .ex-body-halo,
+  .ex-sector-item {
+    transition: none;
+  }
+  .ex-orbit ellipse {
+    animation: none;
+  }
+  .ex-sector-list {
+    transform: none;
+  }
+  .ex-route line[data-live] {
+    animation: none;
+  }
+  .ex-dpad-btn,
+  .ex-btn {
+    transition: none;
+  }
+}

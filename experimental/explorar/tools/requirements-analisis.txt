@@ -1,0 +1,8 @@
+# Solo para las herramientas de análisis de los bocetos. NO son dependencias de la app.
+# Se instalan en un venv desechable fuera del repositorio:
+#   python3 -m venv /tmp/explorar-venv && /tmp/explorar-venv/bin/pip install -r tools/requirements-analisis.txt
+numpy==2.5.4
+opencv-python-headless==5.0.0.93
+pillow==13.0.0
+websocket-client==1.9.0
+scipy==1.18.1
