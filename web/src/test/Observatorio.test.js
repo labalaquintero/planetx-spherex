@@ -32,7 +32,7 @@ it('abre el comparador desde el punto de entrada de Docker y lleva sus datos a l
   );
   expect(document.querySelector('[data-testid="provenance-panel"]')).toHaveTextContent('Caso preparado');
   expect([...document.querySelectorAll('#site-nav a')].map((link) => link.textContent))
-    .toEqual(['Inicio', 'Visor', 'Galería', 'Explorar', 'Blog']);
+    .toEqual(['Inicio', 'Visor', 'Galería', 'Explorar', 'Blog', 'Mapa']);
 
   history.replaceState(null, '', '#ficha?ra=133.795129166667&dec=-7.245147222222');
   window.dispatchEvent(new HashChangeEvent('hashchange'));
@@ -40,4 +40,17 @@ it('abre el comparador desde el punto de entrada de Docker y lleva sus datos a l
   expect(document.querySelector('.attachment-panel img')).toHaveAttribute(
     'src', `/api/v1/images/${readyFixture.frames[0].id}`,
   );
+
+  const mapLink = document.querySelector('#site-nav [data-view="mapa"]');
+  mapLink.click();
+  await vi.waitFor(() => expect(document.querySelector('.atlas-plot')).toBeInTheDocument());
+  expect(mapLink).toHaveAttribute('aria-current', 'page');
+  expect(location.hash).toBe('#galeria?vista=mapa');
+
+  document.querySelector('[data-gallery-layout="cards"]').click();
+  expect(mapLink).not.toHaveAttribute('aria-current');
+  expect(location.hash).toBe('#galeria');
+
+  mapLink.click();
+  await vi.waitFor(() => expect(document.querySelector('.atlas-plot')).toBeInTheDocument());
 });

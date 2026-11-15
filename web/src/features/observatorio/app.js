@@ -175,7 +175,7 @@ function galleryMap(targetsToShow, selected) {
   </div>`;
 }
 
-function bindGallery() {
+function bindGallery(_id, params) {
   const input = main.querySelector('#gallery-search');
   const buttons = [...main.querySelectorAll('[data-filter]')];
   const layouts = [...main.querySelectorAll('[data-gallery-layout]')];
@@ -213,6 +213,12 @@ function bindGallery() {
   }));
   layouts.forEach((button) => button.addEventListener('click', () => {
     layout = button.dataset.galleryLayout;
+    const isMap = layout === 'map';
+    if (isMap) params.set('vista', 'mapa');
+    else params.delete('vista');
+    const query = params.toString();
+    history.replaceState(history.state, '', query ? `#galeria?${query}` : '#galeria');
+    setCurrentNav(isMap ? 'mapa' : 'galeria');
     layouts.forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
     update();
   }));
@@ -339,6 +345,13 @@ function setMenu(open) {
   nav.classList.toggle('is-open', open);
 }
 
+function setCurrentNav(section) {
+  nav.querySelectorAll('a').forEach((link) => {
+    if (link.dataset.view === section) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  });
+}
+
 function renderSearch() {
   const term = fold(searchInput.value);
   const matches = [
@@ -400,13 +413,11 @@ function renderRoute() {
   if (activeSection) spaceLink.setAttribute('aria-current', 'page');
   else spaceLink.removeAttribute('aria-current');
 
-  nav.querySelectorAll('a').forEach((link) => {
-    if (link.dataset.view === selected.nav) link.setAttribute('aria-current', 'page');
-    else link.removeAttribute('aria-current');
-  });
+  const params = new URLSearchParams(query);
+  const isMap = view === 'galeria' && params.get('vista') === 'mapa';
+  setCurrentNav(isMap ? 'mapa' : selected.nav);
   setMenu(false);
   if (search.open) search.close();
-  const params = new URLSearchParams(query);
   main.innerHTML = selected.html(id, params);
   selected.bind?.(id, params);
   bindEvidenceImages(main);
