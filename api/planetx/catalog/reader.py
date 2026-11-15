@@ -104,6 +104,37 @@ def _validate_source_url(source_url: Any, frame_id: str) -> str:
     return source_url
 
 
+def _normalize_difference(
+    value: Any, frames: list[dict[str, Any]], products_dir: Path
+) -> dict[str, Any] | None:
+    if not isinstance(value, dict) or len(frames) != 2:
+        return None
+    frame_ids = [frame["id"] for frame in frames]
+    product_id = value.get("id")
+    if (
+        value.get("frame_ids") != frame_ids
+        or not isinstance(product_id, str)
+        or not FRAME_ID_RE.fullmatch(product_id)
+        or product_id in frame_ids
+    ):
+        return None
+    try:
+        scale = _validate_finite_number(value.get("scale_mjy_sr"), "difference.scale_mjy_sr")
+        coverage = _validate_finite_number(value.get("common_valid_fraction"), "difference.common_valid_fraction")
+        path = products_dir / f"{product_id}.png"
+        if scale < 0 or not 0.5 <= coverage <= 1 or not path.is_file() or not path.stat().st_size:
+            return None
+    except (InvalidCatalogQueryError, OSError):
+        return None
+    return {
+        "id": product_id,
+        "image_url": f"/api/v1/images/{product_id}",
+        "frame_ids": frame_ids,
+        "scale_mjy_sr": scale,
+        "common_valid_fraction": coverage,
+    }
+
+
 def _validate_and_normalize_entry(
     entry: dict[str, Any],
     products_dir: Path,
@@ -252,7 +283,7 @@ def _validate_and_normalize_entry(
             }
         )
 
-    return {
+    payload = {
         "schema_version": "1",
         "status": status,
         "reason": reason,
@@ -269,6 +300,10 @@ def _validate_and_normalize_entry(
         "warnings": list(warnings),
         "frames": normalized_frames,
     }
+    difference = _normalize_difference(entry.get("difference"), normalized_frames, products_dir)
+    if difference is not None:
+        payload["difference"] = difference
+    return payload
 
 
 def get_prepared(

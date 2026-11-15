@@ -161,6 +161,30 @@ def test_real_catalog_every_image_url_is_served_by_the_images_route(real_catalog
         assert image.content == (products / f"{frame['id']}.png").read_bytes()
 
 
+def test_real_catalog_serves_optional_difference_only_for_the_matching_pair(real_catalog, tmp_path):
+    entry = synthetic_prepared()
+    difference = {
+        "id": "synthetic-difference",
+        "frame_ids": ["synthetic-a", "synthetic-b"],
+        "scale_mjy_sr": 0.25,
+        "common_valid_fraction": 0.8,
+    }
+    manifest, products = write_catalog(tmp_path, entry={**entry, "difference": difference})
+    client = make_client(catalog_manifest=manifest, products_dir=products)
+    assert "difference" not in client.get("/api/v1/comparisons", params=PARAMS).json()
+
+    (products / "synthetic-difference.png").write_bytes(TINY_PNG)
+    payload = client.get("/api/v1/comparisons", params=PARAMS).json()
+    assert payload["difference"] == {**difference, "image_url": "/api/v1/images/synthetic-difference"}
+    assert client.get(payload["difference"]["image_url"]).content == TINY_PNG
+
+    difference["frame_ids"].reverse()
+    manifest.write_text(json.dumps({"entries": [{**entry, "difference": difference}]}))
+    response = client.get("/api/v1/comparisons", params=PARAMS)
+    assert response.status_code == 200 and response.json()["status"] == "ready"
+    assert "difference" not in response.json()
+
+
 def test_real_catalog_default_products_dir_follows_the_manifest(real_catalog, tmp_path):
     manifest, _ = write_catalog(tmp_path)
     client = make_client(catalog_manifest=manifest)  # sin PLANETX_PRODUCTS_DIR: <manifiesto>/products

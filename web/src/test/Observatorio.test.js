@@ -18,6 +18,13 @@ it('abre el comparador desde el punto de entrada de Docker y lleva sus datos a l
       release: 'dr1',
       image_url: `/api/v1/images/${frame.id}`,
     })),
+    difference: {
+      id: 'synthetic-difference',
+      image_url: '/api/v1/images/synthetic-difference',
+      frame_ids: readyFixture.frames.map(({ id }) => id),
+      scale_mjy_sr: 0.23,
+      common_valid_fraction: 0.802,
+    },
   });
   const { startObservatory } = await import('../features/observatorio/app.js');
   const mountExplorer = vi.fn();
@@ -34,6 +41,19 @@ it('abre el comparador desde el punto de entrada de Docker y lleva sus datos a l
   expect(document.querySelector('[data-testid="provenance-panel"]')).toHaveTextContent('Caso preparado');
   expect([...document.querySelectorAll('#site-nav a')].map((link) => link.textContent))
     .toEqual(['Inicio', 'Visor', 'Galería', 'Mapa', 'Blog']);
+
+  const mode = document.querySelector('[data-layout="difference"]');
+  const difference = document.querySelector('#live-difference');
+  expect(difference).toHaveAttribute('hidden');
+  mode.click();
+  expect(mode).toHaveAttribute('aria-pressed', 'true');
+  expect(difference).not.toHaveAttribute('hidden');
+  expect(difference).toHaveTextContent('Brillo superficial en B menos A');
+  expect(difference.querySelector('img')).toHaveAttribute('src', '/api/v1/images/synthetic-difference');
+  expect(document.querySelector('#live-frames')).toHaveAttribute('hidden');
+  document.querySelector('[data-layout="side"]').click();
+  expect(difference).toHaveAttribute('hidden');
+  expect(document.querySelector('#live-frames')).not.toHaveAttribute('hidden');
 
   history.replaceState(null, '', '#ficha?ra=133.795129166667&dec=-7.245147222222');
   window.dispatchEvent(new HashChangeEvent('hashchange'));
