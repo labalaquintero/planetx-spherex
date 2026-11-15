@@ -57,7 +57,7 @@ const LE_ANGLE = Math.atan2(LE.z1 - LE.z0, LE.x1 - LE.x0)
 /**
  * Nave genérica procedural, vista desde atrás: fuselaje torneado con nariz puntiaguda, cabina,
  * alas barridas con franja luminosa en el borde de ataque, bloque de motor con tobera brillante.
- * Mira hacia -Z. ~1.5 k triángulos.
+ * Mira hacia -Z. Unos mil triángulos.
  */
 export function Ship() {
   const { fuselage, wing } = useGeometries()

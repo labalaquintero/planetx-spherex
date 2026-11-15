@@ -21,7 +21,7 @@ export function Bloom({ strength }: { strength: number }) {
   const { composer, bloom } = useMemo(() => {
     const composer = new EffectComposer(gl)
     composer.addPass(new RenderPass(scene, camera))
-    // Resolución reducida: el bloom es un desenfoque, no necesita resolución completa.
+    // UnrealBloomPass trabaja internamente en mips de media resolución y menos.
     const bloom = new UnrealBloomPass(new Vector2(256, 256), strength, 0.5, 0.9)
     composer.addPass(bloom)
     composer.addPass(new OutputPass())
@@ -29,7 +29,7 @@ export function Bloom({ strength }: { strength: number }) {
     // strength se aplica en su propio efecto, sin recrear el composer.
   }, [gl, scene, camera])
   useEffect(() => {
-    composer.setPixelRatio(Math.min(dpr, 1.25))
+    composer.setPixelRatio(dpr)
     composer.setSize(size.width, size.height)
   }, [composer, size, dpr])
   useEffect(() => {
