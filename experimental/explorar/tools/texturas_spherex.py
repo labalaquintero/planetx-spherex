@@ -173,8 +173,26 @@ def nebulosa_vela(img: np.ndarray) -> np.ndarray:
     return polos_suaves(sin_costura(a_tam(sin), 0.3))
 
 
-def vista_previa(nombre: str, destino: Path, ancho: int) -> None:
+def recortar_bordes_negros(im: Image.Image, tolerancia: float = 0.02) -> Image.Image:
+    """Recorta las franjas negras de los bordes (uniones del mosaico): se quedan las filas y columnas
+    con menos de `tolerancia` de píxeles negros."""
+    gris = im.convert("L")
+    w, h = gris.size
+    px = gris.load()
+    negra = lambda x, y: px[x, y] < 8  # noqa: E731
+    filas = [sum(negra(x, y) for x in range(0, w, 2)) / (w / 2) for y in range(h)]
+    cols = [sum(negra(x, y) for y in range(0, h, 2)) / (h / 2) for x in range(w)]
+    y0 = next(y for y in range(h) if filas[y] < tolerancia)
+    y1 = next(y for y in range(h - 1, -1, -1) if filas[y] < tolerancia)
+    x0 = next(x for x in range(w) if cols[x] < tolerancia)
+    x1 = next(x for x in range(w - 1, -1, -1) if cols[x] < tolerancia)
+    return im.crop((x0, y0, x1 + 1, y1 + 1))
+
+
+def vista_previa(nombre: str, destino: Path, ancho: int, recortar: bool = False) -> None:
     im = Image.open(FUENTES / nombre).convert("RGB")
+    if recortar:
+        im = recortar_bordes_negros(im)
     im = im.resize((ancho, round(im.size[1] * ancho / im.size[0])), Image.Resampling.LANCZOS)
     im.save(destino, "WEBP", quality=78, method=6)
     print(f"{destino.relative_to(RAIZ)}  {im.size[0]}×{im.size[1]}  {destino.stat().st_size / 1024:.1f} KB")
@@ -195,7 +213,8 @@ def main() -> None:
     guardar(nebulosa_vela(cargar("vela-spherex.jpg")), TEXTURAS / "nebulosa-vela.webp", 82)
     guardar(sin_estrellas_en_franjas(cargar("vela-spherex.jpg")), TEXTURAS / "vela-spherex.webp", 82)
     vista_previa("cielo-spherex.webp", FICHAS / "cielo-spherex-original.webp", 480)
-    vista_previa("vela-spherex.jpg", FICHAS / "vela-spherex-original.webp", 480)
+    # El mosaico de Vela trae franjas negras en las uniones: en la ficha se ven como cuñas raras.
+    vista_previa("vela-spherex.jpg", FICHAS / "vela-spherex-original.webp", 480, recortar=True)
 
 
 if __name__ == "__main__":

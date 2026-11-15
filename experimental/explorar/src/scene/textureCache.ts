@@ -17,7 +17,8 @@ export function loadTexture(id: string, kind: 'color' | 'data' = 'color'): Promi
     p = loader.loadAsync(url).then((t) => {
       t.colorSpace = kind === 'color' ? SRGBColorSpace : LinearSRGBColorSpace
       t.wrapS = RepeatWrapping
-      t.anisotropy = 4
+      // 8: nítidas también en los bordes de los planetas (vistas rasantes); three la acota al máximo de la GPU.
+      t.anisotropy = 8
       return t
     })
     cache.set(key, p)

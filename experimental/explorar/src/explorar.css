@@ -570,8 +570,10 @@
 .ex-info-figure img {
   display: block;
   width: 100%;
-  aspect-ratio: 2 / 1;
-  object-fit: cover;
+  height: auto;
+  /* Imagen entera en su proporción (mapas 2:1, el cielo de SPHEREx 16:9, recortes cuadrados): sin recortes raros. */
+  max-height: 220px;
+  object-fit: contain;
   background: #000;
   border: 1px solid var(--ex-border-strong);
   border-radius: var(--ex-radius-sm);
@@ -1218,16 +1220,28 @@
   border-radius: var(--ex-radius);
   cursor: grab;
   touch-action: none;
-  background:
-    radial-gradient(circle at 50% 50%, var(--ex-accent-faint), transparent 60%),
-    repeating-linear-gradient(0deg, rgba(56, 189, 248, 0.05) 0 1px, transparent 1px 48px),
-    repeating-linear-gradient(90deg, rgba(56, 189, 248, 0.05) 0 1px, transparent 1px 48px);
+  background: #030712;
 }
 .ex-scan-stage:active {
   cursor: grabbing;
 }
 .ex-scan-stage canvas {
   display: block;
+}
+/* Retícula fina del escáner sobre el cielo (el lienzo ya pinta el fondo). */
+.ex-scan-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.45;
+  background:
+    repeating-linear-gradient(0deg, rgba(56, 189, 248, 0.07) 0 1px, transparent 1px 48px),
+    repeating-linear-gradient(90deg, rgba(56, 189, 248, 0.07) 0 1px, transparent 1px 48px);
+}
+.ex-turbo {
+  color: var(--ex-accent);
+  font-weight: 700;
 }
 /* Esquinas del visor del escáner. */
 .ex-scan-reticle {

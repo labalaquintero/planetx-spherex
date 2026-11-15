@@ -324,7 +324,9 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
             </div>
             <div>
               <dt>Velocidad</dt>
-              <dd>{tele.speed.toFixed(1)} u/s</dd>
+              <dd>
+                {tele.speed.toFixed(1)} u/s{held.has('boost') && <span className="ex-turbo"> · turbo</span>}
+              </dd>
             </div>
           </dl>
           {tele.edge > 0.5 && (
@@ -379,15 +381,13 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
           <p className="ex-disclaimer-inline">Representación ilustrativa, no son datos reales de SPHEREx.</p>
           <p className="ex-hint" aria-hidden="true">
             <kbd>W</kbd>/<kbd>S</kbd> acelerar y frenar · <kbd>A</kbd>/<kbd>D</kbd> girar · <kbd>E</kbd>/<kbd>Q</kbd> subir y
-            bajar · clic derecho y arrastra: dirigir la nave · <kbd>R</kbd> escanear (cerca de un planeta) · <kbd>Esc</kbd> volver
+            bajar · clic derecho y arrastra: dirigir la nave · <kbd>Shift</kbd> turbo · <kbd>R</kbd> escanear (cerca de un planeta) · <kbd>Esc</kbd> volver
           </p>
         </div>
         {webgl && <FlightPad held={held} onHold={hold} />}
       </div>
-      {scanObject && (
-        <div className="ex-scan-layer" onPointerDown={(e) => e.stopPropagation()} onContextMenu={(e) => e.preventDefault()}>
-          <ScanOverlay object={scanObject} distance={scan!.distance} reduced={reduced} octaves={settings.nebulaOctaves} onClose={closeScan} />
-        </div>
+      {scanObject && scan && (
+        <ScanOverlay object={scanObject} distance={scan.distance} reduced={reduced} octaves={settings.nebulaOctaves} onClose={closeScan} />
       )}
     </section>
   )

@@ -6,8 +6,8 @@ textura (https://maps.jpl.nasa.gov/tmaps/), mosaicos de Caltech/JPL/USGS con im�
 misiones. Política de uso de JPL: «Unless otherwise noted, images and video on JPL public web sites may be
 used for any purpose without prior permission», con el crédito «Courtesy NASA/JPL-Caltech».
 
-Los originales se descargan una vez a --cache (fuera del repo). En src/scene/assets/ solo se escriben
-versiones reducidas en WebP, y en src/sectors/beta/referencias/ una vista previa pequeña de cada mapa para
+Los originales se descargan una vez a --cache (fuera del repo). En src/scene/assets/ se escriben en WebP
+a su resolución original (mínimo 1024 px de ancho), y en src/sectors/beta/referencias/ una vista previa pequeña de cada mapa para
 la ficha del HUD. La app nunca pide nada a la red: Vite las empaqueta.
 
 Uso (desde experimental/explorar/, con Pillow en un entorno fuera del repo):
@@ -58,7 +58,10 @@ def main() -> None:
                 f.write_bytes(r.read())
         sha = hashlib.sha256(f.read_bytes()).hexdigest()[:16]
         im = Image.open(f).convert("RGB")
-        tex = im.resize((1024, 512), Image.Resampling.LANCZOS)
+        # Resolución original de JPL (1440 × 720), sin reducir: de cerca se ve más nítida. Neptuno es más
+        # pequeño en origen (720 × 360) y se deja en 1024.
+        ancho = max(1024, min(2048, im.size[0]))
+        tex = im.resize((ancho, ancho // 2), Image.Resampling.LANCZOS)
         out = TEXTURAS / f"{salida}.webp"
         tex.save(out, "WEBP", quality=82, method=6)
         prev = im.resize((360, 180), Image.Resampling.LANCZOS)

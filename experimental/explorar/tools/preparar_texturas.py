@@ -30,11 +30,13 @@ SSS = "https://www.solarsystemscope.com/textures/download/"
 SVS = "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/"
 
 # (archivo de origen, url, salida, tamaño, modo, calidad)
+# 2048 px de color y 1024 de relieve: de cerca (escaneo, planetas grandes) las de 1024/512 se veían blandas
+# y el relieve en escalones.
 RECURSOS = [
-    ("2k_saturn.jpg", SSS + "2k_saturn.jpg", "bandas-saturno.webp", (1024, 512), "RGB", 80),
+    ("2k_saturn.jpg", SSS + "2k_saturn.jpg", "bandas-saturno.webp", (2048, 1024), "RGB", 80),
     ("2k_saturn_ring_alpha.png", SSS + "2k_saturn_ring_alpha.png", "anillo-saturno.webp", (1024, 64), "RGBA", 90),
-    ("lroc_color_poles_1k.jpg", SVS + "lroc_color_poles_1k.jpg", "luna-color.webp", (1024, 512), "RGB", 80),
-    ("ldem_3_8bit.jpg", SVS + "ldem_3_8bit.jpg", "luna-relieve.webp", (512, 256), "L", 85),
+    ("lroc_color_poles_2k.tif", SVS + "lroc_color_poles_2k.tif", "luna-color.webp", (2048, 1024), "RGB", 80),
+    ("ldem_3_8bit.jpg", SVS + "ldem_3_8bit.jpg", "luna-relieve.webp", (1024, 512), "L", 85),
 ]
 
 

@@ -328,3 +328,31 @@ describe('minimapa', () => {
     expect(headingDeg(Math.PI / 2)).toBeCloseTo(-90) // izquierda
   })
 })
+
+describe('turbo (Shift)', () => {
+  const fly = (s: FlightState, input: FlightInput, seconds: number) => {
+    for (let t = 0; t < seconds; t += 1 / 60) s = stepFlight(s, input, 1 / 60, BIG, [])
+    return s
+  }
+  it('sube la velocidad máxima un poco (×1,6), no mucho', () => {
+    const normal = speedOf(fly(initialFlight([0, 0, 0], 0), { thrust: 1, turn: 0, lift: 0 }, 8))
+    const turbo = speedOf(fly(initialFlight([0, 0, 0], 0), { thrust: 1, turn: 0, lift: 0, boost: true }, 8))
+    expect(normal).toBeCloseTo(FLIGHT.maxSpeed, 0)
+    expect(turbo).toBeCloseTo(FLIGHT.maxSpeed * FLIGHT.boostFactor, 0)
+    expect(turbo / normal).toBeLessThan(1.7)
+  })
+  it('sin acelerar, el turbo no hace nada', () => {
+    expect(speedOf(fly(initialFlight([0, 0, 0], 0), { thrust: 0, turn: 0, lift: 0, boost: true }, 2))).toBe(0)
+  })
+  it('al soltarlo, la velocidad baja suave hasta la normal, sin frenazo', () => {
+    let s = fly(initialFlight([0, 0, 0], 0), { thrust: 1, turn: 0, lift: 0, boost: true }, 8)
+    let prev = speedOf(s)
+    for (let i = 0; i < 300; i++) {
+      s = stepFlight(s, { thrust: 1, turn: 0, lift: 0 }, 1 / 60, BIG, [])
+      const v = speedOf(s)
+      expect(prev - v).toBeLessThan(0.5)
+      prev = v
+    }
+    expect(prev).toBeLessThan(FLIGHT.maxSpeed + 2)
+  })
+})

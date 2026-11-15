@@ -6,8 +6,8 @@ después se **vuela libremente** en nave por todo el sector, en una escena 3D. *
 El proyecto vive aislado en `experimental/explorar/`, con su propio `package.json` y `pnpm-lock.yaml`, fuera de
 cualquier workspace. No toca `web/`, `api/`, `infra/` ni Docker. **No hace llamadas de red en ejecución:** no usa
 CDN, fuentes, texturas ni modelos remotos. La nebulosa, la nave y la galaxia de la selección se generan en el
-navegador. Las cinco texturas de referencia (NASA y Solar System Scope, 140 KB) van empaquetadas y se sirven desde
-el mismo origen. La fuente es la del sistema, como en el visor. Funciona sin conexión.
+navegador. Las texturas de referencia (NASA, SPHEREx y Solar System Scope; ver ATTRIBUTIONS.md) van empaquetadas, se sirven
+desde el mismo origen y solo se descargan al entrar en un sector. La fuente es la del sistema, como en el visor. Funciona sin conexión.
 
 La composición de la escena y de la selección **sale de medir los bocetos**
 (`docs/referencias/layout.json`); ver «Fidelidad a los bocetos».
