@@ -28,6 +28,7 @@ payload = get_prepared(
 2. **Orden e identidad de épocas:** `frames` exige orden estricto `observed_at` UTC (`t_0 < t_1`), `id` único por producto derivado y `observation_id` único por secuencia (evita duplicar la misma visita).
 3. **Revocación trazable:** para invalidar un caso sin perder historial, marcar `"revoked": true` o `"active": false` en la entrada del manifiesto.
 4. **Integridad de productos:** cada `frame.id` debe existir como `<frame_id>.png` no vacío en storage antes de exponer el manifiesto.
+5. **Formato de `frame.id`:** debe cumplir la expresión regular `^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$` (entre 1 y 128 caracteres; empieza con alfanumérico; el resto admite letras, dígitos, punto, guión bajo y guión medio; sin espacios, barras ni caracteres especiales). Esta regla está alineada con `FRAME_ID_RE` del módulo HTTP (`planetx.http.images`) para garantizar que todo `frame_id` emitido por `get_prepared()` sea directamente servible por `/api/v1/images/<frame_id>` sin conversión ni rechazo.
 
 ## 3. Evolución opcional a PostgreSQL (si se activa tras F01)
 

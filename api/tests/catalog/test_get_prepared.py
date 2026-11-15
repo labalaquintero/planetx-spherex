@@ -218,3 +218,79 @@ def test_get_prepared_rejects_invalid_coordinates() -> None:
         get_prepared(ra_deg=10.0, dec_deg=-91.0)
     with pytest.raises(InvalidCatalogQueryError):
         get_prepared(ra_deg=float("nan"), dec_deg=0.0)
+
+
+def test_get_prepared_validates_frame_id_format(
+    sample_catalog: tuple[Path, Path],
+) -> None:
+    manifest_path, products_dir = sample_catalog
+
+    # IDs que deben ser rechazados por la regex ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$
+    invalid_ids = [
+        "frame 1",        # espacio
+        ".frame",         # empieza con punto
+        "-frame",         # empieza con guión
+        "_frame",         # empieza con guión bajo
+        "a" * 129,        # longitud > 128
+        "frame/traversal",  # barra
+        "frame\\back",    # backslash
+    ]
+
+    for bad_id in invalid_ids:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        payload["entries"][0]["frames"][0]["id"] = bad_id
+        payload["entries"][0]["frames"][0]["image_url"] = f"/api/v1/images/{bad_id}"
+        manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+
+        # No intentamos crear el PNG: la validación del frame_id falla antes
+        # de acceder al sistema de archivos, y algunos IDs inválidos (con / o \)
+        # no son nombres de archivo válidos en Windows.
+        with pytest.raises(ManifestCorruptError, match="Identificador de fotograma"):
+            get_prepared(
+                ra_deg=133.795129,
+                dec_deg=-7.245147,
+                fov_deg=0.1,
+                science_version="v1",
+                manifest_path=manifest_path,
+                products_dir=products_dir,
+            )
+
+    # IDs válidos: no deben lanzar error (restaurar manifiesto original)
+    valid_ids = ["prep-wise0855-e1", "frame_01.v1", "A", "z0.test-id_OK"]
+    for i, valid_id in enumerate(valid_ids):
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        entry = payload["entries"][0]
+        entry["frames"] = [
+            {
+                "id": valid_id,
+                "observed_at": f"2025-05-1{i}T02:15:00Z",
+                "release": "dr1",
+                "observation_id": f"obs-valid-{i}",
+                "source_url": None,
+                "image_url": f"/api/v1/images/{valid_id}",
+                "quality_flags": [],
+            },
+            {
+                "id": f"epoch2-{i}",
+                "observed_at": f"2025-11-1{i}T06:40:00Z",
+                "release": "qr3",
+                "observation_id": f"obs-valid-{i}-e2",
+                "source_url": None,
+                "image_url": f"/api/v1/images/epoch2-{i}",
+                "quality_flags": [],
+            },
+        ]
+        manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+        (products_dir / f"{valid_id}.png").write_bytes(PNG_1X1_BYTES)
+        (products_dir / f"epoch2-{i}.png").write_bytes(PNG_1X1_BYTES)
+
+        result = get_prepared(
+            ra_deg=133.795129,
+            dec_deg=-7.245147,
+            fov_deg=0.1,
+            science_version="v1",
+            manifest_path=manifest_path,
+            products_dir=products_dir,
+        )
+        assert result is not None
+        assert result["frames"][0]["id"] == valid_id
