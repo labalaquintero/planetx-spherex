@@ -26,6 +26,7 @@ La comparación requiere las dos coordenadas en grados decimales ICRS, con punto
 | `science_version` | Cadena no vacía que identifica la versión de los criterios de selección y renderizado. El módulo de ciencia de F01 emite `v1`. |
 | `warnings` | Lista de códigos no bloqueantes. Usar `search_limit_reached` si se acotó la búsqueda y ya se obtuvo una secuencia válida. |
 | `frames` | Lista de fotogramas por instante de observación ascendente. |
+| `difference` | Producto opcional para un caso preparado de dos épocas. |
 
 | Estado | Razón | Fotogramas y comportamiento |
 | --- | --- | --- |
@@ -49,6 +50,20 @@ El modo `prepared` recupera el caso por coincidencia exacta de RA, Dec, campo y 
 | `source_url` | Cadena con una URL HTTPS verificable del archivo o registro de IRSA en modos públicos. Se admite `null` en modo `fixture`. |
 | `image_url` | Ruta del mismo origen `/api/v1/images/{frame_id}`. |
 | `quality_flags` | Lista de avisos de calidad del fotograma. `masked_pixels` indica huecos transparentes por la máscara de comparación. Lista vacía cuando no haya avisos. |
+
+### Imagen de diferencias
+
+El mapa muestra brillo superficial de B menos A, en la misma rejilla y máscara común de las dos épocas. Está pensado para inspección visual. El ruido, el fondo, la respuesta espectral y las diferencias de resolución pueden aparecer como residuos.
+
+| Campo de `difference` | Tipo y significado |
+| --- | --- |
+| `id` | Identificador del PNG de diferencias. |
+| `frame_ids` | IDs de A y B en orden cronológico. Deben coincidir con los dos IDs de `frames`. |
+| `image_url` | Ruta del mismo origen `/api/v1/images/{id}` para el producto. El catálogo la deriva del ID. |
+| `scale_mjy_sr` | Magnitud en MJy/sr a la que se satura cada extremo de la escala de visualización. Finita y mayor o igual que cero. |
+| `common_valid_fraction` | Fracción de píxeles de la rejilla válidos en ambas épocas. Entre 0.5 y 1. |
+
+El catálogo omite `difference` cuando falta el PNG o sus metadatos no corresponden al par. El visor ofrece **Ver diferencias** cuando recibe ese campo. Los pasos para generarlo están en [Comparación científica de WISE 0855](../decisiones/comparacion-cientifica-wise0855.md).
 
 ## Errores
 

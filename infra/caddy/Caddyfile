@@ -1,0 +1,22 @@
+# Caddy delante del servicio web (nginx), solo en producción (compose.prod.yaml). Ver infra/README.md.
+# - balax.me y www.balax.me: HTTPS con certificado automático de Let's Encrypt. Caddy redirige solo
+#   el http de esos nombres a https.
+# - Cualquier otro nombre por http (p. ej. la IP elástica): sirve la demo por http sin redirigir.
+#   Es el respaldo si el certificado falla.
+
+(comunes) {
+	encode zstd gzip
+	header -Server
+	reverse_proxy web:80
+}
+
+balax.me, www.balax.me {
+	import comunes
+	# HSTS corto (5 min) y sin includeSubDomains ni preload, para poder volver a http si hace falta.
+	header Strict-Transport-Security "max-age=300"
+}
+
+# Respaldo por http: la IP o cualquier nombre que no sea el dominio.
+:80 {
+	import comunes
+}

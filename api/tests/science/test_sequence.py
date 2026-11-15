@@ -1,4 +1,5 @@
 from io import BytesIO
+import json
 
 from astropy import units as u
 from astropy.coordinates import SkyCoord
@@ -9,6 +10,7 @@ from PIL import Image
 import pytest
 
 from api.planetx.science import Cutout, build_sequence
+from api.planetx.science.prepare_difference import prepare_difference
 
 
 _RA, _DEC = 10.25, -12.5
@@ -83,8 +85,10 @@ def _cutout(
     return Cutout(cutout_id, "dr1", f"https://irsa.ipac.caltech.edu/{obs_id}/D{detector}", path)
 
 
-def _sequence(*cutouts):
-    return build_sequence(ra_deg=_RA, dec_deg=_DEC, fov_deg=_FIELD, cutouts=cutouts)
+def _sequence(*cutouts, include_difference=False):
+    return build_sequence(
+        ra_deg=_RA, dec_deg=_DEC, fov_deg=_FIELD, cutouts=cutouts, include_difference=include_difference,
+    )
 
 
 def test_pair_uses_one_sky_grid_mask_and_contrast(tmp_path):
@@ -114,13 +118,65 @@ def test_pair_uses_one_sky_grid_mask_and_contrast(tmp_path):
     assert late[25, 32, 0] > early[25, 32, 0]  # Shared scale preserves the input offset.
 
 
+@pytest.mark.parametrize(("offset", "color"), [(0.5, [255, 177, 99]), (-0.5, [90, 201, 255])])
+def test_difference_subtracts_aligned_b_minus_a_on_the_shared_mask(tmp_path, offset, color):
+    first = _cutout(tmp_path, "a", _MAY, bad_pixels=True)
+    last = _cutout(tmp_path, "b", _OCT, rotate=True, offset=offset)
+
+    result, pngs = _sequence(last, first, include_difference=True)
+
+    difference = result.difference
+    assert difference is not None
+    assert difference.frame_ids == tuple(frame["id"] for frame in result.frames)
+    assert difference.scale_mjy_sr == pytest.approx(abs(offset), abs=1e-5)
+    with Image.open(BytesIO(pngs[difference.id])) as rendered:
+        pixels = np.array(rendered)
+        assert rendered.mode == "RGBA" and rendered.size == (64, 64)
+    with Image.open(BytesIO(pngs[difference.frame_ids[0]])) as earlier:
+        assert np.array_equal(pixels[..., 3], np.array(earlier)[..., 1])
+    assert pixels[25, 32, :3].tolist() == color
+    assert difference.common_valid_fraction == result.common_valid_fraction
+
+
+def test_prepare_difference_preserves_pngs_with_the_same_pixels(tmp_path):
+    first = _cutout(tmp_path, "a", _MAY)
+    last = _cutout(tmp_path, "b", _OCT, rotate=True)
+    result, pngs = _sequence(first, last)
+    products = tmp_path / "products"
+    products.mkdir()
+    frames = []
+    for frame in result.frames:
+        frame_id = f"prepared-{frame['observation_id']}"
+        path = products / f"{frame_id}.png"
+        with Image.open(BytesIO(pngs[frame["id"]])) as image:
+            image.save(path, compress_level=0)
+        assert path.read_bytes() != pngs[frame["id"]]
+        frames.append({**frame, "id": frame_id, "image_url": f"/api/v1/images/{frame_id}"})
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({"entries": [{
+        "schema_version": "1", "science_version": result.science_version, "mode": "prepared",
+        "status": "ready", "reason": None, "band": result.band, "checked_at": _OCT + "Z",
+        "query": {"ra_deg": _RA, "dec_deg": _DEC, "fov_deg": _FIELD, "frame": "ICRS"},
+        "frames": frames,
+    }]}), encoding="utf-8")
+    output = tmp_path / "prepared"
+
+    difference = prepare_difference(manifest, (first.local_path, last.local_path), output)
+
+    assert difference.frame_ids == tuple(frame["id"] for frame in frames)
+    assert (output / "products" / f"{difference.id}.png").is_file()
+    for path in products.iterdir():
+        assert (output / "products" / path.name).read_bytes() == path.read_bytes()
+
+
 def test_incompatible_bands_keep_one_frame(tmp_path):
     first = _cutout(tmp_path, "a", _MAY, wavelength=1.0)
     last = _cutout(tmp_path, "b", _OCT, wavelength=1.2)
-    result, pngs = _sequence(first, last)
+    result, pngs = _sequence(first, last, include_difference=True)
 
     assert result.status == "insufficient"
     assert result.reason == "no_common_band"
+    assert result.difference is None
     assert len(result.frames) == len(pngs) == 1
 
 

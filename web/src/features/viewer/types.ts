@@ -1,4 +1,4 @@
-/** Contrato v0.1 — tipos del JSON de /api/v1/comparisons */
+/** Contrato v1 — tipos del JSON de /api/v1/comparisons */
 
 export interface ComparisonQuery {
   ra_deg: number;
@@ -20,6 +20,14 @@ export interface Frame {
   source_url: string | null;
   image_url: string;
   quality_flags: string[];
+}
+
+export interface Difference {
+  id: string;
+  image_url: string;
+  frame_ids: [string, string];
+  scale_mjy_sr: number;
+  common_valid_fraction: number;
 }
 
 export type ComparisonStatus = 'ready' | 'insufficient' | 'no_coverage';
@@ -45,6 +53,7 @@ export interface ComparisonResponse {
   science_version: string;
   warnings: string[];
   frames: Frame[];
+  difference?: Difference;
 }
 
 export interface ComparisonApiError {

@@ -490,6 +490,41 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--gold); }
 }
 .wipe-stage .wipe { max-width: 376px; }
 
+.difference-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 336px) minmax(0, 310px);
+  align-items: center;
+  justify-content: center;
+  gap: clamp(14px, 3vw, 30px);
+  padding: 18px;
+  background: radial-gradient(ellipse at 50% 0, #19233b, transparent 76%), var(--inset);
+}
+.difference-figure { align-self: center; }
+.difference-image { position: relative; }
+.difference-description { display: grid; gap: 15px; }
+.difference-description h3 { color: var(--ink); font-size: 1.05rem; }
+.difference-description p { color: var(--muted); font-size: .82rem; }
+.difference-gradient {
+  height: 8px;
+  border-radius: 10px;
+  border: 1px solid #717b8f;
+  background: linear-gradient(90deg, #5ac9ff, #2c313c, #ffb163);
+}
+.difference-legend-labels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 5px; font: .76rem/1.4 var(--mono); }
+.difference-legend-labels span:nth-child(2) { text-align: center; }
+.difference-legend-labels span:last-child { text-align: right; }
+.difference-legend-labels small { display: block; color: var(--muted); font: .71rem/1.4 var(--body); }
+.difference-details { display: grid; gap: 6px; margin: 0; font-size: .78rem; }
+.difference-details div { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 9px; }
+.difference-details dt { color: var(--muted); }
+.difference-details dd { margin: 0; }
+.difference-details .epoch-token { display: inline-block; }
+.difference-quality { padding-top: 9px; border-top: 1px solid var(--line); }
+.difference-quality strong { color: var(--ink); }
+@media (max-width: 600px) {
+  .difference-stage { grid-template-columns: minmax(0, 376px); padding: 12px; }
+}
+
 .gallery-tools { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; align-items: end; margin-bottom: 18px; }
 .gallery-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 14px; padding: 14px 16px; margin-bottom: 12px; }
 .gallery-layout { margin-inline-start: auto; }
