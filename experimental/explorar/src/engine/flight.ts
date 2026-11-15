@@ -27,6 +27,10 @@ export interface FlightState {
   readonly yaw: number
   /** Cabeceo de la dirección de vuelo (rad, positivo = morro arriba). Se dirige con el ratón. */
   readonly pitch: number
+  /** 0..1: roce con un objeto al acercarse demasiado (efecto sutil); decae solo. */
+  readonly contact: number
+  /** 0..1: sacudida por un impacto (cometa o meteorito); decae sola y la nave se recupera. */
+  readonly jolt: number
   /** Velocidad de giro actual (rad/s), suavizada. */
   readonly yawRate: number
 }
@@ -56,8 +60,11 @@ export const FLIGHT = {
   climbAccel: 20,
   /** Margen dentro del límite donde empieza el empuje de vuelta. */
   softMargin: 30,
-  /** Margen de seguridad de la nave alrededor de cada obstáculo. */
-  clearance: 2.5,
+  /** Margen de seguridad de la nave alrededor de cada obstáculo (pequeño: se puede llegar muy cerca). */
+  clearance: 1.2,
+  /** Zona de frenado suave antes del borde de un objeto: max(soft, radio × softFraction). */
+  softMin: 8,
+  softFraction: 0.2,
   maxBankDeg: 28,
   /** Cabeceo máximo de la dirección de vuelo (rad). */
   maxAimPitch: (60 * Math.PI) / 180,
@@ -68,7 +75,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 const finite = (v: number) => (Number.isFinite(v) ? v : 0)
 
 export function initialFlight(position: Vec3, yaw = 0): FlightState {
-  return { position, velocity: [0, 0, 0], yaw, pitch: 0, yawRate: 0 }
+  return { position, velocity: [0, 0, 0], yaw, pitch: 0, yawRate: 0, contact: 0, jolt: 0 }
 }
 
 /**
@@ -138,9 +145,41 @@ export function stepFlight(
   else vUp *= Math.exp(-2.5 * dt)
   vUp = clamp(vUp, -FLIGHT.maxClimb, FLIGHT.maxClimb)
 
-  const vx = along * fwd[0] + vUp * up[0] + lat[0]!
-  const vy = along * fwd[1] + vUp * up[1] + lat[1]!
-  const vz = along * fwd[2] + vUp * up[2] + lat[2]!
+  let vx = along * fwd[0] + vUp * up[0] + lat[0]!
+  let vy = along * fwd[1] + vUp * up[1] + lat[1]!
+  let vz = along * fwd[2] + vUp * up[2] + lat[2]!
+
+  // Acercamiento suave: muy cerca de un objeto, la velocidad hacia él se va perdiendo poco a poco y
+  // un empuje leve la desvía por el borde (no hay choque seco). Deja un «roce» que decae.
+  let contact = s.contact * Math.exp(-2.5 * dt)
+  const jolt = s.jolt * Math.exp(-1.8 * dt)
+  for (const o of obstacles) {
+    const dx = s.position[0] - o.center[0]
+    const dy = s.position[1] - o.center[1]
+    const dz = s.position[2] - o.center[2]
+    const d = Math.hypot(dx, dy, dz)
+    const soft = Math.max(FLIGHT.softMin, o.radius * FLIGHT.softFraction)
+    if (d >= o.radius + soft || d < 1e-6) continue
+    const n: Vec3 = [dx / d, dy / d, dz / d]
+    const pen = Math.min(1, (o.radius + soft - d) / soft)
+    const vn = vx * n[0] + vy * n[1] + vz * n[2]
+    if (vn < 0) {
+      // Velocidad máxima permitida hacia el objeto: baja con la distancia (desaceleración constante)
+      // hasta 0 en el borde. Se alcanza con suavizado: frena poco a poco, nunca en seco.
+      const allowed = FLIGHT.maxSpeed * Math.sqrt(Math.max(0, 1 - pen / 0.8))
+      if (-vn > allowed) {
+        const delta = (-allowed - vn) * (1 - Math.exp(-30 * dt))
+        vx += n[0] * delta
+        vy += n[1] * delta
+        vz += n[2] * delta
+      }
+      contact = Math.max(contact, Math.min(1, (-vn / 15) * pen))
+    }
+    const push = pen * 10 * dt
+    vx += n[0] * push
+    vy += n[1] * push
+    vz += n[2] * push
+  }
 
   // Límites del sector: empuje suave hacia dentro en el margen; tope duro en el borde.
   const pos: [number, number, number] = [s.position[0] + vx * dt, s.position[1] + vy * dt, s.position[2] + vz * dt]
@@ -183,7 +222,25 @@ export function stepFlight(
   // Acotar al límite otra vez por si un obstáculo empujó fuera.
   for (let i = 0; i < 3; i++) pos[i] = clamp(pos[i]!, bounds.min[i]!, bounds.max[i]!)
 
-  return { position: pos, velocity: vel, yaw, pitch: s.pitch, yawRate }
+  return { position: pos, velocity: vel, yaw, pitch: s.pitch, yawRate, contact, jolt }
+}
+
+/**
+ * Impacto (cometa o meteorito): empuja la nave en la dirección del golpe, la hace guiñar un poco y deja
+ * una sacudida que decae. Sin más: la nave se recupera sola con su amortiguación.
+ */
+export function applyImpact(s: FlightState, dir: Vec3, strength: number): FlightState {
+  const k = Math.min(1, Math.max(0, Number.isFinite(strength) ? strength : 0))
+  const len = Math.hypot(...dir)
+  if (k === 0 || !(len > 0)) return s
+  const u = dir.map((c) => c / len) as unknown as Vec3
+  const v = s.velocity
+  return {
+    ...s,
+    velocity: [v[0] + u[0] * 9 * k, v[1] + u[1] * 9 * k, v[2] + u[2] * 9 * k],
+    yawRate: s.yawRate + (u[0] >= 0 ? -1 : 1) * 0.9 * k,
+    jolt: Math.max(s.jolt, k),
+  }
 }
 
 /** Rapidez (módulo de la velocidad). */
@@ -210,7 +267,7 @@ export function attitudeOf(s: FlightState): { bankDeg: number; pitchDeg: number 
  * Área visitable del sector: la caja que contiene todos los objetos y puntos de interés, con un
  * margen. Así el vuelo abarca todo el sector y nada queda fuera de alcance.
  */
-export function sectorBounds(objects: readonly SceneObject[], points: readonly Waypoint[], margin = 45): Bounds {
+export function sectorBounds(objects: readonly SceneObject[], points: readonly Waypoint[], margin = 100): Bounds {
   const min = [Infinity, Infinity, Infinity]
   const max = [-Infinity, -Infinity, -Infinity]
   const add = (p: Vec3, r: number) => {
@@ -233,7 +290,7 @@ export function obstaclesOf(objects: readonly SceneObject[]): Obstacle[] {
   return objects.map((o) => ({
     id: o.id,
     center: o.position,
-    radius: (o.kind === 'station' ? Math.max(o.radius, (o.length ?? 0) / 2 + (o.handle?.length ?? 0) / 2) : o.radius) * 1.08 + FLIGHT.clearance,
+    radius: (o.kind === 'station' ? Math.max(o.radius, (o.length ?? 0) / 2 + (o.handle?.length ?? 0) / 2) : o.radius) * 1.02 + FLIGHT.clearance,
   }))
 }
 
