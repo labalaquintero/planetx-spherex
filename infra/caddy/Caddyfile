@@ -18,5 +18,7 @@ balax.me, www.balax.me {
 
 # Respaldo por http: la IP o cualquier nombre que no sea el dominio.
 :80 {
+	@workspace path /api/v1/workspace /api/v1/workspace/*
+	respond @workspace 404
 	import comunes
 }

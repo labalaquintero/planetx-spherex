@@ -138,7 +138,8 @@ def make_client(**kwargs: Any) -> TestClient:
 @pytest.fixture(autouse=True)
 def _isolated_env(monkeypatch):
     # Las pruebas no deben depender de variables del entorno del desarrollador.
-    for name in ("PLANETX_PRODUCTS_DIR", "PLANETX_CATALOG_MANIFEST", "PLANETX_ENABLE_LIVE", "PLANETX_LIVE_CONCURRENCY"):
+    for name in ("PLANETX_PRODUCTS_DIR", "PLANETX_CATALOG_MANIFEST", "PLANETX_ENABLE_LIVE", "PLANETX_LIVE_CONCURRENCY",
+                 "PLANETX_WORKSPACE_DB", "PLANETX_WORKSPACE_SECURE_COOKIES"):
         monkeypatch.delenv(name, raising=False)
 
 

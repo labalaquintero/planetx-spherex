@@ -16,8 +16,10 @@ services:
       PLANETX_PRODUCTS_DIR: ${PLANETX_PRODUCTS_DIR:-/data/wise0855/products}
       PLANETX_ENABLE_LIVE: ${PLANETX_ENABLE_LIVE:-0}
       PLANETX_LIVE_CONCURRENCY: ${PLANETX_LIVE_CONCURRENCY:-2}
+      PLANETX_WORKSPACE_DB: ${PLANETX_WORKSPACE_DB:-}
     volumes:
       - ./data:/data:ro
+      - workspace_data:/app/data
     # Sin puertos publicados: solo web (nginx) llega a la API, por la red interna.
     expose:
       - "8000"
@@ -44,3 +46,6 @@ services:
     ports:
       # Por defecto solo en loopback; WEB_BIND=0.0.0.0 para abrirlo a la red local.
       - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-80}:80"
+
+volumes:
+  workspace_data:

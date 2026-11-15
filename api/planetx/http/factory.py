@@ -113,6 +113,7 @@ def create_app(
     live_timeout_s: float = DEFAULT_LIVE_TIMEOUT_S,
     live_concurrency: int | None = None,
     allow_fixtures: bool = False,
+    workspace_db: str | os.PathLike[str] | None = None,
 ) -> FastAPI:
     """Crea la API. ``PLANETX_ENABLE_LIVE=1`` habilita IRSA si no se inyectó ciencia.
 
@@ -152,4 +153,14 @@ def create_app(
     )
     install_error_handlers(app)
     app.include_router(router)
+    database = workspace_db if workspace_db is not None else os.environ.get("PLANETX_WORKSPACE_DB")
+    if database:
+        from planetx.workspace.routes import router as workspace_router
+        from planetx.workspace.store import Workspace
+
+        app.state.workspace = Workspace(
+            _from_repo_root(database), secure=os.environ.get("PLANETX_WORKSPACE_SECURE_COOKIES") == "1",
+        )
+        app.state.workspace.initialize()
+        app.include_router(workspace_router)
     return app

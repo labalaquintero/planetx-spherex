@@ -117,6 +117,9 @@ async def comparisons(
     except TimeoutError:
         raise QueryTimeout() from None
 
+    workspace = getattr(request.app.state, "workspace", None)
+    if workspace is not None:
+        workspace.remember_comparison(payload)
     return JSONResponse(payload)
 
 

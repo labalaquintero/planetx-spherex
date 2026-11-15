@@ -4,6 +4,7 @@ import {
   prepared, shortDate, targets,
 } from './datos.js';
 import { frameMarks, paintMarks } from './anotaciones.js';
+import { reportById, stageSharedMarks } from './colaboracion.js';
 import { back, badge, dataRows, pageHeading, toast } from './ui.js';
 import { bindEvidenceImages, cacheImages, isEditableReport, readWorkspace, rememberComparison, writeWorkspace } from './workspace.js';
 
@@ -42,8 +43,7 @@ function savedComparison(ra, dec) {
 }
 
 function reportFrom(params) {
-  const id = params.get('ficha');
-  return id ? readWorkspace().reports.find((report) => report.id === id) : null;
+  return reportById(params.get('ficha'));
 }
 
 function comparisonFor(params = new URLSearchParams()) {
@@ -578,7 +578,7 @@ function inspectorView(id, params) {
     <a class="button primary" href="#visor?${escapeHtml(params)}">Abrir el comparador</a>`;
   const reportId = params.get('ficha');
   const report = reportFrom(params);
-  const readOnly = report && !isEditableReport(report);
+  const readOnly = report && (!isEditableReport(report) || (report.shared && !report.mine));
   const from = params.get('desde');
   const fromForm = !readOnly && (from === 'manual' || from === 'pdf');
   const reportFormat = fromForm ? from : report?.format;
@@ -586,8 +586,9 @@ function inspectorView(id, params) {
   if (reportId) reportParams.set('borrador', reportId);
   const reportLink = `#ficha${reportFormat === 'pdf' ? '/pdf' : ''}?${reportParams}`;
   const returnView = (from === 'administracion' || from === 'articulo') ? from : 'confirmacion';
+  const local = from === 'administracion' && !report?.shared ? '?local=1' : '';
   const returnLink = fromForm ? reportLink
-    : reportId ? `#${returnView}/${encodeURIComponent(reportId)}` : comparisonLink(data);
+    : reportId ? `#${returnView}/${encodeURIComponent(reportId)}${local}` : comparisonLink(data);
   return `${back(returnLink, fromForm || reportId ? 'Volver a la ficha' : 'Visor temporal')}
     ${pageHeading(`${fieldName(data.query)} · Época ${epoch(index)}`, fullDate(frame.observed_at), '', true)}
     <div class="observatory">
@@ -645,7 +646,7 @@ function bindInspector(id, params) {
   const context = canvas.getContext('2d');
   const frame = data.frames[Number(id)];
   const report = reportFrom(params);
-  const readOnly = report && !isEditableReport(report);
+  const readOnly = report && (!isEditableReport(report) || (report.shared && !report.mine));
   const zoomLayer = document.querySelector('#zoom-layer');
   const zoomIn = document.querySelector('#zoom-in');
   const zoomOut = document.querySelector('#zoom-out');
@@ -701,6 +702,15 @@ function bindInspector(id, params) {
   }
 
   function updateMarks(change, message) {
+    if (report?.shared) {
+      const updated = change(marks);
+      if (updated.length > 30) return;
+      stageSharedMarks(report, frame.id, updated);
+      marks = updated;
+      updateMarkControls();
+      toast('Vuelve a la ficha para guardar las marcas en tu cuenta.');
+      return;
+    }
     const workspace = readWorkspace();
     const target = report ? workspace.reports.find((item) => item.id === report.id) : workspace;
     if (report && !isEditableReport(target)) {

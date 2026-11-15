@@ -4,6 +4,10 @@
 # En local no se usa: «docker compose up --build» sigue leyendo solo compose.yaml. Ver infra/README.md.
 
 services:
+  api:
+    environment:
+      PLANETX_WORKSPACE_SECURE_COOKIES: "1"
+
   web:
     # Caddy ocupa 80 y 443 del host; web solo se alcanza por la red interna de Compose.
     ports: !reset []
