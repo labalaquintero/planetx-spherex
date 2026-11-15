@@ -3,7 +3,7 @@
 **Estado: BORRADOR sin ensayar.** Nada de lo que sigue se ha verificado contra una demo real: aún no hay UI, API de comparaciones ni URL pública. Todo lo marcado **TODO** está pendiente de una persona o dato concretos. **No se inventa ningún dato de observación**: coordenadas, fechas, IDs y banda salen del caso que confirme César en su matriz, y sólo se presentan después de comprobarlos en la demo.
 
 - Base de contexto: [00_Contexto_General.md](../contexto/00_Contexto_General.md) §2 (recorrido de demo), §10 (entrega).
-- Duración objetivo del ensayo: 2–3 min (≈2:45). **TODO: duración máxima y formato que pida la sede** (la guía menciona como orientación un vídeo de hasta 30 s o hasta 7 diapositivas; confirmarlo con la guía vigente). Si el límite es menor, se recorta por el orden de la sección «Qué recortar».
+- **El formato final de la entrega depende de la sede.** Este documento prepara tres variantes: la historia de 2–3 min (≈2:45), la **versión corta (≤30 s)** y la **versión diapositivas (≤7)**, las dos últimas según la orientación publicada para 2026 en la guía (§10.2). Esa orientación es sólo preparación: **TODO: confirmar con la sede/guía vigente duración máxima, formato, idiomas y quién envía**, y descartar las variantes que no apliquen. Si el límite es menor que 2–3 min, se recorta por el orden de la sección «Qué recortar».
 - Se enseña sólo lo que existe y lo que se comprobó. Lo que sea fixture o respaldo se dice en voz alta.
 
 ## Datos del caso (TODO, no rellenar sin confirmación)
@@ -52,6 +52,38 @@ Reglas de la demo: no prometer más de lo verificado (cinco objetos del reto, co
 | 3. Two real dates | 0:50–1:30 | "Here are two real observations of the same region, **TODO date A** and **TODO date B** (UTC). I can switch between them or play them. Same scale, center and contrast; no interpolation and no invented frames." |
 | 4. What we see | 1:30–2:00 | "**TODO: describe only what is visible and validated.** An apparent change may come from motion, variability, noise, alignment, band or artifacts. This tool does not claim a discovery." |
 | 5. Limits and sources | 2:00–2:45 | "Each frame shows its date, approximate band, ID and a link to the source at IRSA. The images are limited by SPHEREx resolution and filter; they are not photometric measurements. If I query a region without comparable pairs, the tool says *insufficient coverage* or *no coverage*, and distinguishes that from a temporary failure." |
+
+## Versión corta (≤30 s)
+
+Para un vídeo de hasta 30 s (orientación de la guía; **TODO: confirmar con la sede**). Sólo cabe lo esencial: coordenada, dos fechas reales y límites. Se graba del recorrido real o, si no es posible, de material RESPALDO rotulado como tal. **TODO: confirmar que la grabación sale de la demo con el SHA registrado.**
+
+| Tiempo | En pantalla | Locución (castellano) |
+| --- | --- | --- |
+| 0:00–0:05 | Página de inicio. | «¿Cambió algo en esta zona del cielo entre dos fechas? Planet X te deja comparar observaciones de SPHEREx.» |
+| 0:05–0:12 | Escribir **TODO ra_deg, dec_deg** y pulsar **Comparar**. | «Escribes una coordenada en grados decimales y el visor abre un campo de 0,10°.» |
+| 0:12–0:23 | Alternar A/B con las fechas UTC visibles: **TODO fecha A**, **TODO fecha B**. | «Dos observaciones reales de la misma región, **TODO fecha A** y **TODO fecha B**. Misma escala y contraste, con fecha, banda y fuente de cada imagen.» |
+| 0:23–0:30 | Aviso de no-hallazgo y enlace de fuente. | «Un cambio visible no prueba un hallazgo. Cada imagen enlaza a su origen en IRSA.» |
+
+**English subtitles / voice-over (draft; TODO confirm with the venue):**
+0:00 "Did anything change in this patch of sky between two dates? Planet X lets you compare SPHEREx observations." · 0:05 "Enter a coordinate in decimal degrees and the viewer opens a 0.10° field." · 0:12 "Two real observations of the same region, **TODO date A** and **TODO date B**. Same scale and contrast, with date, band and source for each image." · 0:23 "A visible change is not proof of a finding. Every image links to its source at IRSA."
+
+Si el vídeo no puede mostrar la secuencia real, se declara en pantalla como **RESPALDO** y no se presenta como la prueba pública. No se describen observaciones ni movimientos: sólo lo que se haya validado.
+
+## Versión diapositivas (≤7)
+
+Para una presentación de hasta 7 diapositivas (orientación de la guía; **TODO: confirmar con la sede**). Todo dato real queda en TODO hasta que César confirme el caso; las capturas usadas deben ser de la demo real, o llevar la marca **RESPALDO**.
+
+| # | Título propuesto | Contenido | Datos / capturas pendientes |
+| --- | --- | --- | --- |
+| 1 | Planet X: ¿qué cambió en el cielo? | Problema y usuario: persona curiosa o de ciencia ciudadana que quiere comparar una región en otra fecha. Nombre del equipo y del reto. | TODO: logo y nombres del equipo. |
+| 2 | Qué hace el visor | Coordenada → campo de 0,10° → 2–6 épocas ordenadas → A/B y reproductor. Sin cuenta. | Captura de la pantalla de inicio (TODO, de la demo real). |
+| 3 | El caso: coordenada y archivo | Caso elegido, RA/Dec en grados ICRS, de dónde salen las imágenes (IRSA SPHEREx) y si es preparado o en vivo. | TODO: caso, ra_deg, dec_deg, release, IDs. |
+| 4 | Dos fechas reales | Captura A y B del mismo campo, con fecha UTC y banda. | TODO: fecha A, fecha B, banda, capturas. |
+| 5 | Qué se ve y qué no se puede afirmar | Sólo lo validado; causas posibles de un cambio aparente (movimiento, variabilidad, ruido, alineación, banda, artefactos); resolución y filtro; no es fotometría. | TODO: texto validado por Alexis y César. |
+| 6 | Los cinco casos del reto | Estrella de Barnard, Epsilon Indi B, WISE 0855, RW Aurigae y R Draconis: resultado real de cada intento, **incluidos los negativos** (verificado, sin cobertura, insuficiente, fallo de servicio o pendiente). | TODO: tabla de resultados de la matriz de César. |
+| 7 | Fuentes, límites y cómo repetirlo | Procedencia y citas (reconocimiento de IRSA; DOI de DR1 o QR3 sólo si se usaron), límites de la demo, stack, URL, SHA y repositorio, herramientas de IA declaradas. | TODO: URL, SHA, repo, DOIs usados, registro de IA. |
+
+Notas: no se muestran fixtures ni «Datos de prueba» como si fueran datos de NASA; si la diapositiva 6 queda incompleta, se declara la cobertura limitada en lugar de omitirla. El idioma de las diapositivas (y si hace falta versión en inglés) **depende de la sede: TODO**.
 
 ## Plan B · si falla la red o la demo
 
