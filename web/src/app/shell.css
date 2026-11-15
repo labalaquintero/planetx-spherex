@@ -1,0 +1,133 @@
+/* Envoltorio y menú de secciones. Mismos tokens que el visor (index.css / App.css). Clases px-*. */
+.px-shell-float {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 50;
+}
+.px-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+}
+.px-shell-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+  padding: 0 16px;
+  background: #0f172a;
+  border-bottom: 1px solid #1e293b;
+  flex: none;
+}
+.px-shell-badge {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+.px-shell-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+.px-shell-bar .px-menu {
+  margin-left: auto;
+}
+.px-shell-main {
+  flex: 1;
+  min-height: 0;
+}
+.px-shell-loading {
+  margin: 0;
+  padding: 2rem;
+  color: #94a3b8;
+}
+
+.px-menu {
+  position: relative;
+}
+.px-menu-button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  color: #cbd5e1;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.px-menu-button:hover {
+  background: #334155;
+  border-color: #475569;
+  color: #f8fafc;
+}
+.px-menu-button:focus-visible,
+.px-menu-item:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.4);
+}
+.px-menu-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 60;
+  min-width: 250px;
+  padding: 6px;
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+.px-menu-panel ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.px-menu-item {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  color: #cbd5e1;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.px-menu-item:hover {
+  background: #1e293b;
+}
+.px-menu-item[aria-current='page'] {
+  color: #fff;
+  background: #0284c7;
+}
+.px-menu-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.px-menu-hint {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+.px-menu-item[aria-current='page'] .px-menu-hint {
+  color: #e0f2fe;
+}
+@media (max-width: 480px) {
+  .px-shell-badge {
+    display: none;
+  }
+}
