@@ -5,21 +5,23 @@ import { TEXTURES } from './scene/assets'
 import beta from './sectors/beta'
 
 describe('créditos de los recursos empaquetados', () => {
-  it('cada textura empaquetada tiene crédito, y cada crédito apunta a texturas que existen', () => {
+  it('cada textura e imagen de referencia empaquetada tiene crédito, y cada crédito apunta a archivos que existen', () => {
     const credited = ASSET_CREDITS.flatMap((c) => c.assets)
-    expect([...credited].sort()).toEqual(Object.keys(TEXTURES).sort())
+    const referencias = Object.keys(import.meta.glob('./sectors/*/referencias/*.png')).map((p) => p.split('/').pop()!.replace('.png', ''))
+    expect(referencias.length).toBeGreaterThan(0)
+    expect([...credited].sort()).toEqual([...Object.keys(TEXTURES), ...referencias].sort())
   })
 
   it('ATTRIBUTIONS.md recoge cada archivo, autor, licencia y URL', () => {
     for (const c of ASSET_CREDITS) {
       expect(attributions).toContain(c.url)
-      expect(attributions).toContain(c.license)
-      for (const a of c.assets) expect(attributions).toContain(`${a}.webp`)
+      expect(attributions).toContain(c.license.split(' (')[0]!)
+      for (const a of c.assets) expect(attributions).toMatch(new RegExp(`${a}\\.(webp|png)`))
     }
   })
 
-  it('las licencias son de las permitidas (CC BY o dominio público)', () => {
-    for (const c of ASSET_CREDITS) expect(c.license).toMatch(/^(CC BY 4\.0|Dominio público)/)
+  it('las licencias son de las permitidas (CC BY, dominio público o crédito NASA/JPL-Caltech)', () => {
+    for (const c of ASSET_CREDITS) expect(c.license).toMatch(/^(CC BY 4\.0|Dominio público|Courtesy NASA\/JPL-Caltech)/)
   })
 
   it('los objetos de β solo usan texturas empaquetadas', () => {

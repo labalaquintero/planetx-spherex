@@ -23,6 +23,16 @@ export interface Waypoint {
 /** Solo los tipos que aparecen en el boceto. No se añaden entidades nuevas. */
 export type SceneObjectKind = 'planet' | 'ringedPlanet' | 'station' | 'smallBody' | 'sphere'
 
+/** Contexto que el HUD muestra al acercarse a un objeto: qué es, de dónde sale y su imagen de origen. */
+export interface ObjectInfo {
+  readonly title: string
+  readonly summary: string
+  readonly facts: readonly string[]
+  /** Imágenes de referencia (empaquetadas), con su pie y su crédito. */
+  readonly images: readonly { readonly src: string; readonly caption: string; readonly pixelated?: boolean }[]
+  readonly credit?: string
+}
+
 export interface SceneObject {
   readonly id: string
   readonly kind: SceneObjectKind
@@ -60,6 +70,8 @@ export interface SceneObject {
     readonly bump?: string
     readonly ringMap?: string
   }
+  /** Contexto para el HUD (al acercarse). */
+  readonly info?: ObjectInfo
   /** Color de la atmósfera (resplandor de borde). Sin valor, sin atmósfera. */
   readonly atmosphere?: string
 }

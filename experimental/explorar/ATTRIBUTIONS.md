@@ -16,6 +16,15 @@ no se presentan como esos cuerpos.
 | `luna-color.webp` (1024×512, 72 KB) | `lroc_color_poles_1k.jpg` (CGI Moon Kit) | NASA's Scientific Visualization Studio — Ernie Wright; datos LRO/LROC | Dominio público (NASA) | https://svs.gsfc.nasa.gov/4720/ | 2026-11-15 |
 | `luna-relieve.webp` (512×256, 22 KB) | `ldem_3_8bit.jpg` (CGI Moon Kit) | NASA's Scientific Visualization Studio — Ernie Wright; datos LRO/LOLA | Dominio público (NASA) | https://svs.gsfc.nasa.gov/4720/ | 2026-11-15 |
 
+## Imágenes de referencia de las fichas
+
+| Archivo empaquetado | Origen | Autor | Licencia / crédito | URL | Copia |
+| --- | --- | --- | --- | --- | --- |
+| `src/sectors/beta/referencias/wise0855-2025-05-06.png` (64×64, 4 KB) | Recorte SPHEREx `2025W19_1B_0241_1` | NASA/JPL-Caltech (SPHEREx), datos de NASA/IPAC IRSA; procesado por el proyecto | Courtesy NASA/JPL-Caltech | https://irsa.ipac.caltech.edu/Missions/spherex.html | 2026-11-15 |
+| `src/sectors/beta/referencias/wise0855-2025-10-31.png` (64×64, 4 KB) | Recorte SPHEREx `2025W44_2B_0322_1` | NASA/JPL-Caltech (SPHEREx), datos de NASA/IPAC IRSA; procesado por el proyecto | Courtesy NASA/JPL-Caltech | https://irsa.ipac.caltech.edu/Missions/spherex.html | 2026-11-15 |
+
+Son copias de `docs/referencias/wise0855/products/` (procedencia y SHA-256 en su `README.md`).
+
 **Texto de las licencias, tal como aparece en cada fuente:**
 
 - **Solar System Scope:** «Distributed under Attribution 4.0 International license: You may use, adapt, and share

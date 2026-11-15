@@ -12,6 +12,7 @@ import {
   type FlightInput,
   type FlightState,
 } from '../engine/flight'
+import { dragLook, newLook, type Look } from '../engine/orbit'
 import { AdaptiveQuality, type QualityLevel } from '../engine/quality'
 import { spawnPointParam } from '../params'
 import type { SectorConfig, SectorScene as SectorSceneData, Vec3 } from '../engine/types'
@@ -19,6 +20,7 @@ import { CHASE } from '../scene/chase'
 import { Credits } from './Credits'
 import { ErrorBoundary } from './ErrorBoundary'
 import { FlightPad } from './FlightPad'
+import { InfoCard } from './InfoCard'
 import { Minimap } from './Minimap'
 import { NoWebGL } from './NoWebGL'
 import { loadScene } from './sceneLoader'
@@ -61,9 +63,12 @@ interface Telemetry {
   position: Vec3
   yaw: number
   speed: number
-  near?: { label: string; kind: string; distance: number }
+  near?: { id: string; label: string; kind: string; distance: number }
   edge: number
 }
+
+/** A esta distancia (a la superficie) el panel muestra el contexto del objeto. */
+export const INFO_DISTANCE = 120
 
 export function NavigationScreen({ sector, onExit, arrive, reduced, quality: initialLevel, forced, debug, extraControls, onEngine }: Props) {
   const { scene } = sector
@@ -82,6 +87,9 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
   const start = scene.waypoints.find((w) => w.id === (spawnId ?? scene.startId))!
   const flight = useRef<FlightState>(spawnBehind(start.position, start.yawDeg, CHASE.up, CHASE.back))
   const input = useRef<FlightInput>(NO_INPUT)
+  // Mirada libre: clic derecho y arrastrar gira la cámara alrededor de la nave.
+  const look = useRef<Look>(newLook())
+  const drag = useRef<{ id: number; x: number; y: number } | null>(null)
   const [held, setHeld] = useState<ReadonlySet<FlightAction>>(new Set())
 
   const hold = useCallback((a: FlightAction, down: boolean) => {
@@ -137,7 +145,7 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
         position: s.position,
         yaw: s.yaw,
         speed,
-        near: n && { label: n.object.label!, kind: n.object.kind, distance: n.distance },
+        near: n && { id: n.object.id, label: n.object.label!, kind: n.object.kind, distance: n.distance },
         edge: boundaryProximity(s.position, bounds),
       })
       onEngine?.(Math.min(1, speed / FLIGHT.maxSpeed))
@@ -146,6 +154,8 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
   }, [scene, bounds, onEngine])
 
   const mapSize = 200
+  const nearObject = tele.near && tele.near.distance < INFO_DISTANCE ? scene.objects.find((o) => o.id === tele.near!.id) : undefined
+  const nearInfo = nearObject?.info
 
   return (
     <section
@@ -154,7 +164,32 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
       data-arrive={arrive ? '' : undefined}
       data-fade-in={arrive ? undefined : ''}
     >
-      <div className="ex-canvas">
+      <div
+        className="ex-canvas"
+        onContextMenu={(e) => e.preventDefault()}
+        onPointerDown={(e) => {
+          if (e.button !== 2) return
+          e.currentTarget.setPointerCapture?.(e.pointerId)
+          drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY }
+          look.current = { ...look.current, dragging: true }
+        }}
+        onPointerMove={(e) => {
+          const d = drag.current
+          if (!d || d.id !== e.pointerId) return
+          look.current = dragLook(look.current, e.clientX - d.x, e.clientY - d.y)
+          d.x = e.clientX
+          d.y = e.clientY
+        }}
+        onPointerUp={(e) => {
+          if (drag.current?.id !== e.pointerId) return
+          drag.current = null
+          look.current = { ...look.current, dragging: false, idleMs: 0 }
+        }}
+        onLostPointerCapture={() => {
+          drag.current = null
+          look.current = { ...look.current, dragging: false }
+        }}
+      >
         {webgl ? (
           <ErrorBoundary fallback={<NoWebGL onExit={onExit} reason="La vista 3D se detuvo por un error del navegador." />}>
             <Suspense fallback={<p className="ex-fallback">Cargando escena…</p>}>
@@ -162,6 +197,7 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
                 scene={scene}
                 flight={flight}
                 input={input}
+                look={look}
                 bounds={bounds}
                 obstacles={obstacles}
                 animate={!reduced}
@@ -179,33 +215,33 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
       </div>
 
       <div className="ex-hud ex-hud-top">
-        <div className="ex-hud-left">
-          <div className="ex-panel ex-hud-info">
-            <span className="ex-chip ex-chip-muted">{sector.name}</span>
-            <p className="ex-hud-point">{tele.near ? `Cerca de ${tele.near.label}` : 'Espacio abierto'}</p>
-            <dl className="ex-hud-stats">
-              <div>
-                <dt>Objeto</dt>
-                <dd>{tele.near ? KIND_LABEL[tele.near.kind] : '—'}</dd>
-              </div>
-              <div>
-                <dt>Distancia</dt>
-                <dd>{tele.near ? `${Math.round(tele.near.distance)} u` : '—'}</dd>
-              </div>
-              <div>
-                <dt>Velocidad</dt>
-                <dd>{tele.speed.toFixed(1)} u/s</dd>
-              </div>
-            </dl>
-            {tele.edge > 0.5 && (
-              <p className="ex-chip ex-chip-warn ex-hud-edge" role="status">
-                Límite del sector
-              </p>
-            )}
-          </div>
-          <div className="ex-panel ex-route-panel">
-            <Minimap bounds={bounds} objects={scene.objects} position={tele.position} yaw={tele.yaw} edge={tele.edge} size={mapSize} />
-          </div>
+        <div className="ex-panel ex-hud-info" data-expanded={nearInfo ? '' : undefined}>
+          <span className="ex-chip ex-chip-muted">{sector.name}</span>
+          <p className="ex-hud-point">{tele.near ? `Cerca de ${tele.near.label}` : 'Espacio abierto'}</p>
+          <dl className="ex-hud-stats">
+            <div>
+              <dt>Objeto</dt>
+              <dd>{tele.near ? KIND_LABEL[tele.near.kind] : '—'}</dd>
+            </div>
+            <div>
+              <dt>Distancia</dt>
+              <dd>{tele.near ? `${Math.round(tele.near.distance)} u` : '—'}</dd>
+            </div>
+            <div>
+              <dt>Velocidad</dt>
+              <dd>{tele.speed.toFixed(1)} u/s</dd>
+            </div>
+          </dl>
+          {tele.edge > 0.5 && (
+            <p className="ex-chip ex-chip-warn ex-hud-edge" role="status">
+              Límite del sector
+            </p>
+          )}
+          {nearInfo ? (
+            <InfoCard info={nearInfo} />
+          ) : (
+            tele.near && <p className="ex-info-hint">Acércate a menos de {INFO_DISTANCE} u para ver su contexto.</p>
+          )}
         </div>
         <div className="ex-hud-actions">
           <Credits />
@@ -213,6 +249,9 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
           <button type="button" className="ex-btn" onClick={onExit}>
             <span aria-hidden="true">←</span> Volver a sectores <kbd>Esc</kbd>
           </button>
+        </div>
+        <div className="ex-panel ex-route-panel">
+          <Minimap bounds={bounds} objects={scene.objects} position={tele.position} yaw={tele.yaw} edge={tele.edge} size={mapSize} />
         </div>
       </div>
 
@@ -233,7 +272,7 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
           <p className="ex-disclaimer-inline">Representación ilustrativa, no son datos reales de SPHEREx.</p>
           <p className="ex-hint" aria-hidden="true">
             <kbd>W</kbd>/<kbd>S</kbd> acelerar y frenar · <kbd>A</kbd>/<kbd>D</kbd> girar · <kbd>E</kbd>/<kbd>Q</kbd> subir y
-            bajar · <kbd>Esc</kbd> volver
+            bajar · clic derecho y arrastra: mirar alrededor · <kbd>Esc</kbd> volver
           </p>
         </div>
         {webgl && <FlightPad held={held} onHold={hold} />}

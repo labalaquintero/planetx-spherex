@@ -3,6 +3,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { validateGraph } from '../engine/graph'
 import { nearbyObject, nearestLabelled, validateFocus } from '../engine/nearest'
+import { InfoCard } from '../screens/InfoCard'
 import { SectorSelect } from '../screens/SectorSelect'
 import { SECTORS, getSector } from './index'
 import beta from './beta'
@@ -117,6 +118,45 @@ describe('Ilmara: mundo frío inspirado en WISE 0855 (no un gigante tipo Júpite
 
   it('ningún objeto de β usa una textura de bandas tipo Júpiter', () => {
     for (const o of beta.scene!.objects) expect(o.texture?.map ?? '').not.toMatch(/jupiter/i)
+  })
+})
+
+describe('fichas de contexto de β (panel izquierdo al acercarse)', () => {
+  const named = beta.scene!.objects.filter((o) => o.label)
+
+  it('cada objeto con nombre tiene ficha con título, resumen y datos', () => {
+    for (const o of named) {
+      expect(o.info, o.id).toBeDefined()
+      expect(o.info!.title.length).toBeGreaterThan(3)
+      expect(o.info!.summary.length).toBeGreaterThan(40)
+      expect(o.info!.facts.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('Ilmara muestra los dos recortes reales de WISE 0855, con crédito', () => {
+    const info = named.find((o) => o.id === 'ilmara')!.info!
+    expect(info.summary).toMatch(/WISE 0855/)
+    expect(info.images).toHaveLength(2)
+    for (const img of info.images) expect(img.src).toMatch(/wise0855-2025-(05-06|10-31)/)
+    expect(info.credit).toMatch(/NASA\/JPL-Caltech/)
+  })
+
+  it('la ficha de Ilmara se dibuja con sus dos imágenes pixeladas, pies de foto y crédito', () => {
+    const info = named.find((o) => o.id === 'ilmara')!.info!
+    const html = renderToStaticMarkup(createElement(InfoCard, { info }))
+    expect(html.match(/<img /g)).toHaveLength(2)
+    expect(html.match(/data-pixelated="true"/g)).toHaveLength(2)
+    expect(html).toContain('SPHEREx · 6 may 2025')
+    expect(html).toContain('SPHEREx · 31 oct 2025')
+    expect(html).toContain('NASA/JPL-Caltech')
+  })
+
+  it('toda ficha con imagen indica su crédito y deja claro que el objeto es inventado o ilustrativo', () => {
+    for (const o of named) {
+      const info = o.info!
+      if (info.images.length > 0) expect(info.credit, o.id).toBeTruthy()
+      expect(`${info.summary} ${info.facts.join(' ')}`, o.id).toMatch(/inventad|ilustra/i)
+    }
   })
 })
 

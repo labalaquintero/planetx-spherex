@@ -519,7 +519,19 @@
 }
 .ex-hud-top {
   top: 0;
-  align-items: flex-start;
+  /* Panel de contexto a la izquierda, botones al centro, mapa a la derecha. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: start;
+}
+.ex-hud-top > .ex-hud-info {
+  justify-self: start;
+}
+.ex-hud-top > .ex-hud-actions {
+  justify-self: center;
+}
+.ex-hud-top > .ex-route-panel {
+  justify-self: end;
 }
 .ex-hud-bottom {
   bottom: 0;
@@ -535,6 +547,77 @@
   min-width: 210px;
   max-width: 280px;
   padding: 10px 14px 12px;
+  transition: max-width 200ms ease;
+}
+.ex-hud-info[data-expanded] {
+  max-width: 340px;
+  max-height: calc(100cqh - 220px);
+  overflow-y: auto;
+}
+/* Ficha de contexto del objeto cercano */
+.ex-info {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ex-border);
+}
+.ex-info-title {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ex-accent-pale);
+}
+.ex-info-summary {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--ex-label);
+}
+.ex-info-facts {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--ex-muted);
+}
+.ex-info-facts li + li {
+  margin-top: 3px;
+}
+.ex-info-images {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+.ex-info-images[data-count='2'] {
+  grid-template-columns: 1fr 1fr;
+}
+.ex-info-figure {
+  margin: 0;
+}
+.ex-info-figure img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  object-fit: cover;
+  background: #000;
+  border: 1px solid var(--ex-border-strong);
+  border-radius: var(--ex-radius-sm);
+}
+.ex-info-figure img[data-pixelated] {
+  aspect-ratio: 1;
+  image-rendering: pixelated;
+}
+.ex-info-figure figcaption {
+  margin-top: 3px;
+  font-family: var(--ex-mono);
+  font-size: 0.68rem;
+  color: var(--ex-muted);
+}
+.ex-info-credit,
+.ex-info-hint {
+  margin: 8px 0 0;
+  font-size: 0.7rem;
+  color: var(--ex-dim);
 }
 .ex-hud-point {
   margin: 6px 0 6px;
@@ -567,7 +650,7 @@
 .ex-hud-actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 8px;
 }
 /* Indicador de ruta */
@@ -947,11 +1030,16 @@
     padding: 10px;
   }
   .ex-hud-top {
-    flex-direction: column-reverse;
-    align-items: stretch;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
-  .ex-hud-actions {
+  .ex-hud-top > .ex-hud-actions {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: stretch;
     justify-content: space-between;
+  }
+  .ex-hud-info[data-expanded] {
+    max-height: 38cqh;
   }
   .ex-hud-info {
     flex: 1;
