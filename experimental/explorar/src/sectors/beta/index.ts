@@ -32,9 +32,9 @@ const beta: SectorConfig = {
     // Más cuerpos pequeños como los del boceto, repartidos por todo el sector (ahora más amplio) y lejos de la ruta.
     field: {
       seed: 4242,
-      count: 72,
-      center: [0, 10, -80],
-      extent: [480, 80, 460],
+      count: 120,
+      center: [0, 10, -40],
+      extent: [620, 260, 600],
       minRadius: 0.7,
       maxRadius: 3.2,
       clearance: 14,
