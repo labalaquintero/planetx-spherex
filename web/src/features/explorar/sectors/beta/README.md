@@ -17,11 +17,23 @@ La posición y el tamaño aparente de cada objeto salen del boceto de navegació
 | **Estación Ancla** | Cilindro con asa (anillo de atraque) en un extremo | Casco con paneles y ventanas, luces de posición |
 | **Esfera menor** y cuerpos pequeños | Del boceto, más un relleno sembrado | Textura lunar con relieve; el relleno no aparece en la vista inicial |
 
-**Borde exterior (amplía el área del sector):** cuatro planetas inventados fuera de la vista inicial, cuya superficie
+**Borde exterior (amplía el área del sector):** cuatro planetas fuera de la vista inicial, cuya superficie
 usa los mapas globales de la NASA que también trae α, solo por su luminancia y con paletas propias: **Brasa**
 (Ío, rojos de brasa con brillo propio), **Jade** (Ganímedes, verdes), **Ceniza** (radar de Venus, grises) y
 **Marea** (Marte, turquesas). Cada uno tiene su ficha con la imagen de origen. El relleno de cuerpos pequeños
 también se reparte por toda el área.
+
+**En 360° y en altura:** los planetas fuera del boceto se colocan con `around(rumbo, altura, distancia)` desde la
+entrada, así que hay planetas delante, detrás, a los lados, arriba y abajo. Además de los anteriores:
+**Escarcha** (Europa, lila, arriba), **Hollín** (Fobos, debajo de la entrada), **Argento** (Saturno, con anillo
+plateado), **Abisal** (mapa del cielo de SPHEREx, azul), y siete con mapas globales de NASA/JPL
+(`tools/texturas_nasa_beta.py`): **Cobalto** (Neptuno), **Nácar** (Encélado), **Jano** (Japeto), **Ónix** (Calisto),
+**Grieta** (Tetis), **Vigía** (Mimas) y **Pangea** (relieve de la Tierra). Se descartaron Tritón, Miranda y las
+demás lunas de Urano, Mercurio y Titán porque sus mapas tienen grandes huecos o son planos.
+
+Las fichas dan solo el contexto del objeto y la imagen de la que parte; no dicen que sea inventado (lo comprueba
+`sectors.test.ts`). El aviso general del HUD sigue siendo «Representación ilustrativa, no son datos reales de
+SPHEREx».
 
 `waypoints.ts` define el grafo de puntos de ruta. La entrada es el punto de salida; los demás sirven
 como zonas despejadas y como puntos de salida alternativos con `?punto=<id>`.

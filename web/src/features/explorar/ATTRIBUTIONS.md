@@ -28,6 +28,13 @@ no se presentan como esos cuerpos.
 | `ganimedes-voyager.webp` (1024×512, 99 KB) | `jup3vss2.jpg`: mapa global de Ganímedes (Voyager) | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ | 2026-11-15 |
 | `fobos-viking.webp` (1024×512, 69 KB) | `mar1kuu2.jpg`: mapa global de Fobos (Viking) | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ | 2026-11-15 |
 | `venus-magellan.webp` (1024×512, 95 KB) | `ven0aaa2.jpg`: mapa global de Venus por radar (Magellan) | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ | 2026-11-15 |
+| `neptuno-voyager.webp` (1024×512, 35 KB) | `nep0fds1.jpg`: mapa global de Neptuno (Voyager 2) | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ | 2026-11-15 |
+| `encelado-voyager.webp` (1024×512, 49 KB) | `sat2vss2.jpg`: mapa global de Encélado (Voyager) | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ | 2026-11-15 |
+| `japeto-voyager.webp` (1024×512, 24 KB) | `sat8vss2.jpg`: mapa global de Japeto (Voyager) | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ | 2026-11-15 |
+| `calisto-voyager.webp` (1024×512, 124 KB) | `jup4vss2.jpg`: mapa global de Calisto (Voyager) | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ | 2026-11-15 |
+| `tetis-voyager.webp` (1024×512, 82 KB) | `sat3vss2.jpg`: mapa global de Tetis (Voyager) | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ | 2026-11-15 |
+| `mimas-voyager.webp` (1024×512, 50 KB) | `sat1vss2.jpg`: mapa global de Mimas (Voyager) | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ | 2026-11-15 |
+| `tierra-relieve.webp` (1024×512, 147 KB) | `ear0xuu2.jpg`: mapa global de la Tierra en relieve de color | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ | 2026-11-15 |
 
 Las siete últimas se generan sin red con `experimental/explorar/tools/texturas_spherex.py` a partir de
 `docs/decisiones/prototipo-interfaces/assets/` (las mismas imágenes que muestra el visor).
@@ -51,6 +58,13 @@ Son copias de `docs/referencias/wise0855/products/` (procedencia y SHA-256 en su
 | `sectors/alpha/referencias/ganimedes-voyager-original.webp` (360×180) | `jup3vss2.jpg` reducido | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ |
 | `sectors/alpha/referencias/fobos-viking-original.webp` (360×180) | `mar1kuu2.jpg` reducido | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ |
 | `sectors/alpha/referencias/venus-magellan-original.webp` (360×180) | `ven0aaa2.jpg` reducido | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ |
+| `sectors/beta/referencias/neptuno-voyager-original.webp` (360×180) | `nep0fds1.jpg` reducido | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ |
+| `sectors/beta/referencias/encelado-voyager-original.webp` (360×180) | `sat2vss2.jpg` reducido | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ |
+| `sectors/beta/referencias/japeto-voyager-original.webp` (360×180) | `sat8vss2.jpg` reducido | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ |
+| `sectors/beta/referencias/calisto-voyager-original.webp` (360×180) | `jup4vss2.jpg` reducido | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ |
+| `sectors/beta/referencias/tetis-voyager-original.webp` (360×180) | `sat3vss2.jpg` reducido | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ |
+| `sectors/beta/referencias/mimas-voyager-original.webp` (360×180) | `sat1vss2.jpg` reducido | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ |
+| `sectors/beta/referencias/tierra-relieve-original.webp` (360×180) | `ear0xuu2.jpg` reducido | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ |
 
 Los mapas de α (las seis filas de JPL) se descargaron solo en desarrollo con `experimental/explorar/tools/alpha/texturas_nasa.py`. Política de uso de JPL: «Unless otherwise noted, images and video on JPL public web sites may be used for any purpose without prior permission» (https://www.jpl.nasa.gov/jpl-image-use-policy), con el crédito «Courtesy NASA/JPL-Caltech».
 

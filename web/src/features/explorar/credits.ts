@@ -73,6 +73,31 @@ export const ASSET_CREDITS: readonly Credit[] = [
       'solo por su luminancia y recoloreados, de seis planetas de β (Brasa, Jade, Ceniza, Marea, Escarcha y Hollín). ' +
       'Reducidos a 1024 × 512 y convertidos a WebP con tools/alpha/texturas_nasa.py; Europa, Ganímedes y Fobos se recolorean.',
   },
+  {
+    what: 'Mapas globales de Neptuno, Encélado, Japeto, Calisto, Tetis, Mimas y de la Tierra en relieve (Voyager y otras misiones)',
+    author: 'NASA/JPL-Caltech/USGS — Solar System Simulator de JPL (David Seal)',
+    license: 'Courtesy NASA/JPL-Caltech (política de uso de imágenes de JPL)',
+    url: 'https://maps.jpl.nasa.gov/tmaps/',
+    assets: [
+      'neptuno-voyager',
+      'encelado-voyager',
+      'japeto-voyager',
+      'calisto-voyager',
+      'tetis-voyager',
+      'mimas-voyager',
+      'tierra-relieve',
+      'neptuno-voyager-original',
+      'encelado-voyager-original',
+      'japeto-voyager-original',
+      'calisto-voyager-original',
+      'tetis-voyager-original',
+      'mimas-voyager-original',
+      'tierra-relieve-original',
+    ],
+    note:
+      'Superficie de siete planetas de β (Cobalto, Nácar, Jano, Ónix, Grieta, Vigía y Pangea). Reducidos a 1024 × 512 y ' +
+      'convertidos a WebP con tools/texturas_nasa_beta.py; algunos se recolorean.',
+  },
 ]
 
 export const SOFTWARE_CREDITS: readonly { name: string; license: string }[] = [
