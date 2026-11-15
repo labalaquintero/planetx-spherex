@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useRef, type MutableRefObject } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Euler, MathUtils, Quaternion, Vector3, type Group, type PerspectiveCamera } from 'three'
-import { attitudeOf, speedOf, steerFlight, stepFlight, FLIGHT, type Bounds, type FlightInput, type FlightState, type Obstacle } from '../engine/flight'
+import { DIVE, diveExit, diveFrame, diveTrigger, type DivePlan } from '../engine/dive'
+import { attitudeOf, speedOf, steerFlight, stepFlight, upOf, FLIGHT, type Bounds, type FlightInput, type FlightState, type Obstacle } from '../engine/flight'
+import type { SceneObject } from '../engine/types'
 import { approach, arrivalOffset, cameraFit } from '../engine/motion'
 import { orbitOffset } from '../engine/orbit'
 import { CHASE } from './chase'
+import { LIGHT_DIR } from './light'
+import type { ActiveDive } from './DiveFX'
 import { Shield } from './Shield'
 import { NOZZLES, Ship } from './Ship'
 import { Trail, type Emitter } from './Trail'
@@ -21,6 +25,19 @@ interface Props {
   trailParticles: number
   /** Dirección pendiente de aplicar (rad), acumulada por la pantalla al arrastrar con clic derecho. */
   aim: MutableRefObject<{ dYaw: number; dPitch: number }>
+  /** Objetos del sector (para saber qué planetas gaseosos se pueden atravesar). */
+  objects: readonly SceneObject[]
+  /** Travesía en curso (compartida con DiveFX). */
+  dive: MutableRefObject<ActiveDive | null>
+  /** Momentos de la travesía: empieza, entra en el planeta, sale y termina. */
+  onDive?: (event: DiveEvent, plan: DivePlan) => void
+}
+
+export type DiveEvent = 'start' | 'enter' | 'exit' | 'end'
+
+const smooth = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)))
+  return t * t * (3 - 2 * t)
 }
 
 /**
@@ -28,7 +45,7 @@ interface Props {
  * La cámara sigue a la nave con suavizado: al girar, la nave se adelanta y luego la cámara la
  * alcanza. Con movimiento reducido el seguimiento es rígido y sin oscilación ni empuje de FOV.
  */
-export function FlightRig({ state, input, bounds, obstacles, animate, arrive, trailParticles, aim }: Props) {
+export function FlightRig({ state, input, bounds, obstacles, animate, arrive, trailParticles, aim, objects, dive, onDive }: Props) {
   const ship = useRef<Group>(null)
   const camera = useThree((s) => s.camera) as PerspectiveCamera
   const invalidate = useThree((s) => s.invalidate)
@@ -37,6 +54,26 @@ export function FlightRig({ state, input, bounds, obstacles, animate, arrive, tr
   const arrivalStart = useRef<number | null>(null)
   const cam = useRef({ pos: new Vector3(), yaw: 0, pitch: 0, roll: 0, look: 0, ready: false })
   const tmp = useMemo(() => ({ v: new Vector3(), q: new Quaternion(), e: new Euler(0, 0, 0, 'YXZ'), w: new Vector3() }), [])
+  // Travesía: pose de la cámara al empezar, cámara fija de la salida, fase anterior y fin (enfriamiento).
+  const cine = useMemo(
+    () => ({
+      startPos: new Vector3(),
+      startQuat: new Quaternion(),
+      exitCam: new Vector3(),
+      pos: new Vector3(),
+      look: new Vector3(),
+      f: new Vector3(),
+      up: new Vector3(),
+      right: new Vector3(),
+      m: new Quaternion(),
+      tq: new Quaternion(),
+      phase: '' as string,
+      lastS: 0,
+      lastT: 0,
+      endedAt: -Infinity,
+    }),
+    [],
+  )
   // En pantallas verticales la nave se aleja un poco para que quepa.
   const portrait = Math.min(1, Math.max(0, (1.2 - aspect) / 0.7))
   const back = CHASE.back * (1 + 0.45 * portrait)
@@ -58,7 +95,155 @@ export function FlightRig({ state, input, bounds, obstacles, animate, arrive, tr
     return () => clearInterval(id)
   }, [animate, input, state, invalidate, aim])
 
+  /** Un cuadro de la travesía: nave por la recta, coreografía de cámara y, al final, vuelta al vuelo. */
+  const diveStep = (now: number, dt: number) => {
+    const d = dive.current!
+    const g = ship.current!
+    const { plan } = d
+    const t = now - d.t0
+    const f = diveFrame(plan, t)
+    const c = cine
+    c.f.set(...plan.dir)
+    c.up.set(...upOf(plan.yaw, plan.pitch))
+    c.right.crossVectors(c.f, c.up).normalize()
+
+    // Nave: por la recta, con el rumbo del plan y un tonel completo mientras cruza.
+    const roll = Math.PI * 2 * smooth(DIVE.enterAt, DIVE.exitAt, f.u)
+    g.position.set(...f.position)
+    g.rotation.set(plan.pitch, plan.yaw, roll, 'YXZ')
+    // Velocidad estimada (para la estela) y estado visible para el HUD, el mapa y los visitantes.
+    const speedNow = dt > 0 ? Math.max(0, (f.s - c.lastS) / dt) : DIVE.exitSpeed
+    c.lastS = f.s
+    state.current = {
+      ...state.current,
+      position: f.position,
+      velocity: [plan.dir[0] * speedNow, plan.dir[1] * speedNow, plan.dir[2] * speedNow],
+      contact: 0,
+      jolt: 0,
+    }
+
+    // Momentos: entra y sale de la superficie.
+    if (c.phase === 'approach' && f.phase !== 'approach') {
+      c.phase = 'inside'
+      onDive?.('enter', plan)
+    }
+    if (c.phase === 'inside' && f.phase === 'exit') {
+      c.phase = 'exit'
+      // Cámara fija fuera, más allá del punto de salida, mirando cómo sale la nave.
+      const tOut = plan.tExit
+      // Se aparta hacia donde llega la luz de la estrella: detrás de la nave se ve el borde iluminado del
+      // planeta aunque la salida caiga en su lado de noche.
+      tmp.v.copy(LIGHT_DIR).addScaledVector(c.f, -LIGHT_DIR.dot(c.f))
+      if (tmp.v.lengthSq() < 1e-4) tmp.v.copy(c.right)
+      tmp.v.normalize()
+      c.exitCam
+        .set(plan.start[0] + plan.dir[0] * tOut, plan.start[1] + plan.dir[1] * tOut, plan.start[2] + plan.dir[2] * tOut)
+        .addScaledVector(c.f, 30 + plan.radius * 0.6)
+        .addScaledVector(tmp.v, 16 + plan.radius * 0.45)
+        .addScaledVector(c.up, 6)
+      onDive?.('exit', plan)
+    }
+
+    // Planos de cámara.
+    const P = g.position
+    const shotA = (out: Vector3) => out.copy(P).addScaledVector(c.f, -7.5).addScaledVector(c.right, 4.2).addScaledVector(c.up, 1.4)
+    const shotB = (out: Vector3) => out.copy(P).addScaledVector(c.f, -5.2).addScaledVector(c.right, 1.4).addScaledVector(c.up, 0.9)
+    let fov: number
+    let shake = 0
+    if (f.phase !== 'exit') {
+      // Aproximación: de la cámara de persecución a un plano de tres cuartos (zoom); luego, dentro, pegada.
+      const toA = smooth(0, 0.12, f.u)
+      const toB = smooth(0.17, 0.26, f.u)
+      shotA(c.pos)
+      tmp.v.copy(c.pos)
+      shotB(c.pos)
+      c.pos.lerpVectors(tmp.v, c.pos, toB)
+      c.pos.lerpVectors(c.startPos, c.pos, toA)
+      c.look.copy(P).addScaledVector(c.f, 25 - 13 * toB)
+      fov = 50 + (42 - 50) * toA + (76 - 42) * toB
+      shake = 0.24 * f.depth + 0.05 * toA
+    } else {
+      // Salida: plano fijo desde fuera; al final vuelve, suave, a la persecución.
+      c.pos.copy(c.exitCam)
+      c.look.copy(P)
+      fov = 40
+      shake = 0.3 * Math.exp(-(f.u - DIVE.exitAt) * DIVE.seconds * 3)
+    }
+    camera.position.copy(c.pos)
+    camera.up.copy(c.up)
+    camera.lookAt(c.look)
+    if (f.phase !== 'exit') {
+      // Del plano de inicio al de la travesía sin salto de orientación.
+      c.tq.copy(camera.quaternion)
+      c.m.copy(c.startQuat).slerp(c.tq, smooth(0, 0.12, f.u))
+      camera.quaternion.copy(c.m)
+    }
+    if (f.phase === 'inside') camera.rotateZ(Math.sin(t * 1.7) * 0.06)
+    if (shake > 0) {
+      camera.position.x += shake * (Math.sin(t * 41.3) + 0.5 * Math.sin(t * 67.1))
+      camera.position.y += shake * (Math.sin(t * 37.9) + 0.5 * Math.sin(t * 23.3))
+    }
+    // Vuelta a la persecución en el último tramo.
+    const back = smooth(0.88, 1, f.u)
+    if (back > 0) {
+      const off = orbitOffset(up, CHASE.back, { yaw: 0, pitch: plan.pitch })
+      tmp.w.set(off[0], off[1], off[2]).applyAxisAngle(new Vector3(0, 1, 0), plan.yaw).add(P)
+      camera.position.lerp(tmp.w, back)
+      tmp.e.set(CHASE.pitchDeg * DEG + plan.pitch, plan.yaw, 0, 'YXZ')
+      c.tq.setFromEuler(tmp.e)
+      camera.quaternion.slerp(c.tq, back)
+      fov = fov + (fit.fovDeg - fov) * back
+    }
+    camera.up.set(0, 1, 0)
+    if (Math.abs(camera.fov - fov) > 1e-3) {
+      camera.fov = fov
+      camera.updateProjectionMatrix()
+    }
+
+    // Estela: a tope.
+    g.updateMatrixWorld()
+    ;[emitterL.current, emitterR.current].forEach((e, n) => {
+      const nz = NOZZLES[n]!
+      e.origin.set(nz[0], nz[1], nz[2]).applyMatrix4(g.matrixWorld)
+      e.direction.set(0, 0, 1).applyQuaternion(g.quaternion).normalize()
+      e.velocity.set(...state.current.velocity)
+      e.thrust = 1
+    })
+
+    if (f.done) {
+      state.current = diveExit(plan, state.current)
+      dive.current = null
+      c.endedAt = now
+      // La persecución sigue desde donde quedó la cámara (sin salto).
+      const cc = cam.current
+      cc.pos.copy(camera.position)
+      cc.yaw = plan.yaw
+      cc.pitch = plan.pitch
+      cc.roll = 0
+      cc.look = 0
+      onDive?.('end', plan)
+    }
+  }
+
   useFrame((frame, delta) => {
+    const now = frame.clock.elapsedTime
+    // ¿Empieza una travesía? Solo con animación y con un respiro tras la anterior.
+    if (!dive.current && animate && now - cine.endedAt > 1.5) {
+      const plan = diveTrigger(state.current, input.current, objects, obstacles)
+      if (plan) {
+        dive.current = { plan, t0: now }
+        cine.startPos.copy(camera.position)
+        cine.startQuat.copy(camera.quaternion)
+        cine.phase = 'approach'
+        cine.lastS = 0
+        cine.lastT = 0
+        onDive?.('start', plan)
+      }
+    }
+    if (dive.current && ship.current) {
+      diveStep(frame.clock.elapsedTime, Math.min(delta, 0.1))
+      return
+    }
     // Dirección con el ratón: se aplica lo acumulado desde el cuadro anterior.
     const a = aim.current
     const steered = steerFlight(state.current, a.dYaw, a.dPitch)

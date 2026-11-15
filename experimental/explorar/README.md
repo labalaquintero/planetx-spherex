@@ -103,6 +103,15 @@ Además, baja de nivel por debajo de 50 FPS en vez de 46. En Linux y macOS no ca
   efecto: no hay daño ni puntuación.
 - **Ficha del objeto:** a menos de 120 u de un objeto con nombre, el panel izquierdo muestra su contexto y, si la
   hay, la imagen de la que se sacó (por ejemplo, las dos épocas de WISE 0855 para Ilmara).
+- **Atravesar un gigante gaseoso:** Cobalto y Calder (marcados `crossable` en `beta/objects.ts`) son sólidos
+  en vuelo normal: la nave frena y se desvía como con cualquier planeta. Pero con **turbo (W + Shift) directo
+  hacia uno de ellos** empieza una secuencia de 6 s: la cámara pasa a un plano de tres cuartos junto a la nave
+  con el planeta llenando el fondo, la nave cruza el interior entre nubes en la paleta del planeta (con
+  relámpagos, líneas de velocidad, un tonel y sacudidas) y, con un destello, un plano fijo desde fuera la
+  muestra saliendo por el otro lado antes de volver a la persecución. Barras de cine, HUD oculto y sonido
+  propio. La lógica (disparo, recta, punto de salida libre de obstáculos y tiempos) está en `engine/dive.ts`
+  y tiene pruebas; la vista en `scene/DiveFX.tsx` y `scene/FlightRig.tsx`. `?atravesar=cobalto` (o
+  `calder`) hace salir la nave frente al planeta. Con movimiento reducido no hay travesía.
 - **Escaneo (tecla R):** cerca de un planeta, luna o planeta con anillo (cuando aparece su ficha), **R** o el
   botón «Escanear» abren un panel que crece hasta casi toda la pantalla. En el centro está el modelo 3D del
   cuerpo, con las mismas texturas, colores, atmósfera y anillo que en la escena, iluminado por la estrella del

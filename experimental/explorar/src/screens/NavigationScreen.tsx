@@ -14,9 +14,11 @@ import {
 } from '../engine/flight'
 import { STEER_SENSITIVITY } from '../engine/orbit'
 import { canScan } from '../engine/scan'
+import { lineUp, type DivePlan } from '../engine/dive'
+import type { DiveEvent } from '../scene/FlightRig'
 import type { VisitorEvent, VisitorKind } from '../engine/visitors'
 import { AdaptiveQuality, adaptiveOptionsFor, detectPlatform, type QualityLevel } from '../engine/quality'
-import { platformParam, scanParam, spawnPointParam } from '../params'
+import { diveParam, platformParam, scanParam, spawnPointParam } from '../params'
 import type { SectorConfig, SectorScene as SectorSceneData, Vec3 } from '../engine/types'
 import { CHASE } from '../scene/chase'
 import { Credits } from './Credits'
@@ -51,6 +53,8 @@ interface Props {
   onImpact?: (strength: number) => void
   /** Empieza el escaneo de un planeta (para su sonido). */
   onScan?: () => void
+  /** Empieza la travesía de un planeta gaseoso (para su sonido). */
+  onDive?: () => void
 }
 
 function isTextField(target: EventTarget | null): boolean {
@@ -87,7 +91,7 @@ export const INFO_DISTANCE = 120
 /** Y se oculta solo al alejarse más de esto (histéresis). */
 export const INFO_HIDE_DISTANCE = 140
 
-export function NavigationScreen({ sector, onExit, arrive, reduced, quality: initialLevel, forced, debug, extraControls, onEngine, onImpact, onVisitor, onScan }: Props) {
+export function NavigationScreen({ sector, onExit, arrive, reduced, quality: initialLevel, forced, debug, extraControls, onEngine, onImpact, onVisitor, onScan, onDive }: Props) {
   const { scene } = sector
   const webgl = useMemo(() => detectWebGL(), [])
   // Perfil de rendimiento: más ligero en Windows (Direct3D vía ANGLE); ?perfil= lo fuerza.
@@ -112,7 +116,18 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
   // ?punto=<id> permite salir desde otro punto de ruta (capturas comparables, demo).
   const spawnId = spawnPointParam(typeof window === 'undefined' ? '' : window.location.search, scene.waypoints.map((w) => w.id))
   const start = scene.waypoints.find((w) => w.id === (spawnId ?? scene.startId))!
-  const flight = useRef<FlightState>(spawnBehind(start.position, start.yawDeg, CHASE.up, CHASE.back))
+  // ?atravesar=<id>: sale frente a ese planeta gaseoso, mirándolo (demo de la travesía).
+  const diveDemo = useMemo(() => {
+    const ids = scene.objects.filter((o) => o.crossable && o.label).map((o) => o.id)
+    const id = diveParam(typeof window === 'undefined' ? '' : window.location.search, ids)
+    const o = id ? scene.objects.find((x) => x.id === id) : undefined
+    if (!o) return null
+    // Del lado del centro del sector, para que el resto del sector quede detrás.
+    const away: Vec3 = [-o.position[0], -o.position[1] * 0.2, -o.position[2]]
+    const n = Math.hypot(...away) || 1
+    return lineUp(o, 160, [away[0] / n, away[1] / n, away[2] / n])
+  }, [scene])
+  const flight = useRef<FlightState>(diveDemo ?? spawnBehind(start.position, start.yawDeg, CHASE.up, CHASE.back))
   const input = useRef<FlightInput>(NO_INPUT)
   // Dirigir con el ratón: clic derecho y arrastrar cambia la dirección de vuelo (rumbo y cabeceo).
   const aim = useRef({ dYaw: 0, dPitch: 0 })
@@ -150,7 +165,7 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
   const scannable = useRef<{ id: string; distance: number } | null>(null)
   const openScan = useCallback(() => {
     const target = scannable.current
-    if (!target || scanRef.current) return
+    if (!target || scanRef.current || divingRef.current) return
     setHeld(new Set())
     aim.current.dYaw = 0
     aim.current.dPitch = 0
@@ -158,6 +173,12 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
     onScan?.()
   }, [onScan])
   const closeScan = useCallback(() => setScan(null), [])
+
+  // Travesía de un planeta gaseoso (turbo directo hacia Cobalto o Calder): barras de cine, HUD oculto,
+  // destellos al entrar y salir, y un aviso al terminar.
+  const [diving, setDiving] = useState<string | null>(null)
+  const divingRef = useRef(false)
+  const [flash, setFlash] = useState(0)
 
   // Puntero bloqueado (como en los juegos de vuelo): un clic en la vista lo bloquea y el ratón dirige la
   // nave; Esc lo suelta (el navegador lo hace) y un segundo Esc sale del sector. Las teclas no cambian.
@@ -268,6 +289,24 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
     [onImpact, onVisitor],
   )
 
+  const onDiveEvent = useCallback(
+    (event: DiveEvent, plan: DivePlan) => {
+      if (event === 'start') {
+        divingRef.current = true
+        setDiving(plan.label)
+        if (document.pointerLockElement) document.exitPointerLock?.()
+        onDive?.()
+      } else if (event === 'enter' || event === 'exit') {
+        setFlash((n) => n + 1)
+      } else {
+        divingRef.current = false
+        setDiving(null)
+        setToast({ text: `Atravesaste ${plan.label}`, tone: 'info', key: Date.now() })
+      }
+    },
+    [onDive],
+  )
+
   const mapSize = 200
   // Ficha con histéresis: aparece a menos de INFO_DISTANCE y no se va hasta pasar INFO_HIDE_DISTANCE
   // (si no, en el límite aparece y desaparece varias veces por segundo y el texto salta).
@@ -288,6 +327,7 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
       className="ex-nav"
       aria-label={`Vuelo libre en ${sector.name}`}
       data-arrive={arrive ? '' : undefined}
+      data-diving={diving ? '' : undefined}
       data-fade-in={arrive ? undefined : ''}
     >
       <div
@@ -351,6 +391,7 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
                 onFps={debug ? setFps : undefined}
                 onVisitorEvent={onVisitorEvent}
                 paused={Boolean(scan)}
+                onDive={onDiveEvent}
               />
             </Suspense>
           </ErrorBoundary>
@@ -384,6 +425,11 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
               Límite del sector
             </p>
           )}
+          {nearObject?.crossable && (
+            <p className="ex-chip ex-chip-cross" role="note">
+              Gaseoso · con turbo (<kbd>Shift</kbd>) directo hacia él, lo atraviesas
+            </p>
+          )}
           {nearObject && canScan(nearObject) && (
             <button type="button" className="ex-btn ex-scan-btn" onClick={openScan}>
               Escanear {nearObject.label} <kbd>R</kbd>
@@ -407,6 +453,14 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
         </div>
       </div>
 
+      {diving && (
+        <div className="ex-cine" aria-live="polite">
+          <span className="ex-cine-bar" data-side="top" />
+          <span className="ex-cine-bar" data-side="bottom" />
+          <p className="ex-cine-caption">Atravesando {diving}</p>
+        </div>
+      )}
+      {flash > 0 && <span key={flash} className="ex-cine-flash" aria-hidden="true" />}
       {locked && (
         <p className="ex-lock-hint" role="status">
           Dirigiendo con el ratón · <kbd>Esc</kbd> suelta el puntero

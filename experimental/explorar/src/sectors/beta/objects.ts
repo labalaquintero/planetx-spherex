@@ -258,6 +258,8 @@ const EXTRA_DEFS: SceneObject[] = [
     palette: ['#a5f3fc', '#2b7a8c', '#0b2a33'],
     surface: 'bands',
     atmosphere: '#67e8f9',
+    // Gaseoso: con turbo (Shift) y directo hacia él, la nave lo atraviesa (engine/dive.ts).
+    crossable: true,
     texture: { map: 'bandas-saturno', mode: 'palette' },
   },
   {
@@ -391,6 +393,8 @@ const EXTRA_DEFS: SceneObject[] = [
     palette: ['#c7d2fe', '#3730a3', '#0b0f2e'],
     surface: 'bands',
     atmosphere: '#93c5fd',
+    // Gaseoso: con turbo (Shift) y directo hacia él, la nave lo atraviesa (engine/dive.ts).
+    crossable: true,
     texture: { map: 'neptuno-voyager', mode: 'color' },
   },
   {
