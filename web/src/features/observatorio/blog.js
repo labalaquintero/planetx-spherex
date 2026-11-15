@@ -5,6 +5,7 @@ import {
 import { sampleObservationById, samplePublications } from './ejemplos-blog.js';
 import { pdfButton, reportEvidence } from './espacio.js';
 import { back, missingView } from './ui.js';
+import { exampleProfile, weeklyMark } from './insignias.js';
 import { bindComparisonSlider, comparisonSlider } from './visor.js';
 import { readWorkspace } from './workspace.js';
 import './blog.css';
@@ -67,6 +68,7 @@ function publicationCard(report) {
     <h3><a href="#articulo/${encodeURIComponent(report.id)}">${escapeHtml(report.title)} <span aria-hidden="true">↗</span></a></h3>
     <p>Por ${escapeHtml(report.author)}</p>
     ${report.example ? `<p class="blog-report-summary">${escapeHtml(report.summary)}</p>` : ''}
+    ${weeklyMark(report.weeklyPick)}
   </article>`;
 }
 
@@ -126,6 +128,8 @@ function observationArticle() {
   return `<article class="blog-article">
     ${back('#blog', 'Volver al Blog')}
     ${articleHeading(article.title, `${article.category} / ${article.topic}`, article.summary)}
+    <p class="blog-report-byline">Por <a class="text-link" href="#publico/${exampleProfile.id}">${escapeHtml(exampleProfile.profile.alias)}</a>
+      ${weeklyMark(exampleProfile.reports[0].weeklyPick)}</p>
     <div class="blog-article-layout blog-sample-layout">
       <figure class="blog-compare" aria-labelledby="blog-compare-title">
         <div class="blog-compare-heading"><h2 id="blog-compare-title">Compara las dos épocas</h2><span>SPHEREx DR1</span></div>
@@ -174,6 +178,7 @@ export function articleView(id) {
     ${back('#blog', 'Volver al Blog')}
     ${articleHeading(report.title, category)}
     <p class="blog-report-byline">Por ${byline}</p>
+    ${weeklyMark(report.weeklyPick)}
     <div class="blog-article-layout">
       <section class="blog-article-text">
         <h2>Observación</h2>

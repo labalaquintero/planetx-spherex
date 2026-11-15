@@ -125,3 +125,62 @@ def test_session_cookie_cannot_be_forged_or_reused_after_logout(tmp_path, monkey
     assert client.get(f"{PREFIX}/session", headers={"Cookie": f"planetx_session={cookie}"}).json() == {"account": None}
     login = {"email": fields["email"], "password": PASSWORD}
     assert client.post(f"{PREFIX}/login", headers=headers, json=login).status_code == 200
+
+
+def publish_report(owner, reviewer, admin, title):
+    """Crea una ficha y la lleva hasta publicada (revisión, aceptación y publicación)."""
+    url = f"{PREFIX}/reports/{uuid4()}"
+    owner.get("/api/v1/comparisons", params=PARAMS)
+    fields = {"author": "Autora", "title": title, "notes": "Evidencia de prueba", "format": "manual",
+              "revision": 0, "status": "review", "frame_ids": ["synthetic-a", "synthetic-b"], "annotations": {}}
+    report = owner.put(url, headers=WRITE_HEADER, json=fields).json()
+    accepted = reviewer.post(f"{url}/decision", headers=WRITE_HEADER,
+                             json={"action": "accepted", "revision": report["revision"]}).json()
+    published = admin.post(f"{url}/decision", headers=WRITE_HEADER,
+                           json={"action": "published", "revision": accepted["revision"]}).json()
+    assert published["status"] == "published", published
+    return url, published
+
+
+def test_weekly_pick_is_admin_only_one_per_week_and_counts_for_badges(tmp_path):
+    frames = {"synthetic-a": TINY_PNG, "synthetic-b": TINY_PNG}
+    owner = make_client(workspace_db=tmp_path / "workspace.sqlite3", prepared=FakeCatalog(),
+                        science=FakeScience(synthetic_prepared(), images=frames))
+    reviewer, admin, visitor = (TestClient(owner.app) for _ in range(3))
+    author = register(owner, "Autora")
+    for client, alias, role in ((reviewer, "Revisora", "reviewer"), (admin, "Publicador", "admin")):
+        account = register(client, alias)
+        with owner.app.state.workspace.connect(write=True) as conn:
+            conn.execute("UPDATE accounts SET role = ? WHERE id = ?", (role, account["id"]))
+    first_url, first = publish_report(owner, reviewer, admin, "Primera")
+    second_url, second = publish_report(owner, reviewer, admin, "Segunda")
+    assert first["weeklyPick"] is None
+
+    pick = {"revision": first["revision"]}
+    for client in (owner, reviewer, visitor):
+        assert client.post(f"{first_url}/weekly", headers=WRITE_HEADER, json=pick).status_code in {401, 403}
+    assert admin.post(f"{first_url}/weekly", json=pick).status_code == 403  # sin la cabecera del sitio
+    chosen = admin.post(f"{first_url}/weekly", headers=WRITE_HEADER, json=pick)
+    assert chosen.status_code == 200, chosen.text
+    week = chosen.json()["weeklyPick"]
+    assert week and "-W" in week
+    assert admin.post(f"{first_url}/weekly", headers=WRITE_HEADER, json=pick).status_code == 409
+
+    # Una sola por semana: elegir otra reemplaza a la anterior.
+    replaced = admin.post(f"{second_url}/weekly", headers=WRITE_HEADER, json={"revision": second["revision"]}).json()
+    assert replaced["weeklyPick"] == week
+    assert visitor.get(first_url).json()["weeklyPick"] is None
+    picks = {item["title"]: item["weeklyPick"] for item in visitor.get(f"{PREFIX}/publications").json()}
+    assert picks == {"Primera": None, "Segunda": week}
+    assert {item["title"]: item["weeklyPick"] for item in owner.get(f"{PREFIX}/reports").json()} == picks
+
+    # Una ficha que no está publicada no puede ser ficha de la semana.
+    draft_url = f"{PREFIX}/reports/{uuid4()}"
+    draft = owner.put(draft_url, headers=WRITE_HEADER, json={
+        "author": "Autora", "title": "Borrador", "notes": "Sin enviar", "format": "manual", "revision": 0,
+        "status": "draft", "frame_ids": ["synthetic-a", "synthetic-b"], "annotations": {}}).json()
+    assert admin.post(f"{draft_url}/weekly", headers=WRITE_HEADER, json={"revision": draft["revision"]}).status_code == 404
+
+    owner.patch(f"{PREFIX}/profile", headers=WRITE_HEADER, json={"alias": "Autora", "public": True})
+    profile = visitor.get(f"{PREFIX}/profiles/{author['id']}").json()
+    assert profile["stats"] == {"contributions": 2, "weeklyPicks": [week]}

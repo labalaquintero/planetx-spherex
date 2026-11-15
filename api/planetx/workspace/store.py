@@ -61,6 +61,12 @@ CREATE TABLE IF NOT EXISTS attachments (
     report_id TEXT PRIMARY KEY REFERENCES reports(id) ON DELETE CASCADE,
     content BLOB NOT NULL
 );
+CREATE TABLE IF NOT EXISTS weekly_picks (
+    week TEXT PRIMARY KEY,
+    report_id TEXT NOT NULL UNIQUE REFERENCES reports(id) ON DELETE CASCADE,
+    chosen_by TEXT NOT NULL REFERENCES accounts(id),
+    chosen_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS evidence_images (
     report_id TEXT NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
     frame_id TEXT NOT NULL,
@@ -72,6 +78,30 @@ CREATE TABLE IF NOT EXISTS evidence_images (
 
 def utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+def iso_week(moment: datetime | None = None) -> str:
+    """Semana ISO 8601 en UTC, p. ej. «2026-W46»: la clave de la ficha de la semana."""
+    year, week, _ = (moment or datetime.now(UTC)).isocalendar()
+    return f"{year}-W{week:02d}"
+
+
+# Columnas de las fichas con la semana en que fueron ficha de la semana (o NULL).
+REPORTS_WITH_WEEK = "reports.*, (SELECT week FROM weekly_picks WHERE report_id = reports.id) AS weekly_pick"
+
+
+def weekly_pick(report: sqlite3.Row) -> str | None:
+    return report["weekly_pick"] if "weekly_pick" in report.keys() else None
+
+
+def contribution_stats(db: sqlite3.Connection, account_id: str) -> dict[str, Any]:
+    """Datos de las insignias: fichas que pasaron la revisión (aceptadas o publicadas) y fichas de la semana."""
+    contributions = db.execute(
+        "SELECT COUNT(*) FROM reports WHERE owner_id = ? AND status IN ('accepted', 'published')", (account_id,),
+    ).fetchone()[0]
+    weeks = db.execute("""SELECT week FROM weekly_picks JOIN reports ON reports.id = report_id
+        WHERE owner_id = ? ORDER BY week DESC""", (account_id,)).fetchall()
+    return {"contributions": contributions, "weeklyPicks": [row["week"] for row in weeks]}
 
 
 def password_hash(password: str, salt: bytes) -> bytes:
@@ -116,6 +146,7 @@ def report_data(report: sqlite3.Row, account: sqlite3.Row | None) -> dict[str, A
         "revision": report["revision"],
         "reviewNote": report["review_note"] if may_view_private(report, account) else "",
         "publishedAt": report["published_at"],
+        "weeklyPick": weekly_pick(report),
     }
 
 

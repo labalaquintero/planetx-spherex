@@ -16,6 +16,7 @@ export function setSharedPage(page) {
 
 export function loadForView(view, id, params) {
   if (!sharedViews.has(view) || params.get('local') === '1') return false;
+  if (view === 'publico' && id === 'ejemplo') return false;
   if (view === 'imagen') {
     const reportId = params.get('ficha');
     return Boolean(reportId && !sampleObservationById(reportId) && !localReport(reportId));
