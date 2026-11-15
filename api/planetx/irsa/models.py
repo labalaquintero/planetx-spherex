@@ -9,8 +9,10 @@ from dataclasses import dataclass
 class Cutout:
     """Handoff Isaac -> Alexis (§5): recorte local con procedencia.
 
-    ``observation_id`` es ``<obs_id>/D<n>``: ``obs_id`` de SIA2 identifica la exposición y se
-    repite por detector, así que no basta por sí solo (propuesta para Alexis, no contrato).
+    ``observation_id`` es el OBSID de la exposición (``obs_id`` de SIA2, p. ej. ``2025W19_1B_0241_1``),
+    sin sufijo de detector. Una exposición cubre el campo con varios detectores, pero una secuencia usa
+    un solo detector, así que no se repite dentro de ella. El detector se conserva en la clave del
+    recorte (``..._D<n>_<hash>.fits`` en ``local_path``) y en ``source_url``.
     ``source_url`` es el FITS completo de IRSA (``access_url``), no la URL del recorte.
     ``local_path`` es un FITS reducido (ver ``fits.extract_extensions``).
     """

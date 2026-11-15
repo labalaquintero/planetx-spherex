@@ -188,9 +188,11 @@ def test_real_catalog_missing_png_and_corrupt_manifest_are_500(real_catalog, tmp
     assert corrupt.status_code == 500 and corrupt.json()["error"]["code"] == "internal_error"
 
 
-def test_real_catalog_accepts_ids_the_images_route_would_refuse(real_catalog, tmp_path):
-    # El catálogo solo prohíbe «/», «\\» y «..»; la ruta de imágenes exige [A-Za-z0-9][A-Za-z0-9._-]*.
-    # Se falla de forma explícita (500), no con una imagen inalcanzable. Propuesta a DeValle: alinear la regla.
+def test_real_catalog_rejects_invalid_frame_ids_when_reading_the_manifest(real_catalog, tmp_path):
+    # El catálogo valida frame.id con la misma regla que la ruta de imágenes
+    # (^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$) y rechaza «frame 1» AL LEER EL MANIFIESTO (ManifestCorruptError):
+    # la API responde 500 internal_error sin servir nada, y nunca un id que luego la ruta de imágenes
+    # no pueda resolver. (Antes el catálogo solo prohibía «/», «\\» y «..» y este id pasaba hasta la API.)
     manifest, products = write_catalog(tmp_path, ids=("frame 1", "frame 2"))
     response = make_client(catalog_manifest=manifest, products_dir=products).get("/api/v1/comparisons", params=PARAMS)
     assert response.status_code == 500 and response.json()["error"]["code"] == "internal_error"
@@ -209,5 +211,7 @@ def test_synthetic_prepared_has_realistic_shape_and_is_still_marked_synthetic():
         # patrón /ibe/data/spherex/...fits), aunque es FICTICIA (semana SYNTHnnn).
         assert validate_access_url(frame["source_url"], f"spherex_{frame['release']}", IrsaConfig())
         assert "SYNTH" in frame["source_url"] and "SYNTH" in frame["observation_id"]
+        # OBSID de la exposición: la regla del catálogo, sin «/D2» (el detector va en source_url).
+        assert re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", frame["observation_id"])
         assert frame["id"].startswith("synthetic-")  # marcado como sintético en el id
     assert len({f["observation_id"] for f in payload["frames"]}) == 2

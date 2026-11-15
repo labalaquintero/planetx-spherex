@@ -39,7 +39,7 @@ def test_rows_are_parsed_deduplicated_and_filtered():
     assert result.rows == 9
     assert [(c.obs_id, c.detector) for c in result.candidates] == [("SYNTH001_1A_0001_1", 3), ("SYNTH001_1A_0001_1", 6)]
     first = result.candidates[0]
-    assert first.observation_id == "SYNTH001_1A_0001_1/D3" and first.release == "dr1"
+    assert first.observation_id == "SYNTH001_1A_0001_1" and first.detector == 3 and first.release == "dr1"
     assert first.observed_at.isoformat() == "2023-02-25T00:00:00+00:00"  # MJD 60000.0 -> 2023-02-25
     assert first.margin_deg == pytest.approx(1.7, abs=0.02)
     assert not result.overflow
@@ -49,6 +49,9 @@ def test_same_instant_in_two_detectors_is_not_a_duplicate_epoch():
     # En las muestras reales los detectores de una exposición difieren 1 ms: no se deduplica por fecha.
     result = parse([row(DR1, 1, 2, 60000.0), row(DR1, 1, 5, 60000.0 + 1e-8)])
     assert len(result.candidates) == 2
+    # Misma exposición: mismo observation_id (OBSID), distinto detector.
+    assert len({c.observation_id for c in result.candidates}) == 1
+    assert {c.detector for c in result.candidates} == {2, 5}
 
 
 def test_overflow_and_error_status():

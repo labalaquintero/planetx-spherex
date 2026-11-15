@@ -63,8 +63,9 @@ def synthetic_prepared(**overrides: Any) -> dict[str, Any]:
 
     Un caso preparado público no admite ``release: "fixture"`` ni ``source_url: null`` (esos valores
     solo valen en modo ``fixture`` de dev/pruebas). Aquí: release ``dr1``, ``source_url`` con la
-    forma de una URL de IRSA pero FICTICIA (semana ``SYNTHnnn``), fechas UTC con ``Z`` y ids
-    ``synthetic-*``. No es ninguna observación real de SPHEREx.
+    forma de una URL de IRSA pero FICTICIA (semana ``SYNTHnnn``), fechas UTC con ``Z``, ids
+    ``synthetic-*`` y ``observation_id`` = OBSID de la exposición (``^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$``,
+    sin «/D2»; el detector va en ``source_url``). No es ninguna observación real de SPHEREx.
     """
     payload = copy.deepcopy(SYNTHETIC_READY)
     payload["mode"] = "prepared"
@@ -73,7 +74,7 @@ def synthetic_prepared(**overrides: Any) -> dict[str, Any]:
             "id": frame_id,  # SINTÉTICO
             "observed_at": observed_at,
             "release": "dr1",
-            "observation_id": f"SYNTH{n:03d}_1A_0001_1/D2",  # SINTÉTICO: <obs_id>/D<n>
+            "observation_id": f"SYNTH{n:03d}_1A_0001_1",  # SINTÉTICO: OBSID de la exposición, sin detector
             "source_url": access_url("dr1", n, 2),  # FICTICIA, con forma válida de IRSA
             "image_url": f"/api/v1/images/{frame_id}",
             "quality_flags": [],

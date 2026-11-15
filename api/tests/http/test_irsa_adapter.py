@@ -1,6 +1,7 @@
 """Adaptador IRSA de punta a punta con transporte simulado. Sin red; datos SINTÉTICOS."""
 
 import logging
+import re
 import time
 
 import httpx
@@ -11,6 +12,7 @@ from planetx.irsa import IrsaAdapter, IrsaConfig
 from planetx.irsa.errors import IrsaTimeout, IrsaUnavailable
 
 DR1, QR3 = "spherex_dr1", "spherex_qr3"
+OBSERVATION_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z", re.ASCII)  # misma que planetx.catalog
 
 
 def scenario():
@@ -35,7 +37,11 @@ def test_happy_path_handoff_shape_provenance_and_limits(tmp_path):
     result = find(adapter(tmp_path, fake))
 
     assert 2 <= len(result.cutouts) <= 6
-    assert all(c.observation_id.endswith("/D3") for c in result.cutouts)  # un solo grupo de banda gruesa
+    # Un solo grupo de banda gruesa (detector 3), que se ve en el recorte y no en el observation_id.
+    assert all("_D3_" in c.local_path and "/3/" in c.source_url for c in result.cutouts)
+    ids = [c.observation_id for c in result.cutouts]
+    assert all(OBSERVATION_ID_RE.match(i) and "/" not in i for i in ids)  # regla del catálogo, sin «/D3»
+    assert len(set(ids)) == len(ids)  # únicos dentro de la secuencia
     assert result.summary.truncated  # 8 épocas útiles > 6 fotogramas
     assert result.summary.collections_ok == (DR1, QR3) and result.summary.collections_failed == ()
     assert result.summary.rows_returned == 10 and result.summary.candidates_usable == 9  # la parcial se excluye
@@ -186,3 +192,17 @@ def test_time_budgets_nest_under_the_route_and_cloudfront_limits():
 
     assert IrsaConfig().budget_s < DEFAULT_LIVE_TIMEOUT_S < 30.0  # CloudFront corta a los 30 s por defecto
     assert (IrsaConfig().budget_s, DEFAULT_LIVE_TIMEOUT_S) == (22.0, 25.0)
+
+
+def test_detector_lives_in_the_cutout_key_not_in_the_observation_id(tmp_path):
+    from planetx.irsa.sia2 import Candidate
+
+    ad = adapter(tmp_path, FakeIrsa({}))
+    same_exposure = [
+        Candidate("dr1", "SYNTH001_1A_0001_1", det, f"https://irsa.ipac.caltech.edu/x{det}.fits", 60000.0, 1.0)
+        for det in (2, 5)
+    ]
+    assert len({c.observation_id for c in same_exposure}) == 1  # mismo OBSID
+    paths = [ad._cache_path(c, RA0, DEC0) for c in same_exposure]
+    assert paths[0] != paths[1]  # no colisionan en la caché
+    assert "_D2_" in paths[0].name and "_D5_" in paths[1].name  # el detector está en la clave del recorte
