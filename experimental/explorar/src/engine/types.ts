@@ -45,6 +45,16 @@ export interface SceneObject {
   readonly handle?: { readonly length: number; readonly height: number }
   /** Giro del objeto (grados, Euler XYZ). */
   readonly rotationDeg?: Vec3
+  /**
+   * Texturas de referencia (ids de scene/assets.ts). `mode: 'color'` usa el color de la textura
+   * teñido un poco hacia la paleta; `'palette'` toma solo su luminancia y la colorea con la paleta.
+   */
+  readonly texture?: {
+    readonly map: string
+    readonly mode: 'color' | 'palette'
+    readonly bump?: string
+    readonly ringMap?: string
+  }
   /** Color de la atmósfera (resplandor de borde). Sin valor, sin atmósfera. */
   readonly atmosphere?: string
 }

@@ -6,6 +6,7 @@ import { MOVE_DURATION_MS } from '../engine/navigation'
 import { nearbyObject } from '../engine/nearest'
 import { AdaptiveQuality, type QualityLevel } from '../engine/quality'
 import type { Direction, SectorConfig, SectorScene as SectorSceneData } from '../engine/types'
+import { Credits } from './Credits'
 import { DPad } from './DPad'
 import { ErrorBoundary } from './ErrorBoundary'
 import { NoWebGL } from './NoWebGL'
@@ -32,7 +33,10 @@ interface Props {
 }
 
 function isTextField(target: EventTarget | null): boolean {
-  return target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
+  if (!(target instanceof HTMLElement)) return false
+  // Dentro de un diálogo (Créditos) las teclas son del diálogo: Esc lo cierra, no sale del sector.
+  if (target.closest('dialog')) return true
+  return target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)
 }
 
 const KIND_LABEL: Record<string, string> = {
@@ -154,6 +158,7 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
           </div>
         </div>
         <div className="ex-hud-actions">
+          <Credits />
           {extraControls}
           <button type="button" className="ex-btn" onClick={onExit}>
             <span aria-hidden="true">←</span> Volver a sectores <kbd>Esc</kbd>

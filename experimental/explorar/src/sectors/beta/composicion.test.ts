@@ -3,6 +3,7 @@ import { Euler, MathUtils, PerspectiveCamera, Vector3 } from 'three'
 import { NAVE_AJUSTE, OBJETOS_BOCETO, SELECCION_BOCETO } from '../../boceto'
 import { cameraFit } from '../../engine/motion'
 import { REFERENCE_ASPECT, screenToWorld, worldToScreen } from '../../engine/projection'
+import { nearbyObject } from '../../engine/nearest'
 import { SHIP, SHIP_KEY_POINTS } from '../../engine/shipSpec'
 import { SECTORS } from '..'
 import beta from '.'
@@ -138,4 +139,24 @@ describe('pantalla de selección (boceto 1)', () => {
   it('la llamada va a la derecha del sector, como en el boceto', () => {
     expect(SELECCION_BOCETO.llamada?.lado).toBe('derecha')
   })
+})
+
+describe('miradores orientados a su objeto', () => {
+  for (const id of ['izq', 'der', 'izq_f', 'der_f']) {
+    const w = scene.waypoints.find((x) => x.id === id)!
+    const focus = nearbyObject(w, scene.objects)!
+    it(`${id} encuadra ${focus.id} arriba en pantalla, fuera de la nave`, () => {
+      const c = new PerspectiveCamera(fit.fovDeg, REFERENCE_ASPECT, 0.1, 4000)
+      c.position.set(...w.position)
+      c.rotation.set(MathUtils.degToRad(w.pitchDeg), MathUtils.degToRad(w.yawDeg), 0, 'YXZ')
+      c.updateMatrixWorld()
+      const n = new Vector3(...focus.position).project(c)
+      const u = (n.x + 1) / 2
+      const v = (1 - n.y) / 2
+      expect(v).toBeGreaterThan(0.15)
+      expect(v).toBeLessThan(0.4)
+      expect(u).toBeGreaterThan(0.3)
+      expect(u).toBeLessThan(0.7)
+    })
+  }
 })

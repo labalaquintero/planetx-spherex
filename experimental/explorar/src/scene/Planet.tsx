@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { AdditiveBlending, Color, DoubleSide, Euler, Quaternion, RingGeometry, ShaderMaterial, Vector3, type Group } from 'three'
 import type { SceneObject } from '../engine/types'
 import { AMBIENT_RGB, LIGHT_DIR } from './light'
+import { loadTexture } from './textureCache'
 import { ATMOS_FRAG, ATMOS_VERT, PLANET_FRAG, PLANET_VERT, RING_FRAG, RING_VERT } from './shaders/planet'
 
 const DEG = Math.PI / 180
@@ -55,6 +56,14 @@ export function Planet({ o, spin, octaves }: Props) {
           uRingInner: { value: ring?.inner ?? 0 },
           uRingOuter: { value: ring?.outer ?? 1 },
           uRingSeed: { value: o.seed + 5 },
+          uMap: { value: null },
+          uHasMap: { value: 0 },
+          uMapMode: { value: o.texture?.mode === 'palette' ? 1 : 0 },
+          uBump: { value: null },
+          uHasBump: { value: 0 },
+          uBumpScale: { value: 0.9 },
+          uRingMap: { value: null },
+          uHasRingMap: { value: 0 },
         },
       }),
     // octaves no es dependencia: se actualiza abajo sin recrear el material.
@@ -100,6 +109,8 @@ export function Planet({ o, spin, octaves }: Props) {
               uLight: { value: LIGHT_DIR },
               uCenter: { value: center },
               uRadius: { value: o.radius },
+              uRingMap: { value: null },
+              uHasRingMap: { value: 0 },
             },
             transparent: true,
             side: DoubleSide,
@@ -118,6 +129,29 @@ export function Planet({ o, spin, octaves }: Props) {
     },
     [surface, atmosphere, ringGeo, ringMat],
   )
+
+  // Texturas de referencia: carga progresiva; mientras tanto (o si fallan), superficie procedural.
+  const invalidate = useThree((st) => st.invalidate)
+  useEffect(() => {
+    let alive = true
+    const tex = o.texture
+    if (!tex) return
+    const set = (mat: ShaderMaterial | null, name: string, flag: string) => (t: unknown) => {
+      if (!alive || !mat) return
+      mat.uniforms[name]!.value = t
+      mat.uniforms[flag]!.value = 1
+      invalidate()
+    }
+    loadTexture(tex.map).then(set(surface, 'uMap', 'uHasMap'), () => {})
+    if (tex.bump) loadTexture(tex.bump, 'data').then(set(surface, 'uBump', 'uHasBump'), () => {})
+    if (tex.ringMap) {
+      loadTexture(tex.ringMap).then(set(ringMat, 'uRingMap', 'uHasRingMap'), () => {})
+      loadTexture(tex.ringMap).then(set(surface, 'uRingMap', 'uHasRingMap'), () => {})
+    }
+    return () => {
+      alive = false
+    }
+  }, [o, surface, ringMat, invalidate])
 
   useFrame((state, delta) => {
     if (!spin) return

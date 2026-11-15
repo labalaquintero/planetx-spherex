@@ -4,6 +4,7 @@ import { sphereSprite } from '../backdrop/sphereSprite'
 import type { QualityLevel } from '../engine/quality'
 import type { SectorConfig } from '../engine/types'
 import { calloutSide } from '../sectors/selector'
+import { Credits } from './Credits'
 import { loadScene } from './sceneLoader'
 
 export interface JumpState {
@@ -95,7 +96,10 @@ export function SectorSelect({ sectors, onEnter, jump, reduced, quality, forced,
         <p className="ex-select-sub">Recorre en nave una región ilustrativa, de punto en punto.</p>
       </header>
 
-      {extraControls && <div className="ex-select-actions">{extraControls}</div>}
+      <div className="ex-select-actions">
+        <Credits />
+        {extraControls}
+      </div>
 
       <ul className="ex-sector-list">
         {sectors.map((s) => {

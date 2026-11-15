@@ -2,10 +2,12 @@ import { NOISE, OUTPUT, RING_DENSITY } from './common'
 
 export const PLANET_VERT = /* glsl */ `
 uniform float uRadius;
+varying vec2 vUv;
 varying vec3 vObj;
 varying vec3 vWorld;
 varying vec3 vNormalW;
 void main() {
+  vUv = uv;
   vObj = position / uRadius;
   vec4 w = modelMatrix * vec4(position, 1.0);
   vWorld = w.xyz;
@@ -31,11 +33,36 @@ uniform vec3 uRingNormal;
 uniform float uRingInner;
 uniform float uRingOuter;
 uniform float uRingSeed;
+uniform sampler2D uMap;
+uniform float uHasMap;
+uniform float uMapMode;   // 0 = color de la textura teñido; 1 = luminancia coloreada con la paleta
+uniform sampler2D uBump;
+uniform float uHasBump;
+uniform float uBumpScale;
+uniform sampler2D uRingMap;
+uniform float uHasRingMap;
+varying vec2 vUv;
 varying vec3 vObj;
 varying vec3 vWorld;
 varying vec3 vNormalW;
 ${NOISE}
 ${RING_DENSITY}
+// Relieve por derivadas de pantalla (como bumpmap de three, sin tangentes).
+vec3 ex_bump(vec3 N, vec3 pos, float h, float scale) {
+  vec3 dpx = dFdx(pos);
+  vec3 dpy = dFdy(pos);
+  float dhx = dFdx(h);
+  float dhy = dFdy(h);
+  vec3 r1 = cross(dpy, N);
+  vec3 r2 = cross(N, dpx);
+  float det = dot(dpx, r1);
+  vec3 grad = sign(det) * (dhx * r1 + dhy * r2);
+  return normalize(abs(det) * N - scale * grad);
+}
+float ex_ringAt(float u) {
+  if (uHasRingMap > 0.5) return (u < 0.0 || u > 1.0) ? 0.0 : texture2D(uRingMap, vec2(u, 0.5)).a;
+  return ex_ringDensity(u, uRingSeed);
+}
 void main() {
   vec3 p = normalize(vObj);
   vec3 sp = p + vec3(uSeed * 0.731, uSeed * 0.317, uSeed * 0.113);
@@ -56,8 +83,20 @@ void main() {
     t -= smoothstep(0.82, 0.95, c) * 0.18;
   }
   vec3 albedo = ex_ramp(uC0, uC1, uC2, t);
+  if (uHasMap > 0.5) {
+    vec3 tex = texture2D(uMap, vUv).rgb;
+    float lum = dot(tex, vec3(0.2126, 0.7152, 0.0722));
+    // Detalle fino procedural encima de la textura (evita que se vea borrosa de cerca).
+    float fineDetail = 0.94 + 0.12 * ex_noise3(sp * 14.0);
+    if (uMapMode < 0.5) {
+      albedo = mix(tex, ex_ramp(uC0, uC1, uC2, sqrt(lum) * 1.1), 0.3) * fineDetail;
+    } else {
+      albedo = ex_ramp(uC0, uC1, uC2, clamp(pow(lum, 0.6) * 1.35, 0.0, 1.0)) * fineDetail;
+    }
+  }
 
   vec3 N = normalize(vNormalW);
+  if (uHasBump > 0.5) N = ex_bump(N, vWorld, texture2D(uBump, vUv).r, uBumpScale);
   float ndl = dot(N, uLight);
   float diffuse = smoothstep(-0.12, 1.0, ndl);           // terminador suave
   float shadow = 1.0;
@@ -69,7 +108,7 @@ void main() {
       if (s > 0.0) {
         float r = length(vWorld + uLight * s - uCenter) / uRadius;
         float u = (r - uRingInner) / (uRingOuter - uRingInner);
-        shadow = 1.0 - 0.85 * ex_ringDensity(u, uRingSeed);
+        shadow = 1.0 - 0.85 * ex_ringAt(u);
       }
     }
   }
@@ -135,6 +174,8 @@ uniform float uSeed;
 uniform vec3 uLight;
 uniform vec3 uCenter;
 uniform float uRadius;
+uniform sampler2D uRingMap;
+uniform float uHasRingMap;
 varying vec3 vWorld;
 varying float vR;
 varying vec3 vNormalW;
@@ -142,9 +183,17 @@ ${NOISE}
 ${RING_DENSITY}
 void main() {
   float u = (vR - uInner) / (uOuter - uInner);
-  float d = ex_ringDensity(u, uSeed);
+  float d;
+  vec3 col;
+  if (uHasRingMap > 0.5) {
+    vec4 r = texture2D(uRingMap, vec2(clamp(u, 0.0, 1.0), 0.5));
+    d = (u < 0.0 || u > 1.0) ? 0.0 : r.a;
+    col = r.rgb;
+  } else {
+    d = ex_ringDensity(u, uSeed);
+    col = ex_ramp(uC0, uC1, uC2, 0.2 + 0.7 * ex_noise3(vec3(u * 55.0, uSeed, 1.0)));
+  }
   if (d < 0.01) discard;
-  vec3 col = ex_ramp(uC0, uC1, uC2, 0.2 + 0.7 * ex_noise3(vec3(u * 55.0, uSeed, 1.0)));
   // Sombra del planeta: ¿el rayo hacia la estrella corta la esfera?
   vec3 oc = vWorld - uCenter;
   float b = dot(oc, uLight);

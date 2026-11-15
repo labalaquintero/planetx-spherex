@@ -62,3 +62,25 @@ export function worldToScreen(p: Vec3, cam: ViewCamera): { u: number; v: number;
 export function radiusForScreenSize(diameterV: number, depth: number, fovDeg: number): number {
   return diameterV * Math.tan((fovDeg / 2) * D) * depth
 }
+
+/**
+ * Orientación (yaw, pitch) para que, desde `from`, el punto `target` se vea en (u, v) de la pantalla.
+ * Sirve para orientar los miradores hacia su objeto sin que lo tape la nave (abajo al centro).
+ */
+export function aimAt(
+  from: Vec3,
+  target: Vec3,
+  screen: { u: number; v: number },
+  fovDeg: number,
+  aspect: number,
+): { yawDeg: number; pitchDeg: number } {
+  const dx = target[0] - from[0]
+  const dy = target[1] - from[1]
+  const dz = target[2] - from[2]
+  const yawT = Math.atan2(-dx, -dz) / D
+  const pitchT = Math.atan2(dy, Math.hypot(dx, dz)) / D
+  const t = Math.tan((fovDeg / 2) * D)
+  const offPitch = Math.atan((1 - 2 * screen.v) * t) / D
+  const offYaw = Math.atan((2 * screen.u - 1) * t * aspect) / D
+  return { yawDeg: Math.round((yawT + offYaw) * 10) / 10, pitchDeg: Math.round((pitchT - offPitch) * 10) / 10 }
+}
