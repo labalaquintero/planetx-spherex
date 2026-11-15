@@ -23,12 +23,17 @@ export function back(href, text) {
   return `<a href="${escapeHtml(href)}" class="text-link back-link"><span aria-hidden="true">←</span> ${escapeHtml(text)}</a>`;
 }
 
+/**
+ * Par de miniaturas de una comparación. `link`: false (sin enlaces), true (cada época abre su imagen
+ * ampliada para anotarla) o una ruta (cada época abre esa ruta, p. ej. la comparación completa).
+ */
 export function miniPair(link = false, data = prepared, reportId) {
   return `<div class="mini-pair" aria-label="Fotogramas de ${escapeHtml(fieldName(data.query))}">
     ${data.frames.map((frame, index) => {
       const figure = `<figure><img class="science-image" src="${escapeHtml(frame.src)}" data-frame-id="${escapeHtml(frame.id)}" alt="Recorte SPHEREx de la época ${epoch(index)}" width="64" height="64">
         <span class="image-error" role="alert" hidden>Imagen no disponible.</span>
         <figcaption><b>${epoch(index)}</b> ${dateMark(frame.observed_at)}</figcaption></figure>`;
+      if (typeof link === 'string') return `<a href="${escapeHtml(link)}" aria-label="Comparar épocas desde la época ${epoch(index)}">${figure}</a>`;
       return link ? `<a href="${escapeHtml(imageLink(index, data, reportId))}" aria-label="Ampliar época ${epoch(index)}">${figure}</a>` : figure;
     }).join('')}
   </div>`;

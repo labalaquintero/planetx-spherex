@@ -111,6 +111,11 @@ function pendingPrepared(target) {
   return Boolean(target.preparedCase) && preparedState(target) !== 'fallo' && !targetComparison(target);
 }
 
+/**
+ * «Comparar épocas» y las miniaturas de la galería abren el comparador completo del Visor temporal (el mismo
+ * que el botón de Inicio), con las coordenadas exactas del objetivo. La imagen ampliada para anotar una época
+ * se abre desde «Ver ficha».
+ */
 const compareHref = (target, pair) => pair ? comparisonLink(pair) : `#visor?${new URLSearchParams({ ra: String(target.ra), dec: String(target.dec) })}`;
 
 function targetCard(target) {
@@ -133,7 +138,7 @@ function targetCard(target) {
         <a class="text-link" href="#objetivo/${target.id}" aria-label="Ver detalle de ${target.name}">Ver ficha <span aria-hidden="true">→</span></a>
       </div>
     </div>
-    ${pair ? miniPair(true, pair) : ''}
+    ${pair ? miniPair(compareHref(target, pair), pair) : ''}
   </article>`;
 }
 
