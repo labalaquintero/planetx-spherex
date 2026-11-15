@@ -1,27 +1,30 @@
 # Guion de demo F01 (borrador, Quintero)
 
-**Estado: BORRADOR sin ensayar.** Nada de lo que sigue se ha verificado contra una demo real: aún no hay UI, API de comparaciones ni URL pública. Todo lo marcado **TODO** está pendiente de una persona o dato concretos. **No se inventa ningún dato de observación**: coordenadas, fechas, IDs y banda salen del caso que confirme César en su matriz, y sólo se presentan después de comprobarlos en la demo.
+**Estado: BORRADOR sin ensayar.** Nada de lo que sigue se ha verificado contra una demo real: aún no hay UI, API de comparaciones ni URL pública. Todo lo marcado **TODO** está pendiente de una persona o dato concretos. **No se inventa ningún dato de observación**: el caso es WISE 0855 en modo preparado (confirmado por César) y sus coordenadas vienen de su matriz; las fechas, IDs, banda y enlaces salen del `manifest.json` cuando se publique, y sólo se presentan después de comprobarlos en la demo.
 
 - Base de contexto: [00_Contexto_General.md](../contexto/00_Contexto_General.md) §2 (recorrido de demo), §10 (entrega).
 - **El formato final de la entrega depende de la sede.** Este documento prepara tres variantes: la historia de 2–3 min (≈2:45), la **versión corta (≤30 s)** y la **versión diapositivas (≤7)**, las dos últimas según la orientación publicada para 2026 en la guía (§10.2). Esa orientación es sólo preparación: **TODO: confirmar con la sede/guía vigente duración máxima, formato, idiomas y quién envía**, y descartar las variantes que no apliquen. Si el límite es menor que 2–3 min, se recorta por el orden de la sección «Qué recortar».
 - Se enseña sólo lo que existe y lo que se comprobó. Lo que sea fixture o respaldo se dice en voz alta.
 
-## Datos del caso (TODO, no rellenar sin confirmación)
+## Datos del caso (WISE 0855 preparado; los datos de observación siguen en TODO)
 
 | Campo | Valor |
 | --- | --- |
-| Caso elegido (matriz de César) | **TODO: nombre del caso** |
-| RA / Dec (grados decimales ICRS) | **TODO: ra_deg, dec_deg** |
+| Caso de la demo | **WISE 0855, en modo `prepared`** (confirmado por César, 2026-11-14) |
+| RA / Dec (grados decimales ICRS) | `ra_deg=133.795129`, `dec_deg=-7.245147` (08h55m10.831s, −07°14′42.53″). Fuente: César, [matriz_5_casos.md](../qa/datos/matriz_5_casos.md) §1 |
 | Campo | 0,10° × 0,10° (valor de diseño de la guía) |
-| Fecha y hora UTC, fotograma A | **TODO** |
-| Fecha y hora UTC, fotograma B | **TODO** |
-| Release e ID de observación A / B | **TODO** |
+| Modo | `prepared`: la UI debe rotularlo «Caso preparado» y mostrar su fecha de preparación |
+| Fecha y hora UTC, fotograma A | **TODO** (del `manifest.json` publicado) |
+| Fecha y hora UTC, fotograma B | **TODO** (del `manifest.json` publicado) |
+| `frame_id` A / B | **TODO** |
+| `release` e `observation_id` A / B | **TODO** (`release` esperado `dr1`, según César; confirmar en el manifiesto) |
 | Banda aproximada (centro ± tolerancia, µm) | **TODO** |
-| Enlaces de fuente (IRSA) A / B | **TODO** |
+| `source_url` (IRSA) A / B | **TODO** (debe abrir el registro en IRSA) |
 | URL de la demo y SHA publicado por Isaac | **TODO** |
-| ¿Es caso preparado o consulta en vivo? | **TODO** (la UI debe rotularlo) |
 
-> **Candidatos para la demo según matriz de César** ([docs/qa/datos/matriz_5_casos.md](../qa/datos/matriz_5_casos.md), §5): **R Draconis** (recomendado por cadencia multi-época y variabilidad) y **Estrella de Barnard** (recomendado por movimiento propio). La matriz clasifica los cinco objetos como `verificado` en cobertura SIA2 con varias épocas, pero **no usa la etiqueta `ready` ni confirma una secuencia ya renderizada en la API**. **César debe confirmar cuál caso se usa**; hasta entonces los TODO de arriba siguen vacíos y no se afirma ningún movimiento ni variación que no esté validado.
+**Los TODO de observación no se rellenan con datos provisionales.** Se completan sólo cuando Alexis y DeValle publiquen el `manifest.json` con los 2 PNG reales de WISE 0855; entonces se copian de ahí (no de `evidencia_cruda_irsa.csv` ni de ninguna otra fuente provisional). Un caso preparado se busca por coincidencia exacta de RA, Dec, campo y versión de ciencia, así que en la demo hay que usar exactamente estas coordenadas o el botón del caso preparado.
+
+> **Por qué WISE 0855.** Es el caso que César confirmó para la demo (respuesta del 2026-11-14): ya hay recortes reales de `spherex_dr1` para ese campo, y por eso puede ir **como caso preparado**, es decir, servido desde el manifiesto sin depender de que IRSA responda en vivo durante la presentación (la consulta en vivo tiene un plazo de ≈25 s y puede devolver `503`). Con un preparado, si IRSA falla, la demo sigue mostrando la misma secuencia con su fecha de preparación y procedencia (guía §10.4). No se afirma ningún movimiento ni variación que no esté validado.
 
 ## Guion en castellano
 
@@ -30,7 +33,7 @@ Tiempos acumulados sobre ≈2:45. El orden es: problema → coordenada → dos f
 | Bloque | Tiempo | En pantalla | Qué se dice |
 | --- | --- | --- | --- |
 | 1. Problema | 0:00–0:20 (20 s) | Página de inicio en ventana de incógnito (sin cuenta). | «SPHEREx observa el cielo en infrarrojo. Para alguien sin experiencia en astronomía es difícil juntar imágenes de la misma zona en distintas fechas y saber si algo cambió o si sólo cambiaron las condiciones de observación. Planet X es un visor para comparar esa misma región en otra fecha y ver de dónde sale cada imagen.» |
-| 2. Coordenada | 0:20–0:50 (30 s) | Escribir RA y Dec en grados decimales; pulsar **Comparar** (o un caso preparado). Se ve el estado de carga y el resultado. | «Introduzco una coordenada: **TODO ra_deg, dec_deg**, en grados decimales ICRS. El campo es un cuadrado de 0,10°. [Si es preparado:] Este es un caso preparado, con su fecha de preparación; [si es en vivo:] esta consulta se hace ahora al archivo.» |
+| 2. Coordenada | 0:20–0:50 (30 s) | Escribir RA y Dec en grados decimales; pulsar **Comparar** (o un caso preparado). Se ve el estado de carga y el resultado. | «Introduzco una coordenada: `ra_deg=133.795129`, `dec_deg=-7.245147` (WISE 0855), en grados decimales ICRS. El campo es un cuadrado de 0,10°. Este es un caso preparado, con su fecha de preparación, para no depender de la consulta en vivo.» |
 | 3. Dos fechas reales | 0:50–1:30 (40 s) | Alternar A/B; luego Reproducir/Pausar. Señalar fecha y hora UTC de cada fotograma. | «Aquí hay dos observaciones reales de la misma región, **TODO fecha A** y **TODO fecha B** (UTC). Alterno entre ellas y también puedo reproducirlas. Misma escala, centro y contraste, sin interpolar ni inventar fotogramas.» |
 | 4. Qué se observa | 1:30–2:00 (30 s) | Imágenes A y B; aviso de que un cambio visible no es un hallazgo. | «**TODO: describir sólo lo que se ve y se validó** (con Alexis y César). Un cambio aparente puede deberse a movimiento, variabilidad, ruido, alineación, banda o artefactos. Esta herramienta no afirma ningún descubrimiento.» |
 | 5. Límites y fuentes | 2:00–2:45 (45 s) | Panel de procedencia: banda, ID, release y enlaces; luego un estado de cobertura insuficiente o sin cobertura. | «Cada fotograma indica fecha, banda aproximada, ID y enlace de origen en IRSA. Las imágenes tienen la resolución y el filtro de SPHEREx; no son mediciones fotométricas. Si pido una región sin pares comparables, la herramienta dice **cobertura insuficiente** o **sin cobertura**, y distingue eso de un fallo temporal.» |
@@ -50,7 +53,7 @@ Reglas de la demo: no prometer más de lo verificado (cinco objetos del reto, co
 | Block | Time | Script |
 | --- | --- | --- |
 | 1. Problem | 0:00–0:20 | "SPHEREx observes the sky in infrared. For someone without an astronomy background, it is hard to gather images of the same area on different dates and tell whether something changed or only the observing conditions did. Planet X is a viewer that compares the same region at another date and shows where each image comes from." |
-| 2. Coordinate | 0:20–0:50 | "I enter a coordinate: **TODO ra_deg, dec_deg**, in decimal degrees (ICRS). The field is a 0.10° square. [If prepared:] This is a prepared case with its preparation date; [if live:] this query goes to the archive now." |
+| 2. Coordinate | 0:20–0:50 | "I enter a coordinate: `ra_deg=133.795129`, `dec_deg=-7.245147` (WISE 0855), in decimal degrees (ICRS). The field is a 0.10° square. This is a prepared case with its preparation date, so it does not depend on a live query." |
 | 3. Two real dates | 0:50–1:30 | "Here are two real observations of the same region, **TODO date A** and **TODO date B** (UTC). I can switch between them or play them. Same scale, center and contrast; no interpolation and no invented frames." |
 | 4. What we see | 1:30–2:00 | "**TODO: describe only what is visible and validated.** An apparent change may come from motion, variability, noise, alignment, band or artifacts. This tool does not claim a discovery." |
 | 5. Limits and sources | 2:00–2:45 | "Each frame shows its date, approximate band, ID and a link to the source at IRSA. The images are limited by SPHEREx resolution and filter; they are not photometric measurements. If I query a region without comparable pairs, the tool says *insufficient coverage* or *no coverage*, and distinguishes that from a temporary failure." |
@@ -62,7 +65,7 @@ Para un vídeo de hasta 30 s (orientación de la guía; **TODO: confirmar con la
 | Tiempo | En pantalla | Locución (castellano) |
 | --- | --- | --- |
 | 0:00–0:05 | Página de inicio. | «¿Cambió algo en esta zona del cielo entre dos fechas? Planet X te deja comparar observaciones de SPHEREx.» |
-| 0:05–0:12 | Escribir **TODO ra_deg, dec_deg** y pulsar **Comparar**. | «Escribes una coordenada en grados decimales y el visor abre un campo de 0,10°.» |
+| 0:05–0:12 | Escribir `ra_deg=133.795129`, `dec_deg=-7.245147` (WISE 0855, caso preparado) y pulsar **Comparar**. | «Escribes una coordenada en grados decimales y el visor abre un campo de 0,10°.» |
 | 0:12–0:23 | Alternar A/B con las fechas UTC visibles: **TODO fecha A**, **TODO fecha B**. | «Dos observaciones reales de la misma región, **TODO fecha A** y **TODO fecha B**. Misma escala y contraste, con fecha, banda y fuente de cada imagen.» |
 | 0:23–0:30 | Aviso de no-hallazgo y enlace de fuente. | «Un cambio visible no prueba un hallazgo. Cada imagen enlaza a su origen en IRSA.» |
 
@@ -79,7 +82,7 @@ Para una presentación de hasta 7 diapositivas (orientación de la guía; **TODO
 | --- | --- | --- | --- |
 | 1 | Planet X: ¿qué cambió en el cielo? | Problema y usuario: persona curiosa o de ciencia ciudadana que quiere comparar una región en otra fecha. Nombre del equipo y del reto. | TODO: logo y nombres del equipo. |
 | 2 | Qué hace el visor | Coordenada → campo de 0,10° → 2–6 épocas ordenadas → A/B y reproductor. Sin cuenta. | Captura de la pantalla de inicio (TODO, de la demo real). |
-| 3 | El caso: coordenada y archivo | Caso elegido, RA/Dec en grados ICRS, de dónde salen las imágenes (IRSA SPHEREx) y si es preparado o en vivo. | TODO: caso, ra_deg, dec_deg, release, IDs. |
+| 3 | El caso: coordenada y archivo | Caso elegido, RA/Dec en grados ICRS, de dónde salen las imágenes (IRSA SPHEREx) y si es preparado o en vivo. | Caso: WISE 0855 (preparado), `ra_deg=133.795129`, `dec_deg=-7.245147`. TODO: release, IDs (del `manifest.json`). |
 | 4 | Dos fechas reales | Captura A y B del mismo campo, con fecha UTC y banda. | TODO: fecha A, fecha B, banda, capturas. |
 | 5 | Qué se ve y qué no se puede afirmar | Sólo lo validado; causas posibles de un cambio aparente (movimiento, variabilidad, ruido, alineación, banda, artefactos); resolución y filtro; no es fotometría. | TODO: texto validado por Alexis y César. |
 | 6 | Los cinco casos del reto | Estrella de Barnard, Epsilon Indi B, WISE 0855, RW Aurigae y R Draconis: resultado real de cada intento, **incluidos los negativos** (verificado, sin cobertura, insuficiente, fallo de servicio o pendiente). | TODO: tabla de resultados de la matriz de César. |
@@ -93,11 +96,11 @@ Todo material de respaldo se rotula **RESPALDO** en pantalla y en voz alta («es
 
 | Qué | Contenido | Dónde vive | Enlace |
 | --- | --- | --- | --- |
-| Grabación RESPALDO de la comparación real | El recorrido completo con el caso real del bloque 2–5, con el SHA visible. | **Fuera de Git** (no subir vídeos al repositorio). | **TODO: enlace** |
+| Grabación RESPALDO de la comparación real | El recorrido completo del bloque 2–5 **de ese mismo caso preparado (WISE 0855, mismas coordenadas, mismo `manifest.json`)**, con el SHA visible; nunca de otro caso ni de fixtures. | **Fuera de Git** (no subir vídeos al repositorio). | **TODO: enlace** |
 | Capturas RESPALDO | Resultado `ready` (A y B), panel de procedencia con IDs y fuentes, estado de cobertura insuficiente o sin cobertura, y un fallo temporal. | **Fuera de Git** | **TODO: enlace** |
-| Registro de IDs y fechas del caso | Texto con IDs, fechas UTC, banda y enlaces del caso, copiado de la matriz de César. | `docs/entrega/` o hoja del equipo | **TODO** |
+| Registro de IDs y fechas del caso | Texto con IDs, fechas UTC, banda y enlaces del caso, copiado del `manifest.json` publicado (no de datos provisionales). | `docs/entrega/` o hoja del equipo | **TODO** |
 
-Orden de contingencia (de la guía §10.4): 1) si cae IRSA, mostrar el caso preparado exacto con su fecha y procedencia; 2) si cae el navegador o el visor, grabación/capturas RESPALDO con los IDs; 3) si falla AWS, escalar a Isaac y usar la alternativa aprobada o presentar el estado parcial. **TODO: confirmar con Isaac cuál es el respaldo estable de la demo.**
+Orden de contingencia (de la guía §10.4): 1) si cae IRSA, mostrar el caso preparado exacto con su fecha y procedencia; **si falla el propio preparado (manifiesto o PNG), la grabación y las capturas RESPALDO deben salir de ese mismo caso preparado**, no de otro caso; 2) si cae el navegador o el visor, grabación/capturas RESPALDO con los IDs; 3) si falla AWS, escalar a Isaac y usar la alternativa aprobada o presentar el estado parcial. **TODO: confirmar con Isaac cuál es el respaldo estable de la demo.**
 
 ## Checklist de revisión
 
@@ -122,7 +125,7 @@ Cada revisor marca con fecha, el SHA evaluado y observaciones. Nadie da por hech
 - [ ] El build público no muestra «Datos de prueba» ni fixtures.
 
 **César · datos (para cerrar los TODO)**
-- [ ] Confirma el caso, coordenadas, fechas, IDs, banda y enlaces de la tabla «Datos del caso».
+- [ ] Confirma que las fechas, IDs, banda y enlaces del `manifest.json` publicado coinciden con la tabla «Datos del caso» (WISE 0855, preparado).
 
 ## Envío
 

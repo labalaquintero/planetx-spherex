@@ -101,6 +101,7 @@ Requieren URL pública, SHA publicado por Isaac y datos verificados por César. 
 | F01-R06 | Incógnito y red externa: cargan web, API, PNG y fuentes; sin fixtures visibles; mismo SHA en todas las pruebas. |
 | F01-R07 | Teclado y móvil sobre la demo real. |
 | F01-R08 | Un caso `prepared` real: cada fotograma lleva `release` `dr1` o `qr3` y un `source_url` de IRSA que **abre un registro verificable** y corresponde al `observation_id`. No lo cubre ningún fixture sintético. |
+| F01-R14 | **WISE 0855 en modo `prepared` (caso crítico de la demo).** `GET /api/v1/comparisons?ra_deg=133.795129&dec_deg=-7.245147` devuelve `200` con `mode=prepared` y `status=ready`; 2 fotogramas con `release` `dr1` y un `source_url` de IRSA que **abre**; la UI muestra «Caso preparado» con su fecha de preparación. **Pendiente hasta que exista el `manifest.json`** (Alexis/DeValle) con los 2 PNG reales. Se prevé ejecutar R01, R02 y R08 sobre este caso. |
 
 Los casos F01-R03a/b/c/d no usan mocks: se ejecutan contra la API real (local de Isaac o desplegada, según `E2E_BASE_URL`) con `web/e2e/api.spec.ts`. Se anota la URL y el SHA evaluados en cada ejecución.
 
@@ -108,15 +109,19 @@ Los casos F01-R03a/b/c/d no usan mocks: se ejecutan contra la API real (local de
 
 **Fuente: [docs/qa/datos/matriz_5_casos.md](../datos/matriz_5_casos.md) de César** (solo lectura; aquí no se copian ni se recalculan sus coordenadas, conteos, fechas ni IDs: consúltense allí). Cada caso se prueba contra la API real y se compara con el estado esperado de abajo.
 
-**Estado esperado: PROVISIONAL, por confirmar con César.** La matriz clasifica la **cobertura en el archivo SIA2** (`verificado` o `sin cobertura`) de cada objeto; no registra el estado que devolverá `/api/v1/comparisons`. El esperado de la API es una inferencia mía a partir de esa clasificación.
+**Estado esperado (consulta en vivo): PROVISIONAL.** La matriz clasifica la **cobertura en el archivo SIA2** (`verificado` o `sin cobertura`) de cada objeto; no registra el estado que devolverá `/api/v1/comparisons`. El esperado en vivo de la tabla sigue la **respuesta de César del 2026-11-14** (fuente), que sustituye a mi inferencia anterior; sigue siendo provisional hasta que la búsqueda en vivo esté integrada y se pueda comprobar. El caso de la demo, **WISE 0855 en modo `prepared`**, es otro caso REAL (F01-R14) y no depende de la consulta en vivo.
 
 | ID | Objeto (caso de la matriz) | Qué reporta la matriz | Estado esperado de la API (provisional) | Observaciones |
 | --- | --- | --- | --- | --- |
-| F01-R09 | Estrella de Barnard (a) | `verificado` en `spherex_dr1` y `spherex_qr3`, con varias épocas. | `ready` | |
-| F01-R10 | Epsilon Indi B (b) | `verificado` en `spherex_dr1` y `spherex_qr3`. | `ready` | Esperado para el objeto consultado; la matriz no promete resolver el par. |
-| F01-R11 | WISE 0855 (c) | `verificado` en `spherex_dr1`; `sin cobertura` (`no_observations`) en `spherex_qr3`. | `ready` (la API consulta ambas colecciones y dr1 aporta épocas) | Una consulta **solo** a `qr3` daría `no_coverage` / `no_observations`; no es lo esperado de la API completa. La advertencia de la matriz (§5.3) pide manejar ese estado sin romper el flujo. |
-| F01-R12 | RW Aurigae (d) | `verificado` en `spherex_dr1` y `spherex_qr3`. | `ready` | |
-| F01-R13 | R Draconis (e) | `verificado` en `spherex_dr1` y `spherex_qr3`. | `ready` | La matriz lo recomienda para variabilidad (§5.1). |
+| F01-R09 | Estrella de Barnard (a) | `verificado` en `spherex_dr1` y `spherex_qr3`, con varias épocas. | `ready`, probablemente con `warnings: ["search_limit_reached"]` (caso denso) | |
+| F01-R10 | Epsilon Indi B (b) | `verificado` en `spherex_dr1` y `spherex_qr3`. | `ready`, probablemente con `warnings: ["search_limit_reached"]` (caso denso) | Esperado para el objeto consultado; la matriz no promete resolver el par. |
+| F01-R11 | WISE 0855 (c), **consulta en vivo** | `verificado` en `spherex_dr1`; `sin cobertura` (`no_observations`) en `spherex_qr3`. | `ready` en vivo | Una consulta **solo** a `qr3` daría `no_coverage` / `no_observations`; no es lo esperado de la API completa. La advertencia de la matriz (§5.3) pide manejar ese estado sin romper el flujo. El caso preparado de este objeto es F01-R14. |
+| F01-R12 | RW Aurigae (d) | `verificado` en `spherex_dr1` y `spherex_qr3`. | `ready`, probablemente con `warnings: ["search_limit_reached"]` (caso denso) | |
+| F01-R13 | R Draconis (e) | `verificado` en `spherex_dr1` y `spherex_qr3`. | `ready`, probablemente con `warnings: ["search_limit_reached"]` (caso denso) | La matriz lo recomienda para variabilidad (§5.1). |
+
+**Fuente del esperado en vivo:** respuesta de César del 2026-11-14.
+
+**Riesgos que no son un fallo de la API** (si ésta cumple el contrato): en cualquiera de los cinco puede salir `insufficient` con `no_common_band` o `no_usable_frames`, por la banda común (`WCS-WAVE`) y los `FLAGS` de calidad; y un `503` (`archive_unavailable` o `query_timeout`) si IRSA está inestable. Ninguno de esos resultados es un fallo de la API; se registran tal como salgan.
 
 **Estado actual de R09–R13: `bloqueado`.** En la ejecución REAL-local del 2026-11-14 ([ejecuciones/2026-11-14-api-local.md](ejecuciones/2026-11-14-api-local.md)) los cinco devolvieron `503 archive_unavailable`: API cumple el contrato (503 archive_unavailable, no no_coverage); búsqueda en vivo aún no integrada. No es un fallo ni una validación de la expectativa `ready`, que sigue sin comprobarse.
 
