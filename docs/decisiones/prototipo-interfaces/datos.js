@@ -1,4 +1,5 @@
 const nasaVela = 'https://www.jpl.nasa.gov/images/pia26354-spherex-vela-molecular-ridge/';
+const nasaSky = 'https://www.jpl.nasa.gov/images/pia26600-spherexs-first-all-sky-map/';
 const prepared = {
   query: { ra_deg: 133.795129166667, dec_deg: -7.245147222222, fov_deg: 0.1, frame: 'ICRS' },
   band: { center_um: 0.9928165220816996, tolerance_um: 0.012909112710767471 },
