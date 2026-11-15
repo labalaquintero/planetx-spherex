@@ -696,8 +696,6 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--gold); }
 .account-art .text-link { color: #ffe2b8; }
 .account-layout .segmented { margin-bottom: 12px; }
 .account-layout .input-hint { margin-top: 6px; }
-.report-confirmation { max-width: 700px; }
-.report-confirmation .callout, .report-confirmation .row { margin-top: 14px; }
 .moderation-list { display: grid; grid-template-columns: minmax(250px, .9fr) minmax(0, 1.4fr); gap: var(--gap); align-items: start; }
 .moderation-list .item-list .selected { color: var(--gold); }
 .admin-table { border-collapse: collapse; width: 100%; margin-top: 12px; }
@@ -803,21 +801,4 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--gold); }
   .hero-photo { transform: scale(1.035); transition: none; }
   .button, .shortcut, .site-nav a, .target-card, .frame-tile { transition: none; }
   .shortcut:hover { transform: none; }
-}
-
-@media print {
-  body:has(.report-confirmation) {
-    --ink: #142035; --muted: #31415a; --dim: #43506a; --gold: #563820;
-    --sky: #243d7a; --line: #b8c0ce; --inset: white; --surface: white;
-    display: block; min-height: 0; color-scheme: light; background: white;
-  }
-  body:has(.report-confirmation) :is(.site-header, .site-footer, .skip-link, .toast) { display: none !important; }
-  .main-content[data-view="confirmacion"] { width: 100%; padding: 0; }
-  [data-view="confirmacion"] :is(.back-link, .page-heading, .report-annotate),
-  .report-confirmation .row:has(.button) { display: none; }
-  [data-view="confirmacion"] .split { display: block; }
-  [data-view="confirmacion"] .panel { max-width: none; margin-bottom: 12px; background: white; box-shadow: none; }
-  [data-view="confirmacion"] .report-frames { grid-template-columns: repeat(2, minmax(0, 220px)); }
-  [data-view="confirmacion"] .report-frame { break-inside: avoid; }
-  [data-view="confirmacion"] :is(.science-image, .report-legend) { print-color-adjust: exact; }
 }
