@@ -9,6 +9,12 @@ Backend: Python y FastAPI en api/.
 
 El [contexto general](docs/contexto/00_Contexto_General.md) describe la visión, el alcance, los contratos y el plan de trabajo. El paquete incluye [seis guías por rol](docs/contexto/roles/) para Alexis, Isaac, DeValle, Santiago, Quintero y César. [AGENTS.md](AGENTS.md) indica cómo consultar este material desde un asistente.
 
+## Uso de SI
+
+OpenAI Codex asistió en la planificación, la consulta de fuentes, el diseño de la interfaz, la implementación y las pruebas del visor, el procesamiento de datos y la documentación. La maqueta inicial del visor se creó en Google Stitch y sirvió como referencia de diseño. Claude Opus 5.5 asistió en el desarrollo del Mapa 3D y en el código de síntesis de sus efectos sonoros con Web Audio.
+
+Los FITS de la comparación provienen del archivo NASA/IPAC IRSA. Los PNG y las diferencias de WISE 0855 y R Draconis derivan de esas observaciones mediante el procesamiento de Balax. El pie del sitio enlaza a **Uso de SI**, donde se pueden consultar los [metadatos por componente](web/public/si-usage.json).
+
 ## Ejecutar en local con Docker
 
 Levanta el visor y la API en tu máquina. **No es un despliegue** a AWS ni a producción.

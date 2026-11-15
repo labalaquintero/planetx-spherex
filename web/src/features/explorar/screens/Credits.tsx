@@ -40,6 +40,11 @@ export function Credits() {
             </li>
           ))}
           <li>
+            <p className="ex-credits-what">Sonido del Mapa</p>
+            <p className="ex-credits-meta">Efectos sintetizados con Web Audio. Claude Opus 5.5 asistió en la creación del código de síntesis.</p>
+            <a className="ex-credits-url" href="#uso-de-si">Declaración de uso de SI</a>
+          </li>
+          <li>
             <p className="ex-credits-what">Software</p>
             <p className="ex-credits-meta">{SOFTWARE_CREDITS.map((s) => `${s.name} (${s.license})`).join(' · ')}</p>
           </li>

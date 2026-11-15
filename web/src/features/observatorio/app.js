@@ -9,6 +9,7 @@ import {
 import { articleView, bindArticle, blogCommunity, blogView } from './blog.js';
 import { samplePublications } from './ejemplos-blog.js';
 import { back, badge, dataRows, miniPair, missingView, pageHeading } from './ui.js';
+import { siUsageView } from './uso-si.js';
 import {
   bindComparisonSlider, bindInspector, bindViewer, cancelSearch, comparisonFor, comparisonSlider,
   inspectorView, prefetchPrepared, preparedState, stopPlayback, viewerExamples, viewerView,
@@ -339,6 +340,7 @@ const views = {
   objetivo: { html: targetView, nav: 'galeria', title: 'Objetivo' },
   imagen: { html: inspectorView, bind: bindInspector, nav: 'visor', title: 'Imagen ampliada' },
   estados: { html: stateGalleryView, nav: 'visor', title: 'Estados del visor' },
+  'uso-de-si': { html: siUsageView, title: 'Uso de SI' },
   blog: { html: blogView, nav: 'blog', title: 'Blog' },
   articulo: { html: articleView, bind: bindArticle, nav: 'blog', title: 'Artículo' },
   ficha: { html: reportView, bind: bindReport, title: 'Ficha de observación' },

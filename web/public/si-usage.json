@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "project": "Balax",
+  "documented_release": "demo-jurado-2026-11-15",
+  "disclosure": "/#uso-de-si",
+  "tools": [
+    {
+      "name": "OpenAI Codex",
+      "uses": [
+        "Planificación del alcance y consulta de documentación de SPHEREx e IRSA.",
+        "Diseño de interfaz, implementación y pruebas del visor, el Blog y las fichas.",
+        "Análisis de los recortes y desarrollo del código para procesar y comparar FITS.",
+        "Edición de documentación y redacción de artículos de ejemplo."
+      ],
+      "components": [
+        "api/planetx/science/",
+        "api/tests/science/",
+        "web/src/features/observatorio/",
+        "docs/contratos/comparacion-v1.md",
+        "docs/decisiones/"
+      ]
+    },
+    {
+      "name": "Google Stitch",
+      "uses": [
+        "Creación de la maqueta inicial del visor temporal, usada como referencia de diseño."
+      ],
+      "components": [
+        "docs/decisiones/prototipo-interfaces/"
+      ]
+    },
+    {
+      "name": "Claude Opus 5.5",
+      "uses": [
+        "Desarrollo de las escenas y la interacción del Mapa 3D.",
+        "Desarrollo del código de síntesis de efectos sonoros del Mapa."
+      ],
+      "components": [
+        "web/src/features/explorar/",
+        "experimental/explorar/"
+      ]
+    }
+  ],
+  "data": {
+    "observations": {
+      "type": "observaciones reales",
+      "mission": "SPHEREx",
+      "archive": "NASA/IPAC IRSA",
+      "format": "FITS",
+      "source_url": "https://irsa.ipac.caltech.edu/Missions/spherex.html",
+      "prepared_fields": [
+        "WISE 0855",
+        "R Draconis"
+      ],
+      "prepared_release": "DR1"
+    },
+    "derived_products": {
+      "tools_assisting_code": [
+        "OpenAI Codex"
+      ],
+      "method": "Reproyección, máscara de calidad, escala de contraste compartida y resta B − A sobre observaciones reales.",
+      "products": [
+        "PNG de épocas observadas",
+        "PNG de diferencias entre épocas"
+      ],
+      "implementation": "api/planetx/science/",
+      "provenance_documents": [
+        "docs/decisiones/f01-par-wise0855.md",
+        "docs/decisiones/comparacion-cientifica-wise0855.md",
+        "docs/decisiones/caso-preparado-r-draconis.md"
+      ]
+    },
+    "test_fixtures": {
+      "type": "ejemplos sintéticos para pruebas",
+      "paths": [
+        "web/src/contracts/fixtures/",
+        "fixtures/data_qa/"
+      ]
+    }
+  },
+  "audio": {
+    "description": "Efectos de vuelo, escaneo y travesía del Mapa.",
+    "synthesis": "Síntesis procedural con Web Audio en el navegador.",
+    "tools_assisting_code": [
+      "Claude Opus 5.5"
+    ],
+    "source_files": [
+      "web/src/features/explorar/audio/sound.ts",
+      "experimental/explorar/src/audio/sound.ts"
+    ],
+    "source_commits": [
+      "16fbdd982fd5d8c514442575ec77a9fa6518e8cb",
+      "a39af8782cf3555df00e1344fcb5ea4ec9c130a4"
+    ]
+  }
+}
