@@ -12,10 +12,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.routing import APIRoute
 
 from planetx.http.errors import ApiError
-from planetx.workspace.models import MAX_BODY_BYTES, Decision, Login, Profile, Registration, ReportInput
+from planetx.workspace.models import MAX_BODY_BYTES, Decision, Login, Profile, Registration, ReportInput, WeeklyPick
 from planetx.workspace.store import (
-    EDITABLE_STATES, REVIEW_ROLES, SESSION_SECONDS, Workspace, account_data,
-    is_owner, may_view_private, password_hash, password_matches, report_data, token_hash, utc_now,
+    EDITABLE_STATES, REPORTS_WITH_WEEK, REVIEW_ROLES, SESSION_SECONDS, Workspace, account_data, contribution_stats,
+    is_owner, iso_week, may_view_private, password_hash, password_matches, report_data, token_hash, utc_now, weekly_pick,
 )
 
 COOKIE = "planetx_session"
@@ -163,6 +163,7 @@ def update_profile(fields: Profile, request: Request) -> dict:
 def _summary(report: sqlite3.Row, *, private: bool = False) -> dict[str, Any]:
     result = {key: report[key] for key in ("id", "title", "author", "created", "status")}
     result["publishedAt"] = report["published_at"]
+    result["weeklyPick"] = weekly_pick(report)
     if private:
         result.update(format=report["format"], reviewNote=report["review_note"], shared=True)
     return result
@@ -174,15 +175,16 @@ def public_profile(account_id: UUID, request: Request) -> dict:
         account = db.execute("SELECT id, alias, avatar FROM accounts WHERE id = ? AND public = 1", (str(account_id),)).fetchone()
         if account is None:
             raise _not_found()
-        reports = db.execute("""SELECT * FROM reports WHERE owner_id = ? AND status = 'published'
+        reports = db.execute(f"""SELECT {REPORTS_WITH_WEEK} FROM reports WHERE owner_id = ? AND status = 'published'
             ORDER BY published_at DESC, id DESC""", (str(account_id),)).fetchall()
-    return {"profile": dict(account), "reports": [_summary(report) for report in reports]}
+        stats = contribution_stats(db, str(account_id))
+    return {"profile": dict(account), "reports": [_summary(report) for report in reports], "stats": stats}
 
 
 @router.get("/publications")
 def publications(request: Request, offset: Annotated[int, Query(ge=0, le=30_000_000)] = 0) -> list[dict]:
     with _workspace(request).connect() as db:
-        reports = db.execute("SELECT * FROM reports WHERE status = 'published' ORDER BY published_at DESC, id DESC LIMIT 30 OFFSET ?",
+        reports = db.execute(f"SELECT {REPORTS_WITH_WEEK} FROM reports WHERE status = 'published' ORDER BY published_at DESC, id DESC LIMIT 30 OFFSET ?",
                              (offset,)).fetchall()
     return [_summary(report) for report in reports]
 
@@ -191,7 +193,7 @@ def publications(request: Request, offset: Annotated[int, Query(ge=0, le=30_000_
 def my_reports(request: Request) -> list[dict]:
     actor = _actor(request, required=True)
     with _workspace(request).connect() as db:
-        reports = db.execute("SELECT * FROM reports WHERE owner_id = ? ORDER BY updated DESC", (actor["id"],)).fetchall()
+        reports = db.execute(f"SELECT {REPORTS_WITH_WEEK} FROM reports WHERE owner_id = ? ORDER BY updated DESC", (actor["id"],)).fetchall()
     return [_summary(report, private=True) for report in reports]
 
 
@@ -199,7 +201,7 @@ def my_reports(request: Request) -> list[dict]:
 def review_queue(request: Request) -> list[dict]:
     _reviewer(request)
     with _workspace(request).connect() as db:
-        reports = db.execute("""SELECT * FROM reports WHERE status != 'draft'
+        reports = db.execute(f"""SELECT {REPORTS_WITH_WEEK} FROM reports WHERE status != 'draft'
             ORDER BY CASE status WHEN 'review' THEN 0 WHEN 'accepted' THEN 1 ELSE 2 END, updated DESC""").fetchall()
     return [_summary(report, private=True) for report in reports]
 
@@ -213,7 +215,7 @@ def _conflict(message: str = "La ficha cambió. Vuelve a abrirla antes de guarda
 
 
 def _read_report(db: sqlite3.Connection, report_id: UUID, actor: sqlite3.Row | None) -> sqlite3.Row:
-    report = db.execute("SELECT * FROM reports WHERE id = ?", (str(report_id),)).fetchone()
+    report = db.execute(f"SELECT {REPORTS_WITH_WEEK} FROM reports WHERE id = ?", (str(report_id),)).fetchone()
     if report is None or (report["status"] != "published" and not may_view_private(report, actor)):
         raise _not_found()
     return report
@@ -304,6 +306,25 @@ def decide(report_id: UUID, fields: Decision, request: Request) -> dict:
                 revision = revision + 1 WHERE id = ? RETURNING *""",
                 (action, now, fields.note, actor["id"], str(report_id))).fetchone()
     return report_data(updated, actor)
+
+
+@router.post("/reports/{report_id}/weekly")
+def choose_weekly(report_id: UUID, fields: WeeklyPick, request: Request) -> dict:
+    """Un administrador elige la ficha de la semana (semana ISO en curso). Elegir otra la reemplaza."""
+    actor = _actor(request, required=True)
+    if actor["role"] != "admin":
+        raise WorkspaceError(403, "weekly_forbidden", "Solo un administrador puede elegir la ficha de la semana.")
+    week = iso_week()
+    with _workspace(request).connect(write=True) as db:
+        report = _read_report(db, report_id, actor)
+        if report["status"] != "published" or report["revision"] != fields.revision:
+            raise _conflict("Solo una ficha publicada puede ser ficha de la semana. Vuelve a abrirla.")
+        if report["weekly_pick"] is not None:
+            raise _conflict(f"Esta ficha ya fue ficha de la semana ({report['weekly_pick']}).")
+        db.execute("DELETE FROM weekly_picks WHERE week = ?", (week,))
+        db.execute("INSERT INTO weekly_picks VALUES (?, ?, ?, ?)", (week, str(report_id), actor["id"], utc_now()))
+        chosen = _read_report(db, report_id, actor)
+    return report_data(chosen, actor)
 
 
 @router.get("/reports/{report_id}/images/{frame_id}")

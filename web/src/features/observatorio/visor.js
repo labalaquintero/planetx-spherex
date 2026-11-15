@@ -1,8 +1,9 @@
 import {
   archiveNote, comparisonLink, comparisonMode, coordinateParams, coordinatesFromParams, dateMark,
-  epoch, escapeHtml, featuredObservation, fieldLabel, fieldName, formatBand, fullDate, imageLink, normalizeComparison,
+  epoch, escapeHtml, fieldLabel, fieldName, formatBand, fullDate, imageLink, normalizeComparison,
   prepared, shortDate, targets,
 } from './datos.js';
+import { sampleObservationById } from './ejemplos-blog.js';
 import { frameMarks, paintMarks } from './anotaciones.js';
 import { reportById, stageSharedMarks } from './colaboracion.js';
 import { back, badge, dataRows, pageHeading, toast } from './ui.js';
@@ -85,7 +86,7 @@ function savedComparison(ra, dec) {
 
 function reportFrom(params) {
   const id = params.get('ficha');
-  return id === featuredObservation.id ? featuredObservation : reportById(id);
+  return sampleObservationById(id) ?? reportById(id);
 }
 
 function comparisonFor(params = new URLSearchParams()) {
