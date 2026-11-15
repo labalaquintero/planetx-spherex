@@ -11,6 +11,7 @@ import {
   bindComparisonSlider, bindInspector, bindViewer, cancelSearch, comparisonFor, comparisonSlider,
   inspectorView, stopPlayback, viewerExamples, viewerView,
 } from './visor.js';
+import { bindReportAnnotations } from './anotaciones.js';
 import { bindEvidenceImages, readWorkspace } from './workspace.js';
 
 const main = document.querySelector('main');
@@ -317,7 +318,7 @@ function articleView(id) {
       <p class="preserve-lines">${escapeHtml(report.notes || `Documento PDF: ${report.fileName}`)}</p>
     </section>
     ${pdfButton(report)}
-    ${reportEvidence(report.comparison ?? prepared, report.annotations ?? {}, false, report.id)}
+    ${reportEvidence(report.comparison ?? prepared, report.annotations, { reportId: report.id, from: 'articulo' })}
   </article>`;
 }
 
@@ -410,6 +411,7 @@ function renderRoute() {
   main.innerHTML = selected.html(id, params);
   selected.bind?.(id, params);
   bindEvidenceImages(main);
+  bindReportAnnotations(main);
   window.scrollTo(0, 0);
   main.focus({ preventScroll: true });
 }

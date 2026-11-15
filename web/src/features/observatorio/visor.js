@@ -3,8 +3,9 @@ import {
   epoch, escapeHtml, fieldLabel, fieldName, formatBand, fullDate, imageLink, normalizeComparison,
   prepared, shortDate, targets,
 } from './datos.js';
+import { frameMarks, paintMarks } from './anotaciones.js';
 import { back, badge, dataRows, pageHeading, toast } from './ui.js';
-import { bindEvidenceImages, cacheImages, readWorkspace, rememberComparison, writeWorkspace } from './workspace.js';
+import { bindEvidenceImages, cacheImages, isEditableReport, readWorkspace, rememberComparison, writeWorkspace } from './workspace.js';
 
 const viewerExamples = {
   'wise-0855': { title: 'Comparación lista', kind: 'Datos reales', color: 'success', description: 'Dos exposiciones de WISE 0855 con fechas y enlaces a IRSA.' },
@@ -577,12 +578,17 @@ function inspectorView(id, params) {
     <a class="button primary" href="#visor?${escapeHtml(params)}">Abrir el comparador</a>`;
   const reportId = params.get('ficha');
   const report = reportFrom(params);
-  const readOnly = report && !['draft', 'rejected'].includes(report.status);
-  const returnLink = reportId ? `#confirmacion/${encodeURIComponent(reportId)}` : comparisonLink(data);
-  const reportLink = report
-    ? `#ficha${report.format === 'pdf' ? '/pdf' : ''}?borrador=${encodeURIComponent(report.id)}`
-    : `#ficha?${coordinateParams(data.query)}`;
-  return `${back(returnLink, reportId ? 'Volver a la ficha' : 'Visor temporal')}
+  const readOnly = report && !isEditableReport(report);
+  const from = params.get('desde');
+  const fromForm = !readOnly && (from === 'manual' || from === 'pdf');
+  const reportFormat = fromForm ? from : report?.format;
+  const reportParams = coordinateParams(data.query);
+  if (reportId) reportParams.set('borrador', reportId);
+  const reportLink = `#ficha${reportFormat === 'pdf' ? '/pdf' : ''}?${reportParams}`;
+  const returnView = (from === 'administracion' || from === 'articulo') ? from : 'confirmacion';
+  const returnLink = fromForm ? reportLink
+    : reportId ? `#${returnView}/${encodeURIComponent(reportId)}` : comparisonLink(data);
+  return `${back(returnLink, fromForm || reportId ? 'Volver a la ficha' : 'Visor temporal')}
     ${pageHeading(`${fieldName(data.query)} · Época ${epoch(index)}`, fullDate(frame.observed_at), '', true)}
     <div class="observatory">
       <section class="panel image-inspector" aria-label="Imagen ampliada">
@@ -614,18 +620,20 @@ function inspectorView(id, params) {
             aria-valuetext="Época ${epoch(index)}, ${shortDate(frame.observed_at)}">
           <div class="timeline-labels">${data.frames.map((item, pos) => `<span>${epoch(pos)} · ${dateMark(item.observed_at)}</span>`).join('')}</div>
         </div>
-        ${readOnly ? '' : `<div class="row zoom-toolbar" aria-label="Anotaciones">
+        ${readOnly ? '' : `<div class="row zoom-toolbar" role="group" aria-label="Anotaciones">
           <button class="button secondary" id="draw" type="button" aria-pressed="false">Dibujar</button>
           <button class="button secondary" id="crop" type="button" aria-pressed="false">Delimitar recorte</button>
+          <button class="button ghost" id="undo-annotation" type="button" disabled>Deshacer</button>
           <button class="button ghost" id="clear-annotation" type="button">Limpiar marcas</button>
+          <output id="annotation-count" class="input-hint" aria-live="polite"></output>
         </div>`}
         <p class="annotation-note" id="annotation-note">${readOnly
           ? 'Esta imagen muestra las marcas guardadas cuando se envió la ficha.'
-          : 'Las marcas se guardan aparte del PNG y se incluyen en la ficha local.'}</p>
+          : 'Selecciona una herramienta y arrastra sobre la imagen. El recorte más reciente aparece ampliado en la ficha.'}</p>
       </section>
       <aside class="panel evidence"><div class="row between"><h2>Procedencia</h2>${badge(comparisonMode(data), 'success')}</div>
         ${frameData(frame, data)}
-        <div class="row"><a href="${escapeHtml(readOnly ? returnLink : reportLink)}" class="button primary">${readOnly ? 'Volver a la ficha' : report ? 'Editar ficha' : 'Preparar ficha'}</a></div>
+        <div class="row"><a href="${escapeHtml(readOnly ? returnLink : reportLink)}" class="button primary">${readOnly || fromForm ? 'Volver a la ficha' : report ? 'Editar ficha' : 'Preparar ficha'}</a></div>
       </aside>
     </div>`;
 }
@@ -637,26 +645,26 @@ function bindInspector(id, params) {
   const context = canvas.getContext('2d');
   const frame = data.frames[Number(id)];
   const report = reportFrom(params);
-  const readOnly = report && !['draft', 'rejected'].includes(report.status);
+  const readOnly = report && !isEditableReport(report);
   const zoomLayer = document.querySelector('#zoom-layer');
   const zoomIn = document.querySelector('#zoom-in');
   const zoomOut = document.querySelector('#zoom-out');
   const zoomLevel = document.querySelector('#zoom-level');
   const draw = document.querySelector('#draw');
   const crop = document.querySelector('#crop');
+  const undo = document.querySelector('#undo-annotation');
+  const clear = document.querySelector('#clear-annotation');
+  const count = document.querySelector('#annotation-count');
   let zoom = 1;
   let tool = null;
   let pending = null;
-  const workspaceMarks = readWorkspace().annotations;
-  let marks = readOnly ? report.annotations?.[frame.id]
-    : (Object.hasOwn(workspaceMarks, frame.id) ? workspaceMarks[frame.id] : report?.annotations?.[frame.id]);
-  if (!Array.isArray(marks)) marks = [];
+  let marks = frameMarks(report ? report.annotations : readWorkspace().annotations, frame.id);
 
   for (const controlId of ['inspector-date', 'inspector-slider']) {
     const control = document.getElementById(controlId);
     control.addEventListener(controlId === 'inspector-date' ? 'change' : 'input', () => {
       inspectorFocus = controlId;
-      location.hash = imageLink(control.value, data, params.get('ficha'));
+      location.hash = imageLink(control.value, data, params.get('ficha'), params.get('desde'));
     });
   }
   if (inspectorFocus) {
@@ -665,27 +673,10 @@ function bindInspector(id, params) {
     window.requestAnimationFrame(() => control.focus());
   }
 
-  function paintMark({ type, points }) {
-    const [[x, y]] = points;
-    context.beginPath();
-    context.strokeStyle = type === 'crop' ? '#b8d4f2' : '#ffd392';
-    context.lineWidth = 3;
-    context.setLineDash(type === 'crop' ? [8, 5] : []);
-    if (type === 'crop') {
-      const [x2, y2] = points.at(-1);
-      context.rect(x * canvas.width, y * canvas.height, (x2 - x) * canvas.width, (y2 - y) * canvas.height);
-    } else {
-      context.moveTo(x * canvas.width, y * canvas.height);
-      points.slice(1).forEach(([px, py]) => context.lineTo(px * canvas.width, py * canvas.height));
-    }
-    context.stroke();
-  }
-
   function repaint() {
     if (!context) return;
     context.clearRect(0, 0, canvas.width, canvas.height);
-    marks.forEach(paintMark);
-    if (pending) paintMark(pending);
+    paintMarks(context, pending ? [...marks, pending] : marks);
   }
 
   function updateZoom(delta) {
@@ -704,10 +695,28 @@ function bindInspector(id, params) {
     canvas.style.touchAction = tool ? 'none' : 'auto';
   }
 
-  function writeMarks() {
+  function updateMarkControls() {
+    undo.disabled = clear.disabled = !marks.length;
+    count.value = `${marks.length} ${marks.length === 1 ? 'marca' : 'marcas'}`;
+  }
+
+  function updateMarks(change, message) {
     const workspace = readWorkspace();
-    workspace.annotations[frame.id] = marks;
+    const target = report ? workspace.reports.find((item) => item.id === report.id) : workspace;
+    if (report && !isEditableReport(target)) {
+      toast('El estado de la ficha cambió. Vuelve a abrirla para ver las marcas.');
+      return;
+    }
+    const updated = change(frameMarks(target.annotations, frame.id));
+    if (updated.length > 30) {
+      toast('El límite es de 30 marcas por época.');
+      return;
+    }
+    target.annotations = { ...target.annotations, [frame.id]: updated };
     writeWorkspace(workspace);
+    marks = updated;
+    updateMarkControls();
+    toast(message);
   }
 
   function point(event) {
@@ -725,18 +734,18 @@ function bindInspector(id, params) {
   if (!context) {
     const note = document.querySelector('#annotation-note');
     note.textContent = 'Este navegador permite ampliar. La capa de anotaciones requiere Canvas.';
-    draw.disabled = true;
-    crop.disabled = true;
-    document.querySelector('#clear-annotation').disabled = true;
+    draw.disabled = crop.disabled = undo.disabled = clear.disabled = true;
     return;
   }
   draw.addEventListener('click', () => setTool('draw'));
   crop.addEventListener('click', () => setTool('crop'));
-  document.querySelector('#clear-annotation').addEventListener('click', () => {
-    marks = [];
-    writeMarks();
+  undo.addEventListener('click', () => {
+    updateMarks((current) => current.slice(0, -1), 'Se deshizo la última marca.');
     repaint();
-    toast('Se limpiaron las marcas de esta época.');
+  });
+  clear.addEventListener('click', () => {
+    updateMarks(() => [], 'Se limpiaron las marcas de esta época.');
+    repaint();
   });
   canvas.style.touchAction = 'auto';
   canvas.addEventListener('pointerdown', (event) => {
@@ -756,17 +765,17 @@ function bindInspector(id, params) {
   });
   canvas.addEventListener('pointerup', (event) => {
     if (pending?.pointerId !== event.pointerId) return;
-    const { type, points } = pending;
-    const first = points[0];
+    const { type, points: sampledPoints } = pending;
+    const first = sampledPoints[0];
     const last = point(event);
-    const meaningful = type === 'crop' ? Math.abs(first[0] - last[0]) > .01 && Math.abs(first[1] - last[1]) > .01 : points.length > 1;
-    if (meaningful) {
-      if (type === 'crop') points[1] = last;
-      marks.push({ type, points });
-      writeMarks();
-      toast('Marca guardada para la ficha.');
-    }
+    const points = type === 'crop' ? [first, last] : [...sampledPoints.slice(0, 399), last];
+    const meaningful = type === 'crop'
+      ? Math.abs(first[0] - last[0]) > .01 && Math.abs(first[1] - last[1]) > .01
+      : points.some(([x, y]) => x !== first[0] || y !== first[1]);
     pending = null;
+    if (meaningful) {
+      updateMarks((current) => [...current, { type, points }], 'Marca guardada para la ficha.');
+    }
     repaint();
   });
   canvas.addEventListener('pointercancel', (event) => {
@@ -774,6 +783,7 @@ function bindInspector(id, params) {
     pending = null;
     repaint();
   });
+  updateMarkControls();
   repaint();
 }
 
