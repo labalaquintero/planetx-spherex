@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { WISE_0855 } from '../preparedTarget.ts';
 
 /* ------------------------------------------------------------------ */
 /*  Validación                                                         */
@@ -41,15 +42,19 @@ function validate(ra: string, dec: string): FieldErrors {
 interface CoordinateFormProps {
   onSubmit: (raDeg: number, decDeg: number) => void;
   isLoading: boolean;
+  initialCoordinates?: { ra: string; dec: string };
+  showPreparedShortcut?: boolean;
 }
 
 /* ------------------------------------------------------------------ */
 /*  Componente                                                         */
 /* ------------------------------------------------------------------ */
 
-export function CoordinateForm({ onSubmit, isLoading }: CoordinateFormProps) {
-  const [ra, setRa] = useState('');
-  const [dec, setDec] = useState('');
+export function CoordinateForm({
+  onSubmit, isLoading, initialCoordinates, showPreparedShortcut,
+}: CoordinateFormProps) {
+  const [ra, setRa] = useState(initialCoordinates?.ra ?? '');
+  const [dec, setDec] = useState(initialCoordinates?.dec ?? '');
   const [errors, setErrors] = useState<FieldErrors>({});
 
   function handleSubmit(e: React.FormEvent) {
@@ -87,7 +92,7 @@ export function CoordinateForm({ onSubmit, isLoading }: CoordinateFormProps) {
           }}
           aria-invalid={errors.ra ? true : undefined}
           aria-describedby={errors.ra ? 'ra-error' : undefined}
-          placeholder="Ej: 10.25"
+          placeholder="Ej. 133.795129"
           data-testid="ra-input"
         />
         {errors.ra && (
@@ -111,7 +116,7 @@ export function CoordinateForm({ onSubmit, isLoading }: CoordinateFormProps) {
           }}
           aria-invalid={errors.dec ? true : undefined}
           aria-describedby={errors.dec ? 'dec-error' : undefined}
-          placeholder="Ej: −12.5"
+          placeholder="Ej. -7.245147"
           data-testid="dec-input"
         />
         {errors.dec && (
@@ -123,12 +128,26 @@ export function CoordinateForm({ onSubmit, isLoading }: CoordinateFormProps) {
 
       {/* Submit */}
       <div className="form-actions">
-        <button type="submit" disabled={isLoading} data-testid="submit-btn">
+        <button type="submit" className="action-primary" disabled={isLoading} data-testid="submit-btn">
           {isLoading ? 'Buscando…' : 'Comparar'}
         </button>
+        {showPreparedShortcut && (
+          <button
+            type="button"
+            className="action-secondary"
+            disabled={isLoading}
+            onClick={() => {
+              applyPreset(WISE_0855.ra, WISE_0855.dec);
+              onSubmit(Number(WISE_0855.ra), Number(WISE_0855.dec));
+            }}
+          >
+            WISE 0855
+          </button>
+        )}
       </div>
 
       {/* Presets para pruebas con mock */}
+      {import.meta.env.DEV && (
       <div className="presets" role="group" aria-label="Ejemplos de coordenadas">
         <span className="presets-label">Probar:</span>
         <button
@@ -160,6 +179,7 @@ export function CoordinateForm({ onSubmit, isLoading }: CoordinateFormProps) {
           Error temporal
         </button>
       </div>
+      )}
     </form>
   );
 }

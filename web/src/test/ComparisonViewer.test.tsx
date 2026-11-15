@@ -74,7 +74,7 @@ describe('ComparisonViewer', () => {
     render(<ComparisonViewer data={readyFixture} />);
 
     const playBtn = screen.getByTestId('btn-play');
-    expect(playBtn).toHaveTextContent('Play');
+    expect(playBtn).toHaveAccessibleName('Reproducir secuencia');
 
     // Iniciar reproducción
     await user.click(playBtn);
@@ -94,7 +94,7 @@ describe('ComparisonViewer', () => {
 
     // Pausar
     await user.click(playBtn);
-    expect(playBtn).toHaveTextContent('Play');
+    expect(playBtn).toHaveAccessibleName('Reproducir secuencia');
 
     // Al avanzar el tiempo no cambia
     act(() => {
@@ -124,7 +124,7 @@ describe('ComparisonViewer', () => {
 
     // Espacio pausa
     await user.keyboard(' ');
-    expect(screen.getByTestId('btn-play')).toHaveTextContent('Play');
+    expect(screen.getByTestId('btn-play')).toHaveAccessibleName('Reproducir secuencia');
   });
 
   it('si hay un solo fotograma (insuficiente), se muestra sin controles de reproducción', () => {
@@ -137,5 +137,17 @@ describe('ComparisonViewer', () => {
     expect(screen.queryByTestId('btn-play')).not.toBeInTheDocument();
     expect(screen.queryByTestId('btn-prev')).not.toBeInTheDocument();
     expect(screen.queryByTestId('btn-next')).not.toBeInTheDocument();
+  });
+
+  it('espacio selecciona la época enfocada sin iniciar la reproducción', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(<ComparisonViewer data={readyFixture} />);
+    const secondEpoch = screen.getByTestId('btn-epoch-b');
+    secondEpoch.focus();
+
+    await user.keyboard(' ');
+
+    expect(secondEpoch).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('btn-play')).toHaveAccessibleName('Reproducir secuencia');
   });
 });

@@ -14,6 +14,7 @@ function formatUTC(iso: string): string {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
+      hourCycle: 'h23',
       timeZone: 'UTC',
       timeZoneName: 'short',
     });
@@ -28,6 +29,8 @@ const MODE_LABELS: Record<string, string> = {
   live: 'Consulta en vivo',
 };
 
+const bandFormat = new Intl.NumberFormat('es-MX', { maximumSignificantDigits: 4 });
+
 export function ProvenancePanel({ data, currentIndex }: ProvenancePanelProps) {
   const frame = data.frames[currentIndex];
   const { query, band, mode, checked_at, science_version, warnings } = data;
@@ -38,7 +41,10 @@ export function ProvenancePanel({ data, currentIndex }: ProvenancePanelProps) {
       open
       data-testid="provenance-panel"
     >
-      <summary>Procedencia y metadatos</summary>
+      <summary>Procedencia</summary>
+      <p className="provenance-mode">
+        <span className="release-badge">{MODE_LABELS[mode] ?? mode}</span>
+      </p>
 
       <div className="provenance-grid">
         {/* Consulta */}
@@ -54,13 +60,11 @@ export function ProvenancePanel({ data, currentIndex }: ProvenancePanelProps) {
             {band && (
               <>
                 <dt>Banda</dt>
-                <dd>
-                  {band.center_um} ± {band.tolerance_um}&nbsp;µm
+                <dd title={`${band.center_um} ± ${band.tolerance_um} µm`}>
+                  {bandFormat.format(band.center_um)} ± {bandFormat.format(band.tolerance_um)}&nbsp;µm
                 </dd>
               </>
             )}
-            <dt>Modo</dt>
-            <dd>{MODE_LABELS[mode] ?? mode}</dd>
             <dt>Versión de procesamiento</dt>
             <dd>{science_version}</dd>
             <dt>Comprobado</dt>
