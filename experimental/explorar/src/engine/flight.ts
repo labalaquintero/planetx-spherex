@@ -25,6 +25,8 @@ export interface FlightState {
   readonly velocity: Vec3
   /** Rumbo en radianes. */
   readonly yaw: number
+  /** Cabeceo de la dirección de vuelo (rad, positivo = morro arriba). Se dirige con el ratón. */
+  readonly pitch: number
   /** Velocidad de giro actual (rad/s), suavizada. */
   readonly yawRate: number
 }
@@ -57,6 +59,8 @@ export const FLIGHT = {
   /** Margen de seguridad de la nave alrededor de cada obstáculo. */
   clearance: 2.5,
   maxBankDeg: 28,
+  /** Cabeceo máximo de la dirección de vuelo (rad). */
+  maxAimPitch: (60 * Math.PI) / 180,
   maxPitchDeg: 10,
 } as const
 
@@ -64,7 +68,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 const finite = (v: number) => (Number.isFinite(v) ? v : 0)
 
 export function initialFlight(position: Vec3, yaw = 0): FlightState {
-  return { position, velocity: [0, 0, 0], yaw, yawRate: 0 }
+  return { position, velocity: [0, 0, 0], yaw, pitch: 0, yawRate: 0 }
 }
 
 /**
@@ -77,9 +81,23 @@ export function spawnBehind(point: Vec3, yawDeg: number, up: number, back: numbe
   return initialFlight([point[0] + f[0] * back, point[1] - up, point[2] + f[2] * back], yaw)
 }
 
-/** Vector «adelante» de un rumbo. */
-export function forwardOf(yaw: number): Vec3 {
-  return [-Math.sin(yaw), 0, -Math.cos(yaw)]
+/** Vector «adelante» de un rumbo y un cabeceo. */
+export function forwardOf(yaw: number, pitch = 0): Vec3 {
+  return [-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)]
+}
+
+/** «Arriba» de la nave (perpendicular a su adelante, en el plano vertical). */
+export function upOf(yaw: number, pitch = 0): Vec3 {
+  return [Math.sin(yaw) * Math.sin(pitch), Math.cos(pitch), Math.cos(yaw) * Math.sin(pitch)]
+}
+
+/**
+ * Dirigir con el ratón: gira el rumbo y el cabeceo de la dirección de vuelo (rad). El cabeceo se
+ * acota; la nave sigue viéndose igual desde la cámara, que la acompaña.
+ */
+export function steerFlight(s: FlightState, dYaw: number, dPitch: number): FlightState {
+  if (!Number.isFinite(dYaw) || !Number.isFinite(dPitch) || (dYaw === 0 && dPitch === 0)) return s
+  return { ...s, yaw: s.yaw + dYaw, pitch: clamp(s.pitch + dPitch, -FLIGHT.maxAimPitch, FLIGHT.maxAimPitch) }
 }
 
 /** Un paso de simulación. dt en segundos (se acota a 0,1 s; dt no válido no hace nada). */
@@ -101,25 +119,28 @@ export function stepFlight(
   const yawRate = s.yawRate + (targetRate - s.yawRate) * (1 - Math.exp(-FLIGHT.yawResponse * dt))
   const yaw = s.yaw + yawRate * dt
 
-  // Velocidad horizontal: se descompone en «adelante» y «lateral»; lo lateral se amortigua rápido
-  // (la nave sigue su morro, como un avión, sin derrapar).
-  const fwd = forwardOf(yaw)
-  let [vx, vy, vz] = s.velocity
-  let along = vx * fwd[0] + vz * fwd[2]
-  const sideX = vx - along * fwd[0]
-  const sideZ = vz - along * fwd[2]
+  // Velocidad: se descompone en «adelante» (según rumbo y cabeceo), «arriba» de la nave y lateral.
+  // Lo lateral se amortigua rápido (la nave sigue su morro, sin derrapar); «arriba» es el de subir
+  // y bajar con E/Q. Con cabeceo 0 es exactamente el vuelo horizontal de siempre.
+  const fwd = forwardOf(yaw, s.pitch)
+  const up = upOf(yaw, s.pitch)
+  const v = s.velocity
+  let along = v[0] * fwd[0] + v[1] * fwd[1] + v[2] * fwd[2]
+  let vUp = v[0] * up[0] + v[1] * up[1] + v[2] * up[2]
   const sideKeep = Math.exp(-4 * dt)
+  const lat = [0, 1, 2].map((i) => (v[i]! - along * fwd[i]! - vUp * up[i]!) * sideKeep)
   if (thrust > 0) along += thrust * FLIGHT.accel * dt
   else if (thrust < 0) along += thrust * (along > 0 ? FLIGHT.brake : FLIGHT.accel * 0.6) * dt
   else along *= Math.exp(-FLIGHT.drag * dt)
   along = clamp(along, -FLIGHT.maxReverse, FLIGHT.maxSpeed)
-  vx = along * fwd[0] + sideX * sideKeep
-  vz = along * fwd[2] + sideZ * sideKeep
 
-  // Vertical.
-  if (lift !== 0) vy += lift * FLIGHT.climbAccel * dt
-  else vy *= Math.exp(-2.5 * dt)
-  vy = clamp(vy, -FLIGHT.maxClimb, FLIGHT.maxClimb)
+  if (lift !== 0) vUp += lift * FLIGHT.climbAccel * dt
+  else vUp *= Math.exp(-2.5 * dt)
+  vUp = clamp(vUp, -FLIGHT.maxClimb, FLIGHT.maxClimb)
+
+  const vx = along * fwd[0] + vUp * up[0] + lat[0]!
+  const vy = along * fwd[1] + vUp * up[1] + lat[1]!
+  const vz = along * fwd[2] + vUp * up[2] + lat[2]!
 
   // Límites del sector: empuje suave hacia dentro en el margen; tope duro en el borde.
   const pos: [number, number, number] = [s.position[0] + vx * dt, s.position[1] + vy * dt, s.position[2] + vz * dt]
@@ -162,7 +183,7 @@ export function stepFlight(
   // Acotar al límite otra vez por si un obstáculo empujó fuera.
   for (let i = 0; i < 3; i++) pos[i] = clamp(pos[i]!, bounds.min[i]!, bounds.max[i]!)
 
-  return { position: pos, velocity: vel, yaw, yawRate }
+  return { position: pos, velocity: vel, yaw, pitch: s.pitch, yawRate }
 }
 
 /** Rapidez (módulo de la velocidad). */
@@ -172,12 +193,16 @@ export function speedOf(s: FlightState): number {
 
 /** Alabeo y cabeceo visuales de la nave (grados) para un estado. */
 export function attitudeOf(s: FlightState): { bankDeg: number; pitchDeg: number } {
-  const along = -(s.velocity[0] * Math.sin(s.yaw) + s.velocity[2] * Math.cos(s.yaw))
+  const f = forwardOf(s.yaw, s.pitch)
+  const u = upOf(s.yaw, s.pitch)
+  const along = s.velocity[0] * f[0] + s.velocity[1] * f[1] + s.velocity[2] * f[2]
+  const vUp = s.velocity[0] * u[0] + s.velocity[1] * u[1] + s.velocity[2] * u[2]
   const turnFactor = s.yawRate / FLIGHT.maxYawRate
   const speedFactor = 0.35 + 0.65 * Math.min(1, Math.abs(along) / FLIGHT.maxSpeed)
   return {
     bankDeg: clamp(turnFactor * speedFactor * FLIGHT.maxBankDeg, -FLIGHT.maxBankDeg, FLIGHT.maxBankDeg),
-    pitchDeg: clamp((s.velocity[1] / FLIGHT.maxClimb) * FLIGHT.maxPitchDeg, -FLIGHT.maxPitchDeg, FLIGHT.maxPitchDeg),
+    // Inclinación visual extra al subir o bajar con E/Q (el cabeceo dirigido va aparte, en `pitch`).
+    pitchDeg: clamp((vUp / FLIGHT.maxClimb) * FLIGHT.maxPitchDeg, -FLIGHT.maxPitchDeg, FLIGHT.maxPitchDeg),
   }
 }
 

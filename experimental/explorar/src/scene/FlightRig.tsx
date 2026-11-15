@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, type MutableRefObject } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Euler, MathUtils, Quaternion, Vector3, type Group, type PerspectiveCamera } from 'three'
-import { attitudeOf, speedOf, stepFlight, FLIGHT, type Bounds, type FlightInput, type FlightState, type Obstacle } from '../engine/flight'
+import { attitudeOf, speedOf, steerFlight, stepFlight, FLIGHT, type Bounds, type FlightInput, type FlightState, type Obstacle } from '../engine/flight'
 import { approach, arrivalOffset, cameraFit } from '../engine/motion'
-import { orbitOffset, relaxLook, type Look } from '../engine/orbit'
+import { orbitOffset } from '../engine/orbit'
 import { CHASE } from './chase'
 import { NOZZLES, Ship } from './Ship'
 import { Trail, type Emitter } from './Trail'
@@ -18,8 +18,8 @@ interface Props {
   animate: boolean
   arrive: boolean
   trailParticles: number
-  /** Mirada libre con clic derecho (la escribe la pantalla; aquí se relaja y se aplica). */
-  look: MutableRefObject<Look>
+  /** Dirección pendiente de aplicar (rad), acumulada por la pantalla al arrastrar con clic derecho. */
+  aim: MutableRefObject<{ dYaw: number; dPitch: number }>
 }
 
 /**
@@ -27,14 +27,14 @@ interface Props {
  * La cámara sigue a la nave con suavizado: al girar, la nave se adelanta y luego la cámara la
  * alcanza. Con movimiento reducido el seguimiento es rígido y sin oscilación ni empuje de FOV.
  */
-export function FlightRig({ state, input, bounds, obstacles, animate, arrive, trailParticles, look }: Props) {
+export function FlightRig({ state, input, bounds, obstacles, animate, arrive, trailParticles, aim }: Props) {
   const ship = useRef<Group>(null)
   const camera = useThree((s) => s.camera) as PerspectiveCamera
   const invalidate = useThree((s) => s.invalidate)
   const aspect = useThree((s) => s.size.width / Math.max(1, s.size.height))
   const fit = useMemo(() => cameraFit(aspect), [aspect])
   const arrivalStart = useRef<number | null>(null)
-  const cam = useRef({ pos: new Vector3(), yaw: 0, roll: 0, look: 0, ready: false })
+  const cam = useRef({ pos: new Vector3(), yaw: 0, pitch: 0, roll: 0, look: 0, ready: false })
   const tmp = useMemo(() => ({ v: new Vector3(), q: new Quaternion(), e: new Euler(0, 0, 0, 'YXZ'), w: new Vector3() }), [])
   // En pantallas verticales la nave se aleja un poco para que quepa.
   const portrait = Math.min(1, Math.max(0, (1.2 - aspect) / 0.7))
@@ -51,31 +51,36 @@ export function FlightRig({ state, input, bounds, obstacles, animate, arrive, tr
     if (animate) return
     const id = setInterval(() => {
       const i = input.current
-      const l = look.current
-      if (i.thrust || i.turn || i.lift || speedOf(state.current) > 0.05 || l.dragging || l.yaw || l.pitch) invalidate()
+      const a = aim.current
+      if (i.thrust || i.turn || i.lift || speedOf(state.current) > 0.05 || a.dYaw || a.dPitch) invalidate()
     }, 50)
     return () => clearInterval(id)
-  }, [animate, input, state, invalidate, look])
+  }, [animate, input, state, invalidate, aim])
 
   useFrame((frame, delta) => {
-    const s = stepFlight(state.current, input.current, Math.min(delta, 0.1), bounds, obstacles)
+    // Dirección con el ratón: se aplica lo acumulado desde el cuadro anterior.
+    const a = aim.current
+    const steered = steerFlight(state.current, a.dYaw, a.dPitch)
+    a.dYaw = 0
+    a.dPitch = 0
+    const s = stepFlight(steered, input.current, Math.min(delta, 0.1), bounds, obstacles)
     state.current = s
     const g = ship.current
     if (!g) return
     const att = attitudeOf(s)
     g.position.set(...s.position)
-    g.rotation.set(animate ? att.pitchDeg * DEG : 0, s.yaw, animate ? att.bankDeg * DEG : 0, 'YXZ')
+    g.rotation.set(s.pitch + (animate ? att.pitchDeg * DEG : 0), s.yaw, animate ? att.bankDeg * DEG : 0, 'YXZ')
 
     // Cámara: detrás y arriba según el rumbo, con suavizado.
     const dtMs = Math.min(delta, 0.1) * 1000
     const c = cam.current
-    // Mirada libre: el punto de la cámara gira alrededor de la nave (con mirada 0, igual que siempre).
-    const l = (look.current = relaxLook(look.current, dtMs))
-    const off = orbitOffset(up, back, l)
+    // La cámara sigue detrás de la nave también en cabeceo: la nave se ve igual y el horizonte gira.
+    const off = orbitOffset(up, back, { yaw: 0, pitch: s.pitch })
     const target = tmp.w.set(off[0], off[1], off[2]).applyAxisAngle(new Vector3(0, 1, 0), s.yaw).add(g.position)
     if (!c.ready || !animate) {
       c.pos.copy(target)
       c.yaw = s.yaw
+      c.pitch = s.pitch
       c.ready = true
     } else {
       c.pos.set(
@@ -84,12 +89,13 @@ export function FlightRig({ state, input, bounds, obstacles, animate, arrive, tr
         approach(c.pos.z, target.z, dtMs, CHASE.posHalfLifeMs),
       )
       c.yaw = approach(c.yaw, s.yaw, dtMs, CHASE.yawHalfLifeMs)
+      c.pitch = approach(c.pitch, s.pitch, dtMs, CHASE.yawHalfLifeMs)
     }
     // Pulido de cámara: se inclina un poco con el alabeo de la nave y mira levemente hacia
     // donde gira (anticipación). Con movimiento reducido, nada de eso.
     c.roll = animate ? approach(c.roll, att.bankDeg * 0.3, dtMs, 220) : 0
     c.look = animate ? approach(c.look, s.yawRate * 0.14, dtMs, 260) : 0
-    tmp.e.set(CHASE.pitchDeg * DEG + l.pitch, c.yaw + c.look + l.yaw, c.roll * DEG, 'YXZ')
+    tmp.e.set(CHASE.pitchDeg * DEG + c.pitch, c.yaw + c.look, c.roll * DEG, 'YXZ')
     camera.quaternion.setFromEuler(tmp.e)
     camera.position.copy(c.pos)
 

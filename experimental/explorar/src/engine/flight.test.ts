@@ -11,6 +11,8 @@ import {
   obstaclesOf,
   sectorBounds,
   spawnBehind,
+  steerFlight,
+  upOf,
   speedOf,
   stepFlight,
   type Bounds,
@@ -170,6 +172,43 @@ describe('el sector β como área de vuelo', () => {
     expect(near.distance).toBeGreaterThan(0)
     expect(boundaryProximity([0, 0, 0], b)).toBe(0)
     expect(boundaryProximity([b.max[0], 0, 0], b)).toBe(1)
+  })
+})
+
+describe('dirigir con el ratón (cabeceo de la dirección de vuelo)', () => {
+  it('apuntar hacia arriba y acelerar hace subir a la nave en esa dirección', () => {
+    const aimed = steerFlight(initialFlight([0, 0, 0]), 0, Math.PI / 6) // 30° arriba
+    const s = run(aimed, { thrust: 1, turn: 0, lift: 0 }, 4)
+    expect(s.position[1]).toBeGreaterThan(20)
+    expect(s.position[2]).toBeLessThan(-30)
+    const dir = s.velocity.map((v) => v / speedOf(s))
+    expect(dir[1]).toBeCloseTo(Math.sin(Math.PI / 6), 2)
+  })
+
+  it('apuntar hacia abajo hace bajar; el cabeceo se queda donde se dejó (no vuelve solo)', () => {
+    const aimed = steerFlight(initialFlight([0, 0, 0]), 0, -0.4)
+    const s = run(aimed, { thrust: 1, turn: 0, lift: 0 }, 3)
+    expect(s.position[1]).toBeLessThan(-10)
+    expect(s.pitch).toBeCloseTo(-0.4)
+  })
+
+  it('el cabeceo está acotado y arrastrar a los lados gira el rumbo', () => {
+    expect(steerFlight(initialFlight([0, 0, 0]), 0, 10).pitch).toBe(FLIGHT.maxAimPitch)
+    expect(steerFlight(initialFlight([0, 0, 0]), 0, -10).pitch).toBe(-FLIGHT.maxAimPitch)
+    expect(steerFlight(initialFlight([0, 0, 0]), 0.3, 0).yaw).toBeCloseTo(0.3)
+    const s = initialFlight([0, 0, 0])
+    expect(steerFlight(s, Number.NaN, 0)).toBe(s)
+    expect(steerFlight(s, 0, 0)).toBe(s)
+  })
+
+  it('adelante y arriba de la nave son perpendiculares y unitarios para cualquier dirección', () => {
+    for (const [y, p] of [[0, 0], [1, 0.5], [-2, -0.9], [3, 1]] as const) {
+      const f = forwardOf(y, p)
+      const u = upOf(y, p)
+      expect(f[0] * u[0] + f[1] * u[1] + f[2] * u[2]).toBeCloseTo(0, 12)
+      expect(Math.hypot(...f)).toBeCloseTo(1, 12)
+      expect(Math.hypot(...u)).toBeCloseTo(1, 12)
+    }
   })
 })
 
