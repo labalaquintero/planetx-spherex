@@ -75,8 +75,10 @@ class FakeCatalog:
     def __init__(self, result: dict[str, Any] | None = None, error: Exception | None = None):
         self.result, self.error, self.calls = result, error, []
 
-    def get_prepared(self, *, ra_deg: float, dec_deg: float, fov_deg: float, version: str):
-        self.calls.append({"ra_deg": ra_deg, "dec_deg": dec_deg, "fov_deg": fov_deg, "version": version})
+    def get_prepared(self, *, ra_deg: float, dec_deg: float, fov_deg: float, science_version: str):
+        self.calls.append(
+            {"ra_deg": ra_deg, "dec_deg": dec_deg, "fov_deg": fov_deg, "science_version": science_version}
+        )
         if self.error:
             raise self.error
         return copy.deepcopy(self.result)
@@ -101,6 +103,13 @@ class FakeScience:
 def make_client(**kwargs: Any) -> TestClient:
     # raise_server_exceptions=False: el 500 debe verse como respuesta HTTP real.
     return TestClient(create_app(**kwargs), raise_server_exceptions=False)
+
+
+@pytest.fixture(autouse=True)
+def _isolated_env(monkeypatch):
+    # Las pruebas no deben depender de variables del entorno del desarrollador.
+    for name in ("PLANETX_PRODUCTS_DIR", "PLANETX_CATALOG_MANIFEST", "PLANETX_LIVE_CONCURRENCY"):
+        monkeypatch.delenv(name, raising=False)
 
 
 @pytest.fixture

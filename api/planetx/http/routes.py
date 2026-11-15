@@ -97,7 +97,7 @@ async def comparisons(
                     ra_deg=ra,
                     dec_deg=dec,
                     fov_deg=FOV_DEG,
-                    version=SCIENCE_VERSION,
+                    science_version=SCIENCE_VERSION,
                 ),
                 abandon_on_cancel=True,
             )

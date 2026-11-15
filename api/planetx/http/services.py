@@ -1,8 +1,8 @@
 """Fronteras inyectables de la API: catálogo preparado y ciencia (§5, handoffs).
 
-Las firmas son la propuesta de Isaac para F01; las confirman sus dueños (DeValle
-para ``get_prepared`` y Alexis para ``build_sequence``). Hasta que existan sus
-módulos, la API usa los stubs de este archivo.
+``get_prepared`` replica la firma real de ``planetx.catalog`` (DeValle, ya en main).
+``build_sequence`` es una propuesta de Isaac que confirma Alexis. Sin sus módulos, la API
+usa los stubs de este archivo. ``Cutout`` (handoff del adaptador IRSA) vive en ``planetx.irsa``.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ import anyio.from_thread
 import anyio.to_thread
 
 from planetx.http.errors import ArchiveUnavailable
+from planetx.irsa.models import Cutout
 
 logger = logging.getLogger("planetx.http")
 
@@ -31,16 +32,6 @@ SCIENCE_VERSION = "v1"
 
 
 @dataclass(frozen=True)
-class Cutout:
-    """Recorte local con procedencia que el adaptador IRSA entrega a ciencia (§5)."""
-
-    observation_id: str
-    release: str  # "dr1" | "qr3"
-    source_url: str
-    local_path: str
-
-
-@dataclass(frozen=True)
 class SequenceResult:
     """Resultado científico (sin ``mode``) y mapa ``frame_id -> bytes PNG``."""
 
@@ -50,7 +41,7 @@ class SequenceResult:
 
 class PreparedCatalog(Protocol):
     def get_prepared(
-        self, *, ra_deg: float, dec_deg: float, fov_deg: float, version: str
+        self, *, ra_deg: float, dec_deg: float, fov_deg: float, science_version: str
     ) -> dict[str, Any] | None:
         """Payload ``prepared`` compatible con el contrato v1, o ``None``."""
 
@@ -66,7 +57,7 @@ class UnconfiguredPreparedCatalog:
     """Stub: sin catálogo preparado todavía; nunca hay respaldo."""
 
     def get_prepared(
-        self, *, ra_deg: float, dec_deg: float, fov_deg: float, version: str
+        self, *, ra_deg: float, dec_deg: float, fov_deg: float, science_version: str
     ) -> dict[str, Any] | None:
         return None
 

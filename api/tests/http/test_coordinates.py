@@ -24,7 +24,7 @@ def test_valid_coordinates(ra, dec):
     client, catalog = _client_and_catalog()
     response = client.get("/api/v1/comparisons", params={"ra_deg": ra, "dec_deg": dec})
     assert response.status_code == 200
-    assert catalog.calls == [{"ra_deg": float(ra), "dec_deg": float(dec), "fov_deg": 0.1, "version": "v1"}]
+    assert catalog.calls == [{"ra_deg": float(ra), "dec_deg": float(dec), "fov_deg": 0.1, "science_version": "v1"}]
 
 
 @pytest.mark.parametrize(
