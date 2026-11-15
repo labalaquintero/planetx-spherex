@@ -33,7 +33,7 @@ export class ApiValidationError extends Error {
 /*  Fetch real (producción / proxy Vite)                               */
 /* ------------------------------------------------------------------ */
 
-async function realFetch(
+export async function fetchArchiveComparison(
   raDeg: number,
   decDeg: number,
   signal?: AbortSignal,
@@ -161,5 +161,5 @@ export async function fetchComparison(
   if (!import.meta.env.PROD) {
     return mockFetch(raDeg, decDeg, signal);
   }
-  return realFetch(raDeg, decDeg, signal);
+  return fetchArchiveComparison(raDeg, decDeg, signal);
 }
