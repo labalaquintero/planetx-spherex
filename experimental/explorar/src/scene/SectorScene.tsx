@@ -5,6 +5,7 @@ import type { Bounds, FlightInput, FlightState, Obstacle } from '../engine/fligh
 import type { AdaptiveQuality, QualitySettings } from '../engine/quality'
 import type { SectorScene as SectorSceneData } from '../engine/types'
 import { smallBodiesOf } from './bodies'
+import { DeepSky } from './DeepSky'
 import { Bloom } from './Effects'
 import { FlightRig } from './FlightRig'
 import { LIGHT_DIR } from './light'
@@ -74,6 +75,7 @@ export default function SectorScene(props: Props) {
       <hemisphereLight args={['#7dd3fc', '#0f172a', 0.35]} />
       <directionalLight position={[light.x, light.y, light.z]} intensity={2.7} color="#fff1dc" />
       <Sky stars={settings.stars} octaves={settings.nebulaOctaves} animate={animate} />
+      <DeepSky bounds={bounds} stars={settings.nearStars} layers={settings.nebulaLayers} animate={animate} />
       {scene.objects.map((o) => {
         switch (o.kind) {
           case 'planet':
