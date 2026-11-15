@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useSyncExternalStore } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { NavController } from '../engine/controller'
 import { buildGraph, DIRECTIONS } from '../engine/graph'
 import { MOVE_DURATION_MS } from '../engine/navigation'
@@ -7,7 +7,7 @@ import type { Direction, SectorConfig, SectorScene as SectorSceneData } from '..
 import { DPad } from './DPad'
 import { ErrorBoundary } from './ErrorBoundary'
 import { loadScene } from './sceneLoader'
-import type { QualityLevel } from '../engine/quality'
+import { AdaptiveQuality, type QualityLevel } from '../engine/quality'
 
 // three (y react-three-fiber) viven en un chunk aparte: no pesan hasta que se entra a un sector.
 const SectorScene = lazy(loadScene)
@@ -38,8 +38,11 @@ function isTextField(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
 }
 
-export function NavigationScreen({ sector, onExit, arrive, reduced }: Props) {
+export function NavigationScreen({ sector, onExit, arrive, reduced, quality: initialLevel, forced, debug }: Props) {
   const { scene } = sector
+  const adaptive = useMemo(() => new AdaptiveQuality(initialLevel, forced), [initialLevel, forced])
+  const [settings, setSettings] = useState(adaptive.settings)
+  const [fps, setFps] = useState(0)
   const graph = useMemo(() => buildGraph(scene.waypoints, scene.startId), [scene])
   const controller = useMemo(() => new NavController(graph, reduced ? 0 : MOVE_DURATION_MS), [graph])
   useEffect(() => controller.setDuration(reduced ? 0 : MOVE_DURATION_MS), [controller, reduced])
@@ -87,7 +90,16 @@ export function NavigationScreen({ sector, onExit, arrive, reduced }: Props) {
           }
         >
           <Suspense fallback={<p className="ex-fallback">Cargando escena…</p>}>
-            <SectorScene scene={scene} controller={controller} animate={!reduced} />
+            <SectorScene
+              scene={scene}
+              controller={controller}
+              animate={!reduced}
+              arrive={arrive}
+              settings={settings}
+              quality={adaptive}
+              onQualityChange={() => setSettings(adaptive.settings)}
+              onFps={debug ? setFps : undefined}
+            />
           </Suspense>
         </ErrorBoundary>
       </div>
@@ -101,6 +113,13 @@ export function NavigationScreen({ sector, onExit, arrive, reduced }: Props) {
           ← Volver a sectores <kbd>Esc</kbd>
         </button>
       </div>
+
+      {debug && (
+        <p className="ex-debug" aria-hidden="true">
+          {fps.toFixed(0)} FPS · calidad {settings.level}
+          {forced ? ' (fija)' : ''}
+        </p>
+      )}
 
       <p className="ex-sr-only" aria-live="polite">
         {node?.name}
