@@ -3,7 +3,7 @@ import { FLIGHT_KEYS, inputFrom, type FlightAction } from '../engine/controls'
 import {
   boundaryProximity,
   FLIGHT,
-  initialFlight,
+  spawnBehind,
   nearestNamed,
   NO_INPUT,
   obstaclesOf,
@@ -13,6 +13,7 @@ import {
   type FlightState,
 } from '../engine/flight'
 import { AdaptiveQuality, type QualityLevel } from '../engine/quality'
+import { spawnPointParam } from '../params'
 import type { SectorConfig, SectorScene as SectorSceneData, Vec3 } from '../engine/types'
 import { CHASE } from '../scene/chase'
 import { Credits } from './Credits'
@@ -76,10 +77,10 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
   const obstacles = useMemo(() => obstaclesOf(scene.objects), [scene])
 
   // La nave sale delante de la cámara del punto de entrada (la vista del boceto).
-  const start = scene.waypoints.find((w) => w.id === scene.startId)!
-  const flight = useRef<FlightState>(
-    initialFlight([start.position[0], start.position[1] - CHASE.up, start.position[2] - CHASE.back], (start.yawDeg * Math.PI) / 180),
-  )
+  // ?punto=<id> permite salir desde otro punto de ruta (capturas comparables, demo).
+  const spawnId = spawnPointParam(typeof window === 'undefined' ? '' : window.location.search, scene.waypoints.map((w) => w.id))
+  const start = scene.waypoints.find((w) => w.id === (spawnId ?? scene.startId))!
+  const flight = useRef<FlightState>(spawnBehind(start.position, start.yawDeg, CHASE.up, CHASE.back))
   const input = useRef<FlightInput>(NO_INPUT)
   const [held, setHeld] = useState<ReadonlySet<FlightAction>>(new Set())
 

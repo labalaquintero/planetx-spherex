@@ -67,6 +67,16 @@ export function initialFlight(position: Vec3, yaw = 0): FlightState {
   return { position, velocity: [0, 0, 0], yaw, yawRate: 0 }
 }
 
+/**
+ * Pose de salida para que la cámara de persecución quede exactamente en `point` (con su rumbo): la
+ * nave va `back` unidades delante y `up` unidades debajo, en la dirección del rumbo.
+ */
+export function spawnBehind(point: Vec3, yawDeg: number, up: number, back: number): FlightState {
+  const yaw = (yawDeg * Math.PI) / 180
+  const f = forwardOf(yaw)
+  return initialFlight([point[0] + f[0] * back, point[1] - up, point[2] + f[2] * back], yaw)
+}
+
 /** Vector «adelante» de un rumbo. */
 export function forwardOf(yaw: number): Vec3 {
   return [-Math.sin(yaw), 0, -Math.cos(yaw)]

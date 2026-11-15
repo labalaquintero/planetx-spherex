@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseParams } from './params'
+import { parseParams, spawnPointParam } from './params'
 
 describe('parseParams', () => {
   it('por defecto: calidad automática y sin depuración', () => {
@@ -30,5 +30,14 @@ describe('parseParams', () => {
 
   it('combina ambos parámetros', () => {
     expect(parseParams('?debug&quality=high')).toEqual({ quality: 'high', debug: true })
+  })
+})
+
+describe('spawnPointParam', () => {
+  it('acepta solo ids de waypoint existentes', () => {
+    expect(spawnPointParam('?punto=der_f', ['entry', 'der_f'])).toBe('der_f')
+    expect(spawnPointParam('?punto=nada', ['entry'])).toBeNull()
+    expect(spawnPointParam('', ['entry'])).toBeNull()
+    expect(spawnPointParam('?punto=', ['entry'])).toBeNull()
   })
 })

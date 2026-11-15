@@ -20,3 +20,12 @@ export function parseParams(search: string): ExplorarParams {
 export function currentParams(): ExplorarParams {
   return parseParams(typeof window === 'undefined' ? '' : window.location.search)
 }
+
+/**
+ * ?punto=<id de waypoint>: la nave aparece en ese punto de ruta mirando como él (útil para capturas
+ * comparables y para la demo). Sin valor, o si el id no existe, se usa el punto de salida del sector.
+ */
+export function spawnPointParam(search: string, validIds: readonly string[]): string | null {
+  const v = new URLSearchParams(search).get('punto')?.trim()
+  return v && validIds.includes(v) ? v : null
+}
