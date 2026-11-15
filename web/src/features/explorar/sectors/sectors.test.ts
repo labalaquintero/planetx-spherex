@@ -7,6 +7,8 @@ import { InfoCard } from '../screens/InfoCard'
 import { SectorSelect } from '../screens/SectorSelect'
 import { SECTORS, getSector } from './index'
 import beta from './beta'
+import { ENTRY_CAMERA, EXTRA_IDS, SKETCH_IDS } from './beta/objects'
+import { worldToScreen } from '../engine/projection'
 import { fromView } from './view'
 
 describe('registro de sectores', () => {
@@ -121,6 +123,37 @@ describe('Ilmara: mundo frío inspirado en WISE 0855 (no un gigante tipo Júpite
   })
 })
 
+describe('planetas añadidos fuera del boceto', () => {
+  const extras = beta.scene!.objects.filter((o) => EXTRA_IDS.includes(o.id))
+
+  it('hay al menos tres, con nombre, y solo de los tipos del boceto', () => {
+    expect(extras.length).toBeGreaterThanOrEqual(3)
+    for (const o of extras) {
+      expect(o.label).toBeTruthy()
+      expect(['planet', 'ringedPlanet', 'sphere']).toContain(o.kind)
+    }
+  })
+
+  it('no aparecen en la vista inicial, que sigue siendo la del boceto', () => {
+    for (const o of extras) {
+      const s = worldToScreen(o.position, ENTRY_CAMERA)
+      // Margen: su radio aparente no debe asomar al encuadre.
+      const r = s.depth > 0 ? o.radius / (s.depth * Math.tan((ENTRY_CAMERA.fovDeg * Math.PI) / 360)) / 2 : 0
+      const visible = s.depth > 0 && s.u + r * 0.6 > 0 && s.u - r * 0.6 < 1 && s.v + r > 0 && s.v - r < 1
+      expect(visible, o.id).toBe(false)
+    }
+  })
+
+  it('no se parecen a Júpiter: ninguna paleta naranja o crema clara', () => {
+    for (const o of extras) {
+      for (const c of o.palette) {
+        const { h, s, l } = hsl(c)
+        expect(h >= 15 && h <= 65 && s > 0.3 && l > 0.6, `${o.id} ${c}`).toBe(false)
+      }
+    }
+  })
+})
+
 describe('fichas de contexto de β (panel izquierdo al acercarse)', () => {
   const named = beta.scene!.objects.filter((o) => o.label)
 
@@ -170,7 +203,8 @@ describe('objetos del sector β', () => {
   })
 
   it('composición del boceto: 2 planetas, 1 con anillo, 1 estación, 1 esfera y varios cuerpos pequeños', () => {
-    const count = (k: string) => objects.filter((o) => o.kind === k).length
+    // Solo los objetos medidos del boceto; los añadidos fuera de él se prueban aparte.
+    const count = (k: string) => objects.filter((o) => SKETCH_IDS.includes(o.id) && o.kind === k).length
     expect(count('planet')).toBe(2)
     expect(count('ringedPlanet')).toBe(1)
     expect(count('station')).toBe(1)

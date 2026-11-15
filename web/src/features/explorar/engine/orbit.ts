@@ -10,4 +10,4 @@ export function orbitOffset(up: number, back: number, l: { yaw: number; pitch: n
 }
 
 /** Radianes por píxel al dirigir la nave con clic derecho y arrastrar. */
-export const STEER_SENSITIVITY = 0.004
+export const STEER_SENSITIVITY = 0.0028

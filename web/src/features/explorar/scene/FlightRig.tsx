@@ -5,6 +5,7 @@ import { attitudeOf, speedOf, steerFlight, stepFlight, FLIGHT, type Bounds, type
 import { approach, arrivalOffset, cameraFit } from '../engine/motion'
 import { orbitOffset } from '../engine/orbit'
 import { CHASE } from './chase'
+import { Shield } from './Shield'
 import { NOZZLES, Ship } from './Ship'
 import { Trail, type Emitter } from './Trail'
 
@@ -108,6 +109,14 @@ export function FlightRig({ state, input, bounds, obstacles, animate, arrive, tr
       if (a.back > 0) camera.position.add(tmp.v.set(0, 0, a.back).applyQuaternion(camera.quaternion))
       if (a.back > 0) frame.invalidate()
     }
+    // Temblor sutil al rozar un objeto, más marcado en un impacto (decae solo con el estado).
+    if (animate && (s.contact > 0.01 || s.jolt > 0.01)) {
+      const t = frame.clock.elapsedTime
+      const amp = s.contact * 0.05 + s.jolt * 0.4
+      camera.position.x += amp * (Math.sin(t * 37.3) + 0.5 * Math.sin(t * 61.7))
+      camera.position.y += amp * (Math.sin(t * 43.1) + 0.5 * Math.sin(t * 29.9))
+      camera.rotateZ(s.jolt * 0.03 * Math.sin(t * 31.0))
+    }
     if (animate) {
       const t = frame.clock.elapsedTime
       // Oscilación muy leve, en dos frecuencias (no periódica a simple vista).
@@ -139,6 +148,7 @@ export function FlightRig({ state, input, bounds, obstacles, animate, arrive, tr
     <>
       <group ref={ship} scale={CHASE.shipScale}>
         <Ship thrust={emitterL} />
+        <Shield state={state} animate={animate} />
         {/* Relleno suave desde arriba y detrás (lado de la cámara). */}
         <pointLight position={[0, 4, 5]} intensity={2.6} distance={18} decay={1} color="#bae6fd" />
         {/* Contraluz: fría, delante y arriba de la nave; dibuja su silueta contra el fondo. */}

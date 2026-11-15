@@ -13,6 +13,7 @@ import {
   type FlightState,
 } from '../engine/flight'
 import { STEER_SENSITIVITY } from '../engine/orbit'
+import type { VisitorEvent } from '../engine/visitors'
 import { AdaptiveQuality, type QualityLevel } from '../engine/quality'
 import { spawnPointParam } from '../params'
 import type { SectorConfig, SectorScene as SectorSceneData, Vec3 } from '../engine/types'
@@ -42,6 +43,8 @@ interface Props {
   extraControls?: ReactNode
   /** Nivel del motor 0..1, unas 10 veces por segundo (para el sonido). */
   onEngine?: (level: number) => void
+  /** Impacto de un cometa o meteorito (para el sonido). */
+  onImpact?: (strength: number) => void
 }
 
 function isTextField(target: EventTarget | null): boolean {
@@ -70,7 +73,7 @@ interface Telemetry {
 /** A esta distancia (a la superficie) el panel muestra el contexto del objeto. */
 export const INFO_DISTANCE = 120
 
-export function NavigationScreen({ sector, onExit, arrive, reduced, quality: initialLevel, forced, debug, extraControls, onEngine }: Props) {
+export function NavigationScreen({ sector, onExit, arrive, reduced, quality: initialLevel, forced, debug, extraControls, onEngine, onImpact }: Props) {
   const { scene } = sector
   const webgl = useMemo(() => detectWebGL(), [])
   const adaptive = useMemo(() => new AdaptiveQuality(initialLevel, forced), [initialLevel, forced])
@@ -153,6 +156,28 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
     return () => clearInterval(id)
   }, [scene, bounds, onEngine])
 
+  // Avisos breves: cometa a la vista, impacto.
+  const [toast, setToast] = useState<{ text: string; tone: 'info' | 'warn'; key: number } | null>(null)
+  useEffect(() => {
+    if (!toast) return
+    const id = setTimeout(() => setToast(null), toast.tone === 'warn' ? 3200 : 4500)
+    return () => clearTimeout(id)
+  }, [toast])
+  const onVisitorEvent = useCallback(
+    (e: VisitorEvent) => {
+      if (e.type === 'spawn' && e.kind === 'comet') setToast({ text: 'Un cometa cruza el sector', tone: 'info', key: Date.now() })
+      if (e.type === 'impact') {
+        setToast({
+          text: e.kind === 'comet' ? 'Impacto de un fragmento de cometa · la nave se estabiliza' : 'Impacto de micrometeorito · la nave se estabiliza',
+          tone: 'warn',
+          key: Date.now(),
+        })
+        onImpact?.(e.strength)
+      }
+    },
+    [onImpact],
+  )
+
   const mapSize = 200
   const nearObject = tele.near && tele.near.distance < INFO_DISTANCE ? scene.objects.find((o) => o.id === tele.near!.id) : undefined
   const nearInfo = nearObject?.info
@@ -205,6 +230,7 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
                 quality={adaptive}
                 onQualityChange={() => setSettings(adaptive.settings)}
                 onFps={debug ? setFps : undefined}
+                onVisitorEvent={onVisitorEvent}
               />
             </Suspense>
           </ErrorBoundary>
@@ -253,6 +279,12 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
           <Minimap bounds={bounds} objects={scene.objects} position={tele.position} yaw={tele.yaw} edge={tele.edge} size={mapSize} />
         </div>
       </div>
+
+      {toast && (
+        <p key={toast.key} className="ex-toast" data-tone={toast.tone} role="status">
+          {toast.text}
+        </p>
+      )}
 
       {debug && (
         <p className="ex-debug" aria-hidden="true">

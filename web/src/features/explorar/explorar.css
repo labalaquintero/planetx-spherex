@@ -731,6 +731,36 @@
 .ex-hint kbd {
   margin-right: 2px;
 }
+.ex-toast {
+  position: absolute;
+  top: 70px;
+  left: 50%;
+  z-index: 6;
+  margin: 0;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  color: var(--ex-accent-pale);
+  background: var(--ex-panel);
+  border: 1px solid var(--ex-accent-line);
+  border-radius: var(--ex-radius-pill);
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: ex-toast-in 220ms ease-out;
+}
+.ex-toast[data-tone='warn'] {
+  color: var(--ex-warn);
+  border-color: var(--ex-warn-line);
+}
+@keyframes ex-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
 .ex-debug {
   position: absolute;
   top: 16px;

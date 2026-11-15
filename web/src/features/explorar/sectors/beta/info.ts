@@ -62,6 +62,37 @@ export const BETA_INFO: Readonly<Record<string, ObjectInfo>> = {
     facts: ['Las luces que parpadean marcan sus extremos.', 'Su posición y su tamaño se midieron en el boceto.'],
     images: [],
   },
+  tessa: {
+    title: 'Planeta rocoso rojizo',
+    summary:
+      'Tessa es inventado y no está en el boceto: queda detrás de la entrada del sector. Su superficie usa ' +
+      'el mapa de color y relieve de la Luna (LRO, NASA) recoloreado en tonos terracota.',
+    facts: [
+      'En la Luna real, las zonas claras son tierras altas antiguas y las oscuras, mares de basalto.',
+      'Gira lentamente; la luz llega de la estrella clave del sector.',
+    ],
+    images: [{ src: LUNA, caption: 'Mapa de color de la Luna (LRO)' }],
+    credit: 'Imagen: NASA Scientific Visualization Studio, dominio público.',
+  },
+  calder: {
+    title: 'Gigante de hielo',
+    summary:
+      'Calder es inventado, a la manera de Urano y Neptuno: gigantes de hielo cuyo metano absorbe la luz ' +
+      'roja y los tiñe de azul verdoso. Su textura parte del mapa de Saturno, usado solo por su luminancia.',
+    facts: [
+      'Los gigantes de hielo tienen más agua, amoniaco y metano que los gigantes gaseosos como Júpiter o Saturno.',
+      'Su luna helada, Sora, orbita cerca.',
+    ],
+    images: [{ src: SATURNO, caption: 'Mapa de Saturno (solo su luminancia)' }],
+    credit: 'Imagen: Solar System Scope, CC BY 4.0.',
+  },
+  sora: {
+    title: 'Luna helada',
+    summary: 'Sora es inventada y acompaña a Calder. Usa el mapa lunar de la NASA en tonos fríos y claros.',
+    facts: ['Las lunas heladas reflejan mucha luz: por eso se ve más brillante que las rocas del sector.'],
+    images: [{ src: LUNA, caption: 'Mapa de color de la Luna (LRO)' }],
+    credit: 'Imagen: NASA Scientific Visualization Studio, dominio público.',
+  },
   esfera: {
     title: 'Esfera menor',
     summary: 'Pequeña esfera rocosa inventada, tomada del boceto. Usa el mismo mapa lunar de la NASA que Veshta, con otra paleta.',

@@ -33,6 +33,9 @@
   exclusiones que en `9c8bf95`. Solo se adaptaron tres importaciones (`boceto.ts`, `sectors/beta/boceto.ts`
   → `data/layout`; `credits.test.ts` → `./ATTRIBUTIONS.md`). Se retiró `bandas-jupiter.webp` y se copió
   `ATTRIBUTIONS.md`. Incluye `176bd0e`, `59ee9cb` y la etapa de calidad visual de β.
+- **15-11-2026, misma rama** (resincronizaciones con el mismo procedimiento; `rsync` sin `--delete` para no
+  borrar el `README.md` propio de la copia del visor): dirigir con clic derecho, HUD reordenado y fichas de
+  contexto, acercamiento suave e impactos, Tessa, Calder y Sora, y cometas y meteoritos (hasta `f2c2293`).
 
 ## Qué habrá que portar en la sincronización final
 
