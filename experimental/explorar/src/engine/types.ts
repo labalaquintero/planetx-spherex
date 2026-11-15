@@ -63,8 +63,13 @@ export interface SectorConfig {
     readonly y: number
     /** Diámetro en % del ancho mínimo del campo. */
     readonly size: number
-    /** Colores (claro, oscuro) del degradado de la esfera. */
+    /** Colores (claro, oscuro) de la superficie de la esfera. */
     readonly colors: readonly [string, string]
+    /** Superficie procedural del cuerpo de la selección y su semilla. */
+    readonly surface: 'bands' | 'rocky'
+    readonly seed: number
+    /** Color del halo (CSS). */
+    readonly glow: string
   }
   /** «Próximamente» si no hay escena. Un sector es navegable si y solo si trae `scene`. */
   readonly scene?: SectorScene
