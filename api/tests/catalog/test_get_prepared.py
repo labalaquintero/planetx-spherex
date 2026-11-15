@@ -301,7 +301,7 @@ def test_get_prepared_validates_frame_id_format(
                 "observed_at": f"2025-05-1{i}T02:15:00Z",
                 "release": "dr1",
                 "observation_id": f"obs-valid-{i}",
-                "source_url": f"https://example.com/dr1/{valid_id}.fits",
+                "source_url": f"https://irsa.ipac.caltech.edu/ibe/data/spherex/dr1/{valid_id}.fits",
                 "image_url": f"/api/v1/images/{valid_id}",
                 "quality_flags": [],
             },
@@ -310,7 +310,7 @@ def test_get_prepared_validates_frame_id_format(
                 "observed_at": f"2025-11-1{i}T06:40:00Z",
                 "release": "qr3",
                 "observation_id": f"obs-valid-{i}-e2",
-                "source_url": f"https://example.com/qr3/epoch2-{i}.fits",
+                "source_url": f"https://irsa.ipac.caltech.edu/ibe/data/spherex/qr3/epoch2-{i}.fits",
                 "image_url": f"/api/v1/images/epoch2-{i}",
                 "quality_flags": [],
             },
@@ -382,7 +382,7 @@ def test_get_prepared_validates_provenance_fields(
 ) -> None:
     manifest_path, products_dir = sample_catalog
 
-    # source_url faltante o no https:// en dr1/qr3
+    # source_url faltante o sin procedencia HTTPS de IRSA
     invalid_urls = [
         None,
         "",
@@ -390,6 +390,8 @@ def test_get_prepared_validates_provenance_fields(
         "http://irsa.ipac.caltech.edu/test.fits",  # http rechazado en dr1
         "ftp://irsa.ipac.caltech.edu/test.fits",   # ftp rechazado
         "https:///sin-host.fits",                  # sin netloc
+        "https://example.org/test.fits",           # host distinto de IRSA
+        "https://irsa.ipac.caltech.edu:incorrecto/test.fits",
     ]
 
     for bad_url in invalid_urls:
@@ -407,30 +409,13 @@ def test_get_prepared_validates_provenance_fields(
                 products_dir=products_dir,
             )
 
-    # Caso fixture: source_url puede ser None o http/https válido
+    # Un manifiesto preparado no puede publicar fotogramas de prueba.
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
     payload["entries"][0]["frames"][0]["release"] = "fixture"
     payload["entries"][0]["frames"][0]["source_url"] = None
-    payload["entries"][0]["frames"][1]["release"] = "fixture"
-    payload["entries"][0]["frames"][1]["source_url"] = "http://localhost:8000/fixture.fits"
     manifest_path.write_text(json.dumps(payload), encoding="utf-8")
 
-    res = get_prepared(
-        ra_deg=WISE0855_RA,
-        dec_deg=WISE0855_DEC,
-        fov_deg=WISE0855_FOV,
-        science_version=WISE0855_VERSION,
-        manifest_path=manifest_path,
-        products_dir=products_dir,
-    )
-    assert res is not None
-    assert res["frames"][0]["source_url"] is None
-    assert res["frames"][1]["source_url"] == "http://localhost:8000/fixture.fits"
-
-    # Caso fixture con URL malformada
-    payload["entries"][0]["frames"][1]["source_url"] = "ftp://localhost/fixture.fits"
-    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
-    with pytest.raises(ManifestCorruptError, match="source_url inválido en frame fixture"):
+    with pytest.raises(ManifestCorruptError, match="Release no válido"):
         get_prepared(
             ra_deg=WISE0855_RA,
             dec_deg=WISE0855_DEC,
@@ -439,6 +424,77 @@ def test_get_prepared_validates_provenance_fields(
             manifest_path=manifest_path,
             products_dir=products_dir,
         )
+
+
+@pytest.mark.parametrize(("field", "value"), [
+    ("center_um", "desconocido"),
+    ("tolerance_um", None),
+    ("tolerance_um", float("inf")),
+])
+def test_get_prepared_treats_bad_band_as_manifest_corruption(
+    sample_catalog: tuple[Path, Path], field: str, value: str | float | None
+) -> None:
+    manifest_path, products_dir = sample_catalog
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    payload["entries"][0]["band"][field] = value
+    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ManifestCorruptError, match=f"band\\.{field}"):
+        get_prepared(
+            WISE0855_RA,
+            WISE0855_DEC,
+            manifest_path=manifest_path,
+            products_dir=products_dir,
+        )
+
+
+@pytest.mark.parametrize(("reason", "frames_count", "accepted"), [
+    ("single_epoch", 0, False),
+    ("single_epoch", 1, True),
+    ("no_usable_frames", 0, True),
+    ("no_usable_frames", 1, False),
+    ("search_limit_reached", 0, True),
+    ("search_limit_reached", 1, True),
+    ("no_common_band", 1, True),
+    ("no_common_band", 2, False),
+])
+def test_get_prepared_checks_frame_count_for_insufficient_reason(
+    sample_catalog: tuple[Path, Path], reason: str, frames_count: int, accepted: bool
+) -> None:
+    manifest_path, products_dir = sample_catalog
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    entry = payload["entries"][0]
+    entry.update(
+        status="insufficient",
+        reason=reason,
+        frames=entry["frames"][:frames_count],
+    )
+    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    if not accepted:
+        with pytest.raises(ManifestCorruptError, match=reason):
+            get_prepared(
+                WISE0855_RA,
+                WISE0855_DEC,
+                manifest_path=manifest_path,
+                products_dir=products_dir,
+            )
+        return
+
+    result = get_prepared(
+        WISE0855_RA,
+        WISE0855_DEC,
+        manifest_path=manifest_path,
+        products_dir=products_dir,
+    )
+    assert result is not None
+    assert result["reason"] == reason
+    assert len(result["frames"]) == frames_count
+    assert (result["band"] is None) == (frames_count == 0)
+
+
+def test_get_prepared_rejects_invalid_observation_id(sample_catalog: tuple[Path, Path]) -> None:
+    manifest_path, products_dir = sample_catalog
 
     # observation_id inválido
     invalid_obs_ids = [
