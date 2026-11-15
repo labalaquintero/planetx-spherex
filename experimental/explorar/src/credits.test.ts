@@ -7,7 +7,7 @@ import beta from './sectors/beta'
 describe('créditos de los recursos empaquetados', () => {
   it('cada textura e imagen de referencia empaquetada tiene crédito, y cada crédito apunta a archivos que existen', () => {
     const credited = ASSET_CREDITS.flatMap((c) => c.assets)
-    const referencias = Object.keys(import.meta.glob('./sectors/*/referencias/*.png')).map((p) => p.split('/').pop()!.replace('.png', ''))
+    const referencias = Object.keys(import.meta.glob('./sectors/*/referencias/*.{png,webp}')).map((p) => p.split('/').pop()!.replace(/\.(png|webp)$/, ''))
     expect(referencias.length).toBeGreaterThan(0)
     expect([...credited].sort()).toEqual([...Object.keys(TEXTURES), ...referencias].sort())
   })

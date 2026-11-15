@@ -8,9 +8,10 @@ import { loadTexture } from './textureCache'
 
 /**
  * Forma base de roca: icosaedro subdividido deformado con ruido suave (bultos y entrantes, no
- * pinchos), con normales suavizadas para que el relieve de la textura se lea bien.
+ * pinchos), con normales suavizadas para que el relieve de la textura se lea bien. La usan también
+ * los asteroides que cruzan el sector.
  */
-function baseGeometry(seed: number, detail: number): BufferGeometry {
+export function rockGeometry(seed: number, detail: number): BufferGeometry {
   const ico = new IcosahedronGeometry(1, detail)
   ico.deleteAttribute('normal')
   const g = mergeVertices(ico)
@@ -38,7 +39,7 @@ interface Props {
  * tono. La superficie usa el mapa lunar de NASA (color y relieve) teñido por instancia.
  */
 export function SmallBodies({ bodies, palette, spin }: Props) {
-  const geometries = useMemo(() => [0, 1, 2].map((v) => baseGeometry(900 + v * 17, 3)), [])
+  const geometries = useMemo(() => [0, 1, 2].map((v) => rockGeometry(900 + v * 17, 3)), [])
   // Textura lunar (color + relieve) en las rocas; mientras carga, color liso.
   const invalidate = useThree((st) => st.invalidate)
   const materials = useRef<(MeshStandardMaterial | null)[]>([])

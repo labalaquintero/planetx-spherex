@@ -4,7 +4,7 @@ import {
   boundaryProximity,
   FLIGHT,
   spawnBehind,
-  nearestNamed,
+  stickyNearest,
   NO_INPUT,
   obstaclesOf,
   sectorBounds,
@@ -13,9 +13,9 @@ import {
   type FlightState,
 } from '../engine/flight'
 import { STEER_SENSITIVITY } from '../engine/orbit'
-import type { VisitorEvent } from '../engine/visitors'
-import { AdaptiveQuality, type QualityLevel } from '../engine/quality'
-import { spawnPointParam } from '../params'
+import type { VisitorEvent, VisitorKind } from '../engine/visitors'
+import { AdaptiveQuality, adaptiveOptionsFor, detectPlatform, type QualityLevel } from '../engine/quality'
+import { platformParam, spawnPointParam } from '../params'
 import type { SectorConfig, SectorScene as SectorSceneData, Vec3 } from '../engine/types'
 import { CHASE } from '../scene/chase'
 import { Credits } from './Credits'
@@ -62,6 +62,12 @@ const KIND_LABEL: Record<string, string> = {
   smallBody: 'Cuerpo menor',
 }
 
+const IMPACT_TEXT: Record<VisitorKind, string> = {
+  comet: 'Impacto de un fragmento de cometa',
+  meteor: 'Impacto de micrometeorito',
+  asteroid: 'Impacto de un asteroide pequeño',
+}
+
 interface Telemetry {
   position: Vec3
   yaw: number
@@ -72,11 +78,23 @@ interface Telemetry {
 
 /** A esta distancia (a la superficie) el panel muestra el contexto del objeto. */
 export const INFO_DISTANCE = 120
+/** Y se oculta solo al alejarse más de esto (histéresis). */
+export const INFO_HIDE_DISTANCE = 140
 
 export function NavigationScreen({ sector, onExit, arrive, reduced, quality: initialLevel, forced, debug, extraControls, onEngine, onImpact }: Props) {
   const { scene } = sector
   const webgl = useMemo(() => detectWebGL(), [])
-  const adaptive = useMemo(() => new AdaptiveQuality(initialLevel, forced), [initialLevel, forced])
+  // Perfil de rendimiento: más ligero en Windows (Direct3D vía ANGLE); ?perfil= lo fuerza.
+  const platform = useMemo(
+    () =>
+      (typeof window !== 'undefined' && platformParam(window.location.search)) ||
+      detectPlatform(typeof navigator === 'undefined' ? undefined : (navigator as Navigator & { userAgentData?: { platform?: string } })),
+    [],
+  )
+  const adaptive = useMemo(
+    () => new AdaptiveQuality(initialLevel, forced, adaptiveOptionsFor(platform), platform),
+    [initialLevel, forced, platform],
+  )
   const [settings, setSettings] = useState(adaptive.settings)
   const [fps, setFps] = useState(0)
 
@@ -140,9 +158,11 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
   // Telemetría del HUD, 10 veces por segundo (la simulación corre en el bucle de render).
   const [tele, setTele] = useState<Telemetry>(() => ({ position: flight.current.position, yaw: flight.current.yaw, speed: 0, edge: 0 }))
   useEffect(() => {
+    let lastNear: string | null = null
     const id = setInterval(() => {
       const s = flight.current
-      const n = nearestNamed(s.position, scene.objects)
+      const n = stickyNearest(s.position, scene.objects, lastNear)
+      lastNear = n?.object.id ?? null
       const speed = speedOf(s)
       setTele({
         position: s.position,
@@ -167,11 +187,7 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
     (e: VisitorEvent) => {
       if (e.type === 'spawn' && e.kind === 'comet') setToast({ text: 'Un cometa cruza el sector', tone: 'info', key: Date.now() })
       if (e.type === 'impact') {
-        setToast({
-          text: e.kind === 'comet' ? 'Impacto de un fragmento de cometa · la nave se estabiliza' : 'Impacto de micrometeorito · la nave se estabiliza',
-          tone: 'warn',
-          key: Date.now(),
-        })
+        setToast({ text: `${IMPACT_TEXT[e.kind]} · la nave se estabiliza`, tone: 'warn', key: Date.now() })
         onImpact?.(e.strength)
       }
     },
@@ -179,7 +195,12 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
   )
 
   const mapSize = 200
-  const nearObject = tele.near && tele.near.distance < INFO_DISTANCE ? scene.objects.find((o) => o.id === tele.near!.id) : undefined
+  // Ficha con histéresis: aparece a menos de INFO_DISTANCE y no se va hasta pasar INFO_HIDE_DISTANCE
+  // (si no, en el límite aparece y desaparece varias veces por segundo y el texto salta).
+  const shown = useRef<string | null>(null)
+  if (tele.near && tele.near.distance < INFO_DISTANCE) shown.current = tele.near.id
+  else if (!tele.near || tele.near.id !== shown.current || tele.near.distance > INFO_HIDE_DISTANCE) shown.current = null
+  const nearObject = shown.current ? scene.objects.find((o) => o.id === shown.current) : undefined
   const nearInfo = nearObject?.info
 
   return (
@@ -289,6 +310,7 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
       {debug && (
         <p className="ex-debug" aria-hidden="true">
           {fps.toFixed(0)} FPS · calidad {settings.level}
+          {platform === 'windows' ? ' · perfil Windows' : ''}
           {forced ? ' (fija)' : ''}
         </p>
       )}

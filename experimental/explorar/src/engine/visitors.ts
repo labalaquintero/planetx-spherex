@@ -1,11 +1,12 @@
 import type { Vec3 } from './types'
 
 /**
- * Visitantes ocasionales del sector: cometas (lentos, con cola) y meteoritos (rápidos, pequeños).
- * Lógica pura y determinista: aparecen de vez en cuando desde lejos, cruzan cerca de la nave y a
- * veces vienen directos hacia ella; si la alcanzan producen un impacto (la nave se recupera sola).
+ * Visitantes ocasionales del sector: cometas (lentos, con cola), estrellas fugaces (meteoros
+ * rápidos y brillantes) y asteroides pequeños que cruzan dando tumbos. Lógica pura y determinista
+ * con la semilla: aparecen al azar alrededor de la nave y cruzan en cualquier dirección. Solo unos
+ * pocos vienen en rumbo de choque; si alcanzan a la nave producen un impacto y la nave se recupera.
  */
-export type VisitorKind = 'comet' | 'meteor'
+export type VisitorKind = 'comet' | 'meteor' | 'asteroid'
 
 export interface Visitor {
   readonly id: number
@@ -17,12 +18,13 @@ export interface Visitor {
   readonly life: number
   /** Ya golpeó a la nave (no vuelve a golpear). */
   readonly hit: boolean
+  /** Variación visual (giro, forma), 0..1. */
+  readonly seed: number
 }
 
 export interface VisitorState {
   readonly t: number
-  readonly nextComet: number
-  readonly nextMeteor: number
+  readonly next: Readonly<Record<VisitorKind, number>>
   readonly seq: number
   readonly rng: number
   readonly active: readonly Visitor[]
@@ -33,12 +35,42 @@ export type VisitorEvent =
   | { readonly type: 'impact'; readonly kind: VisitorKind; readonly id: number; readonly dir: Vec3; readonly strength: number }
   | { readonly type: 'gone'; readonly id: number }
 
-export const VISITORS = {
-  comet: { firstAt: 9, minGap: 35, maxGap: 60, speed: 40, radius: 1.8, spawnDist: 340, aimChance: 0.35, strength: 1 },
-  meteor: { firstAt: 18, minGap: 12, maxGap: 22, speed: 85, radius: 0.7, spawnDist: 260, aimChance: 0.35, strength: 0.55 },
+interface KindConfig {
+  /** Segundos hasta el primero y separación entre dos seguidos (al azar entre min y max). */
+  readonly firstAt: number
+  readonly minGap: number
+  readonly maxGap: number
+  readonly speed: number
+  readonly radius: readonly [number, number]
+  /** Distancia desde la que entra hasta el punto por el que pasa (y la misma para salir). */
+  readonly spawnDist: number
+  /** Distancia a la nave del punto por el que pasa (al azar entre ambos valores). */
+  readonly pass: readonly [number, number]
+  /** Probabilidad de que venga en rumbo de choque. */
+  readonly hitChance: number
+  readonly strength: number
+}
+
+export const VISITOR_KINDS: readonly VisitorKind[] = ['comet', 'meteor', 'asteroid']
+
+export const VISITORS: Readonly<Record<VisitorKind, KindConfig>> & {
+  readonly shipRadius: number
+  readonly minMiss: number
+  readonly frontBias: number
+  readonly fadeSeconds: number
+} = {
+  comet: { firstAt: 9, minGap: 35, maxGap: 60, speed: 40, radius: [1.6, 2.2], spawnDist: 380, pass: [90, 280], hitChance: 0.05, strength: 1 },
+  meteor: { firstAt: 4, minGap: 7, maxGap: 16, speed: 130, radius: [0.4, 0.6], spawnDist: 320, pass: [60, 260], hitChance: 0.03, strength: 0.45 },
+  asteroid: { firstAt: 16, minGap: 20, maxGap: 34, speed: 26, radius: [1.8, 3.6], spawnDist: 240, pass: [45, 180], hitChance: 0.06, strength: 0.8 },
   /** Radio de la nave para el choque. */
   shipRadius: 2.6,
-} as const
+  /** Los que no vienen a chocar pasan al menos a esta distancia de la nave (más los radios). */
+  minMiss: 22,
+  /** Fracción de los que pasan por delante de la nave (para que se vean); el resto, por cualquier lado. */
+  frontBias: 0.65,
+  /** Aparecen y se apagan de forma gradual durante este tiempo. */
+  fadeSeconds: 1.2,
+}
 
 /** Generador determinista (LCG) con el estado dentro del propio estado. */
 function next(rng: number): [number, number] {
@@ -47,7 +79,13 @@ function next(rng: number): [number, number] {
 }
 
 export function initialVisitors(seed = 2026): VisitorState {
-  return { t: 0, nextComet: VISITORS.comet.firstAt, nextMeteor: VISITORS.meteor.firstAt, seq: 0, rng: seed >>> 0, active: [] }
+  return {
+    t: 0,
+    next: { comet: VISITORS.comet.firstAt, meteor: VISITORS.meteor.firstAt, asteroid: VISITORS.asteroid.firstAt },
+    seq: 0,
+    rng: seed >>> 0,
+    active: [],
+  }
 }
 
 /** Distancia mínima entre el segmento p0→p1 y el punto c (para objetos rápidos que «saltan» la nave). */
@@ -59,26 +97,78 @@ export function segmentPointDistance(p0: Vec3, p1: Vec3, c: Vec3): number {
   return Math.hypot(w[0]! - d[0]! * t, w[1]! - d[1]! * t, w[2]! - d[2]! * t)
 }
 
+/** Distancia mínima de la recta (punto p, dirección unitaria d) al punto c. */
+export function lineDistance(p: Vec3, d: Vec3, c: Vec3): number {
+  const w = [c[0] - p[0], c[1] - p[1], c[2] - p[2]]
+  const along = w[0]! * d[0] + w[1]! * d[1] + w[2]! * d[2]
+  return Math.hypot(w[0]! - d[0] * along, w[1]! - d[1] * along, w[2]! - d[2] * along)
+}
+
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t
+const dirOf = (yaw: number, el: number): Vec3 => [-Math.sin(yaw) * Math.cos(el), Math.sin(el), -Math.cos(yaw) * Math.cos(el)]
+
 /**
- * Crea un visitante que se ve desde la nave (`heading` = rumbo en radianes, convención de
- * `forwardOf`). Si `aim`, entra por delante (hasta ±35°) directo hacia la nave. Si no, cruza la vista
- * de lado a lado por un punto situado delante de la nave.
+ * Crea un visitante a partir de 8 números al azar (0..1). `heading` es el rumbo de la nave en
+ * radianes (convención de `forwardOf`).
+ * - Si `aim`, viene en rumbo de choque y entra por delante (hasta ±60° del rumbo), para que se vea venir.
+ * - Si no, cruza en una dirección al azar por un punto al azar alrededor de la nave (casi siempre por
+ *   delante, a la vista) y nunca a menos de `minMiss` de ella.
  */
 export function spawnVisitor(kind: VisitorKind, id: number, ship: Vec3, r: readonly number[], aim: boolean, heading = 0): Visitor {
   const cfg = VISITORS[kind]
-  const side = r[0]! < 0.5 ? -1 : 1
-  const spread = Math.abs(r[0]! - 0.5) * 2
-  const fwd: Vec3 = [-Math.sin(heading), 0, -Math.cos(heading)]
-  // Punto por el que pasa: la nave, o un punto por delante de ella.
-  const ahead = aim ? 0 : 60 + r[2]! * 70
-  const target: Vec3 = [ship[0] + fwd[0] * ahead, ship[1] + (r[3]! - 0.5) * (aim ? 0.6 : 24), ship[2] + fwd[2] * ahead]
-  // Dirección de entrada vista desde ese punto: de frente si viene directo, de lado si cruza.
-  const yaw = heading + side * (aim ? spread * 0.6 : 0.9 + spread * 0.85)
-  const el = (r[1]! - 0.5) * (aim ? 0.4 : 0.3)
-  const dir: Vec3 = [-Math.sin(yaw) * Math.cos(el), Math.sin(el), -Math.cos(yaw) * Math.cos(el)]
-  const start: Vec3 = [target[0] + dir[0] * cfg.spawnDist, target[1] + dir[1] * cfg.spawnDist, target[2] + dir[2] * cfg.spawnDist]
-  const velocity: Vec3 = [-dir[0] * cfg.speed, -dir[1] * cfg.speed, -dir[2] * cfg.speed]
-  return { id, kind, position: start, velocity, radius: cfg.radius, age: 0, life: (2 * cfg.spawnDist) / cfg.speed, hit: false }
+  const radius = lerp(cfg.radius[0], cfg.radius[1], r[6] ?? 0.5)
+  let dir: Vec3
+  let pass: Vec3
+  if (aim) {
+    const from = dirOf(heading + (r[0]! - 0.5) * 2.1, (r[1]! - 0.5) * 0.5)
+    dir = [-from[0], -from[1], -from[2]]
+    pass = [ship[0], ship[1] + (r[3]! - 0.5) * 0.6, ship[2]]
+  } else {
+    // Rumbo al azar en cualquier dirección (algo aplanado: el sector es más ancho que alto).
+    dir = dirOf(r[0]! * Math.PI * 2, (r[1]! - 0.5) * 1.0)
+    // Punto de paso: a una distancia al azar; la mayoría, en la mitad delantera.
+    const fwd: Vec3 = [-Math.sin(heading), 0, -Math.cos(heading)]
+    const az = r[2]! * Math.PI * 2
+    const el = (r[3]! - 0.5) * 0.9
+    const d = lerp(cfg.pass[0], cfg.pass[1], r[4]!)
+    const off = [Math.cos(az) * Math.cos(el) * d, Math.sin(el) * d, Math.sin(az) * Math.cos(el) * d]
+    const ahead = off[0]! * fwd[0] + off[2]! * fwd[2]
+    if (r[5]! < VISITORS.frontBias && ahead < 0) {
+      off[0] = off[0]! - 2 * ahead * fwd[0]
+      off[2] = off[2]! - 2 * ahead * fwd[2]
+    }
+    pass = [ship[0] + off[0]!, ship[1] + off[1]!, ship[2] + off[2]!]
+    // Cruzan la vista más de lado que de frente: se quita casi toda la componente del rumbo que
+    // va hacia la nave o se aleja de ella (si no, desde lejos todo parece venir directo).
+    const ou = [off[0]! / d, off[1]! / d, off[2]! / d]
+    const radial = dir[0] * ou[0]! + dir[1] * ou[1]! + dir[2] * ou[2]!
+    const crossing: Vec3 = [dir[0] - 0.8 * radial * ou[0]!, dir[1] - 0.8 * radial * ou[1]!, dir[2] - 0.8 * radial * ou[2]!]
+    const cl = Math.hypot(...crossing)
+    dir = [crossing[0] / cl, crossing[1] / cl, crossing[2] / cl]
+    // Lo que cuenta es lo cerca que pasa la recta: si roza la nave, se aparta en perpendicular.
+    const min = VISITORS.minMiss + VISITORS.shipRadius + radius
+    const rel = [pass[0] - ship[0], pass[1] - ship[1], pass[2] - ship[2]]
+    const along = rel[0]! * dir[0] + rel[1]! * dir[1] + rel[2]! * dir[2]
+    let perp = [rel[0]! - dir[0] * along, rel[1]! - dir[1] * along, rel[2]! - dir[2] * along]
+    let pl = Math.hypot(...perp)
+    if (pl < min) {
+      if (pl < 1e-6) {
+        // Perpendicular cualquiera (el rumbo casi nunca es vertical; si lo es, se usa el eje x).
+        perp = Math.hypot(dir[0], dir[2]) > 1e-3 ? [-dir[2], 0, dir[0]] : [1, 0, 0]
+        pl = Math.hypot(...perp)
+      }
+      pass = [ship[0] + dir[0] * along + (perp[0]! / pl) * min, ship[1] + dir[1] * along + (perp[1]! / pl) * min, ship[2] + dir[2] * along + (perp[2]! / pl) * min]
+    }
+  }
+  const start: Vec3 = [pass[0] - dir[0] * cfg.spawnDist, pass[1] - dir[1] * cfg.spawnDist, pass[2] - dir[2] * cfg.spawnDist]
+  const velocity: Vec3 = [dir[0] * cfg.speed, dir[1] * cfg.speed, dir[2] * cfg.speed]
+  return { id, kind, position: start, velocity, radius, age: 0, life: (2 * cfg.spawnDist) / cfg.speed, hit: false, seed: r[7] ?? 0 }
+}
+
+/** Opacidad de entrada y salida (0..1): aparecen y se apagan sin saltos. */
+export function visitorFade(v: Pick<Visitor, 'age' | 'life'>): number {
+  const f = VISITORS.fadeSeconds
+  return Math.max(0, Math.min(1, v.age / f, (v.life - v.age) / f))
 }
 
 /** Avanza el tiempo: aparecen, se mueven, golpean y se van. dt en segundos (acotado a 0,1 s). */
@@ -86,7 +176,8 @@ export function stepVisitors(s: VisitorState, dtIn: number, ship: Vec3, heading 
   if (!(dtIn > 0)) return { state: s, events: [] }
   const dt = Math.min(dtIn, 0.1)
   const events: VisitorEvent[] = []
-  let { rng, seq, nextComet, nextMeteor } = s
+  let { rng, seq } = s
+  const due = { ...s.next }
   const t = s.t + dt
   const draw = (n: number) => {
     const out: number[] = []
@@ -98,17 +189,14 @@ export function stepVisitors(s: VisitorState, dtIn: number, ship: Vec3, heading 
     return out
   }
   const born: Visitor[] = []
-  for (const kind of ['comet', 'meteor'] as const) {
-    const due = kind === 'comet' ? nextComet : nextMeteor
-    if (t < due) continue
+  for (const kind of VISITOR_KINDS) {
+    if (t < due[kind]) continue
     const cfg = VISITORS[kind]
-    const r = draw(6)
+    const r = draw(10)
     seq += 1
-    born.push(spawnVisitor(kind, seq, ship, r, r[4]! < cfg.aimChance, heading))
+    born.push(spawnVisitor(kind, seq, ship, r, r[8]! < cfg.hitChance, heading))
     events.push({ type: 'spawn', kind, id: seq })
-    const gap = cfg.minGap + r[5]! * (cfg.maxGap - cfg.minGap)
-    if (kind === 'comet') nextComet = t + gap
-    else nextMeteor = t + gap
+    due[kind] = t + cfg.minGap + r[9]! * (cfg.maxGap - cfg.minGap)
   }
 
   const active: Visitor[] = []
@@ -133,5 +221,5 @@ export function stepVisitors(s: VisitorState, dtIn: number, ship: Vec3, heading 
     }
     active.push({ ...v, position: p1, age, hit })
   }
-  return { state: { t, nextComet, nextMeteor, seq, rng, active }, events }
+  return { state: { t, next: due, seq, rng, active }, events }
 }

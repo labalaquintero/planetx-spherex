@@ -267,7 +267,7 @@ export function attitudeOf(s: FlightState): { bankDeg: number; pitchDeg: number 
  * Área visitable del sector: la caja que contiene todos los objetos y puntos de interés, con un
  * margen. Así el vuelo abarca todo el sector y nada queda fuera de alcance.
  */
-export function sectorBounds(objects: readonly SceneObject[], points: readonly Waypoint[], margin = 100): Bounds {
+export function sectorBounds(objects: readonly SceneObject[], points: readonly Waypoint[], margin = 170): Bounds {
   const min = [Infinity, Infinity, Infinity]
   const max = [-Infinity, -Infinity, -Infinity]
   const add = (p: Vec3, r: number) => {
@@ -305,6 +305,26 @@ export function nearestNamed(p: Vec3, objects: readonly SceneObject[]): { object
     if (!best || d < best.distance) best = { object: o, distance: d }
   }
   return best
+}
+
+/**
+ * Como nearestNamed, pero se queda con el objeto anterior mientras no haya otro claramente más cerca
+ * (`margin` unidades). Sin esto, entre dos objetos a distancia parecida el HUD cambia de uno a otro
+ * varias veces por segundo y la ficha salta.
+ */
+export function stickyNearest(
+  p: Vec3,
+  objects: readonly SceneObject[],
+  previousId: string | null | undefined,
+  margin = 15,
+): { object: SceneObject; distance: number } | undefined {
+  const best = nearestNamed(p, objects)
+  if (!best || !previousId || best.object.id === previousId) return best
+  const prev = objects.find((o) => o.id === previousId && o.label)
+  if (!prev) return best
+  const extent = Math.max(prev.radius, (prev.length ?? 0) / 2)
+  const d = Math.max(0, Math.hypot(p[0] - prev.position[0], p[1] - prev.position[1], p[2] - prev.position[2]) - extent)
+  return d <= best.distance + margin ? { object: prev, distance: d } : best
 }
 
 /** 0 lejos del borde .. 1 en el borde: para avisar «límite del sector». */

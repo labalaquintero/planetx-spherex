@@ -44,6 +44,22 @@ float ex_ringDensity(float u, float seed) {
 }
 `
 
+/**
+ * Horneado en cubemap (scene/bake.ts): 8 bits por canal con raíz cuadrada y ganancia, para no
+ * perder precisión en los tonos oscuros del cielo.
+ */
+export const BAKE_ENCODE = /* glsl */ `vec4 ex_encode(vec3 c) { return vec4(sqrt(clamp(c * 4.0, 0.0, 1.0)), 1.0); }`
+export const BAKE_DECODE = /* glsl */ `vec3 ex_decode(vec3 e) { return e * e / 4.0; }`
+
+/** Vértices de los shaders de dirección: la dirección es la posición en el espacio del objeto. */
+export const DIR_VERT = /* glsl */ `
+varying vec3 vDir;
+void main() {
+  vDir = normalize(position);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`
+
 /** Tono y espacio de color de three: el mismo resultado con y sin composer (bloom). */
 export const OUTPUT = /* glsl */ `
 #include <tonemapping_fragment>

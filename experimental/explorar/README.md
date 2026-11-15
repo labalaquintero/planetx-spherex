@@ -38,8 +38,21 @@ pnpm build && pnpm preview  # build de producción: http://localhost:4173
 | `?quality=low` / `medium` / `high` | Fija la calidad y desactiva el ajuste automático. Otro valor = automático. |
 | `?punto=<id>`              | Sale desde ese punto de ruta del sector (por ejemplo, `der_f`); sirve para capturas comparables y para la demo. |
 | `?debug`                   | Muestra el contador de FPS y el nivel de calidad en la navegación.            |
+| `?perfil=windows` / `general` | Fuerza el perfil de rendimiento (por defecto se detecta la plataforma). |
 
 Se pueden combinar: `?quality=low&debug`.
+
+**Perfil de Windows.** En Windows el navegador dibuja WebGL a través de Direct3D (ANGLE), y los portátiles
+suelen tener escalado de pantalla y GPU integrada. Ahí, sobre cualquier nivel de calidad, se aplica un perfil algo
+más ligero (`forPlatform` en `src/engine/quality.ts`):
+- **Resolución:** dpr máximo de 1,25 y un 30 % menos de píxeles como tope.
+- **Antialias y bloom:** MSAA de 2 como máximo y bloom a media resolución interna.
+- **Lente:** sin aberración cromática.
+- **Cielo:** una capa de nebulosa menos y cielo horneado a 768 px como máximo.
+- **Partículas:** menos estrellas, partículas y rocas de relleno.
+
+Además, baja de nivel por debajo de 50 FPS en vez de 46. En Linux y macOS no cambia nada. Con `?debug` se ve
+«perfil Windows» junto a los FPS.
 
 ## Uso
 
@@ -66,12 +79,20 @@ Se pueden combinar: `?quality=low&debug`.
   pantallas táctiles. `Esc` o «Volver a sectores» regresan a la selección con el foco en el sector visitado.
 - **Área visitable:** es la caja que contiene todo el sector (todos los objetos, con margen), así que se puede
   llegar a cualquiera. Cerca del borde la nave frena sola, aparece el aviso «Límite del sector» y el borde del mapa
-  se pone amarillo. Planetas, estación y rocas no se atraviesan, pero uno se puede acercar mucho: solo muy cerca de
+  se pone amarillo. Planetas y rocas no se atraviesan, pero uno se puede acercar mucho: solo muy cerca de
   la superficie la nave frena poco a poco y se desvía por el borde, con un destello muy leve del escudo y una
-  pequeña sacudida. Los anillos sí se cruzan, porque son partículas.
-- **Cometas y meteoritos:** de vez en cuando un cometa cruza la vista con su cola (que apunta lejos de la estrella)
-  y pasan meteoritos. A veces uno viene directo: la nave recibe un impacto (empujón, sacudida, destello y aviso) y
-  se estabiliza sola en unos segundos. Es solo un efecto: no hay daño ni puntuación.
+  pequeña sacudida. Los anillos sí se cruzan, porque son partículas (de canto y pegados a la cámara se desvanecen).
+- **Solo cuerpos naturales en β:** la estación del boceto se retiró de la escena. En su sitio del boceto está
+  «Cielo infrarrojo», un planeta cuya superficie es el primer mapa de todo el cielo de SPHEREx. Fuera de la vista
+  inicial hay siete más hechos con imágenes de SPHEREx: «Vela», «Polvo de Vela» y «Nebulosa de Vela» (región
+  molecular de Vela), «Plano galáctico» (el perfil de la Vía Láctea en el mapa del cielo) y «Burbuja», «Lazos
+  galácticos» y «Filamentos» (recortes del mismo mapa).
+  Las texturas salen de `tools/texturas_spherex.py`. Las tablas de medición del boceto de más abajo siguen
+  describiendo el dibujo, que sí tiene la estación. El área de vuelo deja 170 u de margen alrededor de todo.
+- **Cometas, estrellas fugaces y asteroides:** aparecen al azar alrededor de la nave y cruzan en cualquier
+  dirección, casi siempre de lado y a distancias variadas. Solo unos pocos (3–6 %) vienen en rumbo de choque: la
+  nave recibe un impacto (empujón, sacudida, destello y aviso) y se estabiliza sola en unos segundos. Es solo un
+  efecto: no hay daño ni puntuación.
 - **Ficha del objeto:** a menos de 120 u de un objeto con nombre, el panel izquierdo muestra su contexto y, si la
   hay, la imagen de la que se sacó (por ejemplo, las dos épocas de WISE 0855 para Ilmara).
 - **HUD:** muestra el sector, el objeto con nombre más cercano (tipo y distancia) y la velocidad. El **mapa del

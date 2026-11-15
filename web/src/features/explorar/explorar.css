@@ -39,6 +39,8 @@
   --ex-panel: rgba(15, 23, 42, 0.86);
 
   position: relative;
+  /* Contexto de apilamiento propio: los z-index del HUD nunca pintan encima de la cabecera del sitio. */
+  isolation: isolate;
   width: 100%;
   height: 100%;
   min-height: 320px;
@@ -543,16 +545,21 @@
   gap: 10px;
   min-width: 0;
 }
+/* Ancho fijo: si dependiera del contenido, cada cambio de distancia o velocidad (10 veces por
+   segundo) movería el panel y volvería a partir las líneas de la ficha. */
 .ex-hud-info {
-  min-width: 210px;
-  max-width: 280px;
+  width: min(280px, 100%);
   padding: 10px 14px 12px;
-  transition: max-width 200ms ease;
 }
 .ex-hud-info[data-expanded] {
-  max-width: 340px;
+  width: min(340px, 100%);
   max-height: calc(100cqh - 220px);
   overflow-y: auto;
+  /* Hueco de la barra siempre reservado: en Windows la barra ocupa ~17 px y, al aparecer y desaparecer
+     según el alto, el texto se volvía a partir una y otra vez. */
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ex-border-strong) transparent;
 }
 /* Ficha de contexto del objeto cercano */
 .ex-info {
@@ -868,7 +875,8 @@
 /* Vuelo libre: datos del HUD, mapa del área y controles con subir/bajar */
 .ex-hud-stats {
   display: grid;
-  grid-template-columns: repeat(3, auto);
+  /* Columnas fijas: los valores cambian sin mover las demás. */
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(0, 1fr);
   gap: 2px 14px;
   margin: 6px 0 0;
   padding-top: 6px;
@@ -888,8 +896,11 @@
   margin: 0;
   font-family: var(--ex-mono);
   font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
   color: var(--ex-text);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .ex-hud-edge {
   margin: 8px 0 0;
@@ -1054,6 +1065,40 @@
   color: var(--ex-muted);
 }
 
+/*
+ * Ancho medio (portátiles con escalado o zoom del navegador): ficha, botones y mapa ya no caben en
+ * una fila sin encimarse. Los botones pasan a su propia fila arriba; ficha y mapa, debajo.
+ */
+@container (max-width: 1120px) {
+  .ex-hud-top {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .ex-hud-top > .ex-hud-actions {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  .ex-hud-info[data-expanded] {
+    max-height: calc(100cqh - 280px);
+  }
+  .ex-toast {
+    top: 64px;
+  }
+}
+
+/* Poca altura (zoom alto en pantallas bajas): mapa más pequeño y ficha que no tape la cruceta. */
+@container (max-height: 620px) {
+  .ex-minimap svg {
+    width: 132px;
+    height: 132px;
+  }
+  .ex-hud-info[data-expanded] {
+    max-height: 46cqh;
+  }
+  .ex-hint {
+    display: none;
+  }
+}
+
 /* Pantallas estrechas y verticales: HUD apilado, cruceta táctil más grande, sin ayuda de teclado. */
 @container (max-width: 640px) {
   .ex-hud {
@@ -1071,10 +1116,13 @@
   .ex-hud-info[data-expanded] {
     max-height: 38cqh;
   }
-  .ex-hud-info {
-    flex: 1;
+  .ex-hud-info,
+  .ex-hud-info[data-expanded] {
+    width: auto;
     min-width: 0;
-    max-width: none;
+  }
+  .ex-hud-top > .ex-hud-info {
+    justify-self: stretch;
   }
   .ex-route,
   .ex-route svg {

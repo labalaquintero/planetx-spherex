@@ -29,3 +29,12 @@ export function spawnPointParam(search: string, validIds: readonly string[]): st
   const v = new URLSearchParams(search).get('punto')?.trim()
   return v && validIds.includes(v) ? v : null
 }
+
+/**
+ * ?perfil=windows|general fuerza el perfil de rendimiento (para probar el de Windows en otro sistema,
+ * o para quitarlo). Sin valor válido, se detecta la plataforma.
+ */
+export function platformParam(search: string): 'windows' | 'general' | null {
+  const v = new URLSearchParams(search).get('perfil')?.trim().toLowerCase()
+  return v === 'windows' || v === 'general' ? v : null
+}

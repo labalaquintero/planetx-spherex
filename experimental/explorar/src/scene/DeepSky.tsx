@@ -1,16 +1,17 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { AdditiveBlending, BackSide, BufferAttribute, BufferGeometry, Color, ShaderMaterial } from 'three'
+import { AdditiveBlending, BackSide, BufferAttribute, BufferGeometry, Color, ShaderMaterial, type WebGLCubeRenderTarget } from 'three'
 import type { Bounds } from '../engine/flight'
 import { mulberry32 } from '../engine/random'
-import { NOISE, OUTPUT } from './shaders/common'
+import { bakeCube } from './bake'
+import { BAKE_DECODE, BAKE_ENCODE, DIR_VERT, NOISE, OUTPUT } from './shaders/common'
 
 /**
  * Profundidad del cielo: estrellas cercanas fijas en el sector (dan paralaje al volar, a diferencia
  * del cielo lejano, que acompaña a la cámara) y capas de nebulosa a distancia finita, aditivas y
- * tenues. Cantidad y capas según la calidad.
+ * tenues (horneadas una vez en cubemaps). Cantidad y capas según la calidad.
  */
-export function DeepSky({ bounds, stars, layers, animate }: { bounds: Bounds; stars: number; layers: number; animate: boolean }) {
+export function DeepSky({ bounds, stars, layers, cube, animate }: { bounds: Bounds; stars: number; layers: number; cube: number; animate: boolean }) {
   const center = useMemo(
     () => [0, 1, 2].map((i) => (bounds.min[i]! + bounds.max[i]!) / 2) as [number, number, number],
     [bounds],
@@ -19,7 +20,7 @@ export function DeepSky({ bounds, stars, layers, animate }: { bounds: Bounds; st
     <group position={center}>
       {stars > 0 && <NearStars count={stars} animate={animate} />}
       {Array.from({ length: layers }, (_, i) => (
-        <NebulaShell key={i} index={i} />
+        <NebulaShell key={i} index={i} cube={cube} />
       ))}
     </group>
   )
@@ -108,20 +109,18 @@ function NearStars({ count, animate }: { count: number; animate: boolean }) {
   return <points geometry={geometry} material={material} frustumCulled={false} renderOrder={-1} />
 }
 
-const NEB_VERT = /* glsl */ `
-varying vec3 vDir;
-void main() {
-  vDir = normalize(position);
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}
-`
-const NEB_FRAG = /* glsl */ `
+/**
+ * Horneado de una capa: lo que antes se sumaba en pantalla con mezcla aditiva (color · alfa²), ya
+ * calculado. Solo depende de la dirección en el espacio de la cáscara.
+ */
+const NEB_BAKE_FRAG = /* glsl */ `
 uniform vec3 uA;
 uniform vec3 uB;
 uniform float uSeed;
 uniform float uAlpha;
 varying vec3 vDir;
 ${NOISE}
+${BAKE_ENCODE}
 void main() {
   vec3 d = normalize(vDir) * 2.0 + uSeed;
   vec3 w = vec3(ex_fbm(d * 1.3, 4), ex_fbm(d * 1.3 + 7.7, 4), ex_fbm(d * 1.3 + 3.1, 4));
@@ -130,32 +129,57 @@ void main() {
   float holes = smoothstep(0.35, 0.7, ex_fbm(d * 3.7 + w, 3));
   vec3 col = mix(uA, uB, smoothstep(0.4, 0.9, w.x));
   float a = wisps * holes * uAlpha;
-  gl_FragColor = vec4(col * a, a);
+  gl_FragColor = ex_encode(col * a * a);
+}
+`
+const NEB_FRAG = /* glsl */ `
+uniform samplerCube uNeb;
+varying vec3 vDir;
+${BAKE_DECODE}
+void main() {
+  gl_FragColor = vec4(ex_decode(textureCube(uNeb, normalize(vDir)).rgb), 1.0);
   ${OUTPUT}
 }
 `
 
 /** Capa de nebulosa (cáscara esférica vista por dentro): violeta–magenta y turquesa apagados. */
-function NebulaShell({ index }: { index: number }) {
+function NebulaShell({ index, cube }: { index: number; cube: number }) {
+  const gl = useThree((s) => s.gl)
+  // En un efecto (no en useMemo): con StrictMode, el cubemap desechado no se reutiliza vacío.
+  const [baked, setBaked] = useState<WebGLCubeRenderTarget | null>(null)
+  useEffect(() => {
+    const rt = bakeCube(
+      gl,
+      NEB_BAKE_FRAG,
+      {
+        uA: { value: new Color(index === 0 ? '#4c1d95' : '#0e7490') },
+        uB: { value: new Color(index === 0 ? '#9d174d' : '#1e3a8a') },
+        uSeed: { value: 3.7 + index * 11.3 },
+        uAlpha: { value: index === 0 ? 0.55 : 0.4 },
+      },
+      cube,
+    )
+    setBaked(rt)
+    return () => rt.dispose()
+  }, [gl, index, cube])
   const material = useMemo(
     () =>
       new ShaderMaterial({
-        vertexShader: NEB_VERT,
+        vertexShader: DIR_VERT,
         fragmentShader: NEB_FRAG,
-        uniforms: {
-          uA: { value: new Color(index === 0 ? '#4c1d95' : '#0e7490') },
-          uB: { value: new Color(index === 0 ? '#9d174d' : '#1e3a8a') },
-          uSeed: { value: 3.7 + index * 11.3 },
-          uAlpha: { value: index === 0 ? 0.55 : 0.4 },
-        },
+        uniforms: { uNeb: { value: null } },
         side: BackSide,
         transparent: true,
         depthWrite: false,
         blending: AdditiveBlending,
+        // Ya viene multiplicado: se suma tal cual (ONE, ONE).
+        premultipliedAlpha: true,
       }),
-    [index],
+    [],
   )
   useEffect(() => () => material.dispose(), [material])
+  if (!baked) return null
+  material.uniforms.uNeb!.value = baked.texture
   return (
     <mesh material={material} renderOrder={-1} frustumCulled={false} rotation={[0.3 * index, 1.1 * index, 0]}>
       <sphereGeometry args={[820 + index * 260, 48, 24]} />

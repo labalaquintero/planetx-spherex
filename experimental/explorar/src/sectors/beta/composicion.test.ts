@@ -8,7 +8,7 @@ import { nearbyObject } from '../../engine/nearest'
 import { SHIP, SHIP_KEY_POINTS } from '../../engine/shipSpec'
 import { SECTORS } from '..'
 import beta from '.'
-import { ENTRY_CAMERA } from './objects'
+import { ENTRY_CAMERA, RETIRED_SKETCH_IDS } from './objects'
 import { CHASE } from '../../scene/chase'
 
 /**
@@ -41,7 +41,8 @@ const apparent = (p: Vector3, r: number) => {
   return (2 * r) / (2 * d * Math.tan(MathUtils.degToRad(fit.fovDeg / 2)))
 }
 
-const medidos = OBJETOS_BOCETO.map((b) => {
+// La estación del boceto se retiró de la escena (en su sitio hay un planeta, ver sectors.test.ts).
+const medidos = OBJETOS_BOCETO.filter((b) => !RETIRED_SKETCH_IDS.includes(b.id)).map((b) => {
   const o = scene.objects.find((x) => x.id === b.id)
   if (!o) throw new Error(`β no tiene el objeto ${b.id} del boceto`)
   const s = toScreen(new Vector3(...o.position))

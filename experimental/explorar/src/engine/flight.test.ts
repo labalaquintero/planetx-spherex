@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import beta from '../sectors/beta'
+import type { SceneObject } from './types'
 import {
   attitudeOf,
   boundaryProximity,
@@ -7,6 +8,7 @@ import {
   forwardOf,
   initialFlight,
   nearestNamed,
+  stickyNearest,
   NO_INPUT,
   obstaclesOf,
   sectorBounds,
@@ -162,9 +164,22 @@ describe('el sector β como área de vuelo', () => {
   })
 
   it('nearestNamed mide la estación por su largo, no solo por su radio', () => {
-    const st = scene.objects.find((o) => o.kind === 'station')!
+    // β ya no tiene estación: se prueba con una de ejemplo junto a una esfera.
+    const st: SceneObject = { id: 'st', kind: 'station', label: 'Estación', position: [0, 0, 0], radius: 2, length: 40, seed: 1, palette: ['#fff', '#aaa', '#555'] }
+    const ball: SceneObject = { id: 'b', kind: 'sphere', label: 'Esfera', position: [40, 0, 0], radius: 2, seed: 2, palette: ['#fff', '#aaa', '#555'] }
     const beside: [number, number, number] = [st.position[0] + (st.length ?? 0) / 2 + 1, st.position[1], st.position[2]]
-    expect(nearestNamed(beside, scene.objects)!.object.id).toBe(st.id)
+    expect(nearestNamed(beside, [st, ball])!.object.id).toBe(st.id)
+  })
+
+  it('stickyNearest no salta entre dos objetos a distancia parecida (la ficha del HUD no parpadea)', () => {
+    const a: SceneObject = { id: 'a', kind: 'sphere', label: 'A', position: [-20, 0, 0], radius: 2, seed: 1, palette: ['#fff', '#aaa', '#555'] }
+    const b: SceneObject = { id: 'b', kind: 'sphere', label: 'B', position: [20, 0, 0], radius: 2, seed: 2, palette: ['#fff', '#aaa', '#555'] }
+    // Un poco más cerca de B, pero el anterior era A: se queda A.
+    expect(stickyNearest([1, 0, 0], [a, b], 'a')!.object.id).toBe('a')
+    // Claramente más cerca de B: cambia.
+    expect(stickyNearest([12, 0, 0], [a, b], 'a')!.object.id).toBe('b')
+    // Sin anterior, el más cercano.
+    expect(stickyNearest([1, 0, 0], [a, b], null)!.object.id).toBe('b')
   })
 
   it('nearestNamed y boundaryProximity', () => {

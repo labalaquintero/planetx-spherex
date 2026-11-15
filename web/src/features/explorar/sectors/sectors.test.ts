@@ -7,7 +7,8 @@ import { InfoCard } from '../screens/InfoCard'
 import { SectorSelect } from '../screens/SectorSelect'
 import { SECTORS, getSector } from './index'
 import beta from './beta'
-import { ENTRY_CAMERA, EXTRA_IDS, SKETCH_IDS } from './beta/objects'
+import { ENTRY_CAMERA, EXTRA_IDS, SKETCH_IDS, SKETCH_REPLACEMENTS } from './beta/objects'
+import { objetoBoceto } from './beta/boceto'
 import { worldToScreen } from '../engine/projection'
 import { fromView } from './view'
 
@@ -134,13 +135,24 @@ describe('planetas añadidos fuera del boceto', () => {
     }
   })
 
-  it('no aparecen en la vista inicial, que sigue siendo la del boceto', () => {
-    for (const o of extras) {
+  it('no aparecen en la vista inicial, que sigue siendo la del boceto (salvo el que ocupa el lugar de la estación)', () => {
+    const replacements = Object.values(SKETCH_REPLACEMENTS)
+    for (const o of extras.filter((x) => !replacements.includes(x.id))) {
       const s = worldToScreen(o.position, ENTRY_CAMERA)
       // Margen: su radio aparente no debe asomar al encuadre.
       const r = s.depth > 0 ? o.radius / (s.depth * Math.tan((ENTRY_CAMERA.fovDeg * Math.PI) / 360)) / 2 : 0
       const visible = s.depth > 0 && s.u + r * 0.6 > 0 && s.u - r * 0.6 < 1 && s.v + r > 0 && s.v - r < 1
       expect(visible, o.id).toBe(false)
+    }
+  })
+
+  it('el planeta que sustituye a la estación queda en su sitio del boceto', () => {
+    for (const [retired, id] of Object.entries(SKETCH_REPLACEMENTS)) {
+      const o = beta.scene!.objects.find((x) => x.id === id)!
+      const s = worldToScreen(o.position, ENTRY_CAMERA)
+      const [u, v] = objetoBoceto(retired).ancla.centro
+      expect(Math.hypot(s.u - u, s.v - v), id).toBeLessThan(0.01)
+      expect(o.kind).toBe('planet')
     }
   })
 
@@ -196,18 +208,18 @@ describe('fichas de contexto de β (panel izquierdo al acercarse)', () => {
 describe('objetos del sector β', () => {
   const objects = beta.scene!.objects
 
-  it('ids únicos y solo los tipos del boceto', () => {
+  it('ids únicos y solo cuerpos naturales (la estación del boceto se retiró)', () => {
     expect(new Set(objects.map((o) => o.id)).size).toBe(objects.length)
     const kinds = new Set(objects.map((o) => o.kind))
-    expect([...kinds].sort()).toEqual(['planet', 'ringedPlanet', 'smallBody', 'sphere', 'station'])
+    expect([...kinds].sort()).toEqual(['planet', 'ringedPlanet', 'smallBody', 'sphere'])
   })
 
-  it('composición del boceto: 2 planetas, 1 con anillo, 1 estación, 1 esfera y varios cuerpos pequeños', () => {
+  it('composición del boceto: 2 planetas, 1 con anillo, 1 esfera y varios cuerpos pequeños (sin la estación)', () => {
     // Solo los objetos medidos del boceto; los añadidos fuera de él se prueban aparte.
     const count = (k: string) => objects.filter((o) => SKETCH_IDS.includes(o.id) && o.kind === k).length
     expect(count('planet')).toBe(2)
     expect(count('ringedPlanet')).toBe(1)
-    expect(count('station')).toBe(1)
+    expect(count('station')).toBe(0)
     expect(count('sphere')).toBe(1)
     expect(count('smallBody')).toBeGreaterThanOrEqual(4)
   })

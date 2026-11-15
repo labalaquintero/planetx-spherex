@@ -1,4 +1,4 @@
-import { NOISE, OUTPUT } from './common'
+import { BAKE_DECODE, BAKE_ENCODE, NOISE, OUTPUT } from './common'
 
 export const SKY_VERT = /* glsl */ `
 varying vec3 vDir;
@@ -10,15 +10,8 @@ void main() {
 }
 `
 
-/** Nebulosa tenue con la paleta del visor y la estrella clave (núcleo y halo) en la dirección de la luz. */
-export const SKY_FRAG = /* glsl */ `
-uniform vec3 uLight;
-uniform float uOct;
-uniform float uStarGain; // 1 en el cielo; menor en el mapa de entorno (reflejos sin quemar)
-varying vec3 vDir;
-${NOISE}
-void main() {
-  vec3 d = normalize(vDir);
+/** Nebulosa tenue con la paleta del visor (solo depende de la dirección `d`). */
+const SKY_NEBULA = /* glsl */ `
   vec3 q = vec3(ex_fbm(d * 1.6, int(uOct)), ex_fbm(d * 1.6 + 5.2, int(uOct)), 0.0);
   float n = ex_fbm(d * 2.2 + q * 1.6, int(uOct));
   float dust = ex_fbm(d * 4.5 + q * 2.0 + 11.0, 3);
@@ -28,10 +21,55 @@ void main() {
   col = mix(col, navy * 0.55, smoothstep(0.38, 0.82, n));
   col = mix(col, sky * 0.12, smoothstep(0.6, 0.92, n) * 0.6);
   col *= mix(1.0, 0.45, smoothstep(0.45, 0.8, dust));
-  // Estrella clave: núcleo muy brillante (lo recoge el bloom) y halo amplio.
+`
+
+/** Estrella clave: núcleo muy brillante (lo recoge el bloom) y halo amplio. Se calcula siempre al vuelo (es nítida). */
+const SKY_STAR = /* glsl */ `
   float k = max(dot(d, uLight), 0.0);
   vec3 starCol = vec3(1.0, 0.94, 0.84);
   col += starCol * (pow(k, 4000.0) * 6.0 * uStarGain + pow(k, 300.0) * 0.45 + pow(k, 24.0) * 0.035);
+`
+
+/** Nebulosa y estrella clave en la dirección de la luz (lo usa el mapa de entorno, una sola vez). */
+export const SKY_FRAG = /* glsl */ `
+uniform vec3 uLight;
+uniform float uOct;
+uniform float uStarGain; // 1 en el cielo; menor en el mapa de entorno (reflejos sin quemar)
+varying vec3 vDir;
+${NOISE}
+void main() {
+  vec3 d = normalize(vDir);
+  ${SKY_NEBULA}
+  ${SKY_STAR}
+  gl_FragColor = vec4(col, 1.0);
+  ${OUTPUT}
+}
+`
+
+/** Horneado de la nebulosa del cielo en un cubemap (sin estrella clave). */
+export const SKY_BAKE_FRAG = /* glsl */ `
+uniform float uOct;
+varying vec3 vDir;
+${NOISE}
+${BAKE_ENCODE}
+void main() {
+  vec3 d = normalize(vDir);
+  ${SKY_NEBULA}
+  gl_FragColor = ex_encode(col);
+}
+`
+
+/** Cielo en pantalla: nebulosa horneada (una lectura de textura) y la estrella clave al vuelo. */
+export const SKY_CUBE_FRAG = /* glsl */ `
+uniform samplerCube uSky;
+uniform vec3 uLight;
+uniform float uStarGain;
+varying vec3 vDir;
+${BAKE_DECODE}
+void main() {
+  vec3 d = normalize(vDir);
+  vec3 col = ex_decode(textureCube(uSky, d).rgb);
+  ${SKY_STAR}
   gl_FragColor = vec4(col, 1.0);
   ${OUTPUT}
 }

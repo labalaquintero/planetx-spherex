@@ -60,7 +60,11 @@ vec3 ex_bump(vec3 N, vec3 pos, float h, float scale) {
   vec3 r2 = cross(N, dpx);
   float det = dot(dpx, r1);
   vec3 grad = sign(det) * (dhx * r1 + dhy * r2);
-  return normalize(abs(det) * N - scale * grad);
+  // Sin derivadas (píxel degenerado) normalize(0) da NaN, y en Windows (D3D) el bloom lo convierte
+  // en bloques negros: en ese caso se deja la normal tal cual.
+  vec3 n = abs(det) * N - scale * grad;
+  float len = length(n);
+  return len > 1e-6 ? n / len : N;
 }
 float ex_ringAt(float u) {
   if (uHasRingMap > 0.5) return (u < 0.0 || u > 1.0) ? 0.0 : texture2D(uRingMap, vec2(u, 0.5)).a;
@@ -231,7 +235,13 @@ void main() {
   float h = b * b - c;
   float shadow = (h > 0.0 && -b - sqrt(h) > 0.0) ? 0.1 : 1.0;
   float light = 0.25 + 0.75 * abs(dot(normalize(vNormalW), uLight));
-  gl_FragColor = vec4(col * light * shadow, d * 0.92);
+  // Al cruzar el anillo, lo que está de canto o pegado a la cámara se desvanece: si no, el anillo
+  // visto de canto junto a la nave se vuelve un velo blanco sobre toda la pantalla.
+  vec3 toCam = cameraPosition - vWorld;
+  float dist = length(toCam);
+  float facing = abs(dot(normalize(vNormalW), toCam / max(dist, 1e-4)));
+  float fade = smoothstep(0.03, 0.22, facing) * smoothstep(3.0, 18.0, dist);
+  gl_FragColor = vec4(col * light * shadow, d * 0.92 * fade);
   ${OUTPUT}
 }
 `
