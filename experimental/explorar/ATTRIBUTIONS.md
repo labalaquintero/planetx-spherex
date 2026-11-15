@@ -22,6 +22,12 @@ no se presentan como esos cuerpos.
 | `lazos-spherex.webp` (1024×512, 26 KB) | Mapa de todo el cielo de SPHEREx (PIA26600): recorte de los lazos sobre el centro galáctico, fundido en los bordes | NASA/JPL-Caltech (SPHEREx) | Courtesy NASA/JPL-Caltech | https://www.jpl.nasa.gov/images/pia26600-spherexs-first-all-sky-map/ | copia del repo |
 | `filamentos-spherex.webp` (1024×512, 40 KB) | Mapa de todo el cielo de SPHEREx (PIA26600): recorte de filamentos de polvo del sur, fundido en los bordes | NASA/JPL-Caltech (SPHEREx) | Courtesy NASA/JPL-Caltech | https://www.jpl.nasa.gov/images/pia26600-spherexs-first-all-sky-map/ | copia del repo |
 | `nebulosa-vela.webp` (1024×512, 12 KB) | SPHEREx: región molecular de Vela (PIA26354), recorte de la nebulosa naranja sin estrellas | NASA/JPL-Caltech (SPHEREx) | Courtesy NASA/JPL-Caltech | https://www.jpl.nasa.gov/images/pia26354-spherex-vela-molecular-ridge/ | copia del repo |
+| `marte-viking.webp` (1024×512, 68 KB) | `mar0kuu2.jpg`: mapa global de Marte en color (Viking) | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ | 2026-11-15 |
+| `io-galileo.webp` (1024×512, 49 KB) | `jup1vss2.jpg`: mapa global de Ío (Voyager, color de Galileo) | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ | 2026-11-15 |
+| `europa-voyager.webp` (1024×512, 62 KB) | `jup2vss2.jpg`: mapa global de Europa (Voyager) | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ | 2026-11-15 |
+| `ganimedes-voyager.webp` (1024×512, 99 KB) | `jup3vss2.jpg`: mapa global de Ganímedes (Voyager) | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ | 2026-11-15 |
+| `fobos-viking.webp` (1024×512, 69 KB) | `mar1kuu2.jpg`: mapa global de Fobos (Viking) | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ | 2026-11-15 |
+| `venus-magellan.webp` (1024×512, 95 KB) | `ven0aaa2.jpg`: mapa global de Venus por radar (Magellan) | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ | 2026-11-15 |
 
 Las siete últimas se generan sin red con `tools/texturas_spherex.py` a partir de
 `docs/decisiones/prototipo-interfaces/assets/` (las mismas imágenes que muestra el visor).
@@ -39,6 +45,14 @@ Son copias de `docs/referencias/wise0855/products/` (procedencia y SHA-256 en su
 | --- | --- | --- | --- | --- |
 | `src/sectors/beta/referencias/cielo-spherex-original.webp` (480 px) | Mapa de todo el cielo de SPHEREx (PIA26600), reducido | NASA/JPL-Caltech (SPHEREx) | Courtesy NASA/JPL-Caltech | https://www.jpl.nasa.gov/images/pia26600-spherexs-first-all-sky-map/ |
 | `src/sectors/beta/referencias/vela-spherex-original.webp` (480 px) | Región molecular de Vela (PIA26354), reducida | NASA/JPL-Caltech (SPHEREx) | Courtesy NASA/JPL-Caltech | https://www.jpl.nasa.gov/images/pia26354-spherex-vela-molecular-ridge/ |
+| `src/sectors/alpha/referencias/marte-viking-original.webp` (360×180) | `mar0kuu2.jpg` reducido | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ |
+| `src/sectors/alpha/referencias/io-galileo-original.webp` (360×180) | `jup1vss2.jpg` reducido | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ |
+| `src/sectors/alpha/referencias/europa-voyager-original.webp` (360×180) | `jup2vss2.jpg` reducido | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ |
+| `src/sectors/alpha/referencias/ganimedes-voyager-original.webp` (360×180) | `jup3vss2.jpg` reducido | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ |
+| `src/sectors/alpha/referencias/fobos-viking-original.webp` (360×180) | `mar1kuu2.jpg` reducido | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ |
+| `src/sectors/alpha/referencias/venus-magellan-original.webp` (360×180) | `ven0aaa2.jpg` reducido | NASA/JPL-Caltech/USGS (Solar System Simulator de JPL) | Courtesy NASA/JPL-Caltech | https://maps.jpl.nasa.gov/tmaps/ |
+
+Los mapas de α (las seis filas de JPL) se descargaron solo en desarrollo con `tools/alpha/texturas_nasa.py`. Política de uso de JPL: «Unless otherwise noted, images and video on JPL public web sites may be used for any purpose without prior permission» (https://www.jpl.nasa.gov/jpl-image-use-policy), con el crédito «Courtesy NASA/JPL-Caltech».
 
 **Texto de las licencias, tal como aparece en cada fuente:**
 

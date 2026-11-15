@@ -49,6 +49,29 @@ export const ASSET_CREDITS: readonly Credit[] = [
       'Vía Láctea), «Burbuja», «Lazos galácticos» y «Filamentos» (recortes del mapa) y «Nebulosa de Vela». ' +
       'Generadas con tools/texturas_spherex.py.',
   },
+  {
+    what: 'Mapas globales de Marte, Ío, Europa, Ganímedes, Fobos y Venus (Viking, Voyager, Galileo y Magellan)',
+    author: 'NASA/JPL-Caltech/USGS — Solar System Simulator de JPL (David Seal)',
+    license: 'Courtesy NASA/JPL-Caltech (política de uso de imágenes de JPL)',
+    url: 'https://maps.jpl.nasa.gov/tmaps/',
+    assets: [
+      'marte-viking',
+      'io-galileo',
+      'europa-voyager',
+      'ganimedes-voyager',
+      'fobos-viking',
+      'venus-magellan',
+      'marte-viking-original',
+      'io-galileo-original',
+      'europa-voyager-original',
+      'ganimedes-voyager-original',
+      'fobos-viking-original',
+      'venus-magellan-original',
+    ],
+    note:
+      'Son la superficie de los planetas ilustrativos de α (Óxido, Hielo rayado, Azufre, Surcos, Radar y Cráter). ' +
+      'Reducidos a 1024 × 512 y convertidos a WebP con tools/alpha/texturas_nasa.py; Europa, Ganímedes y Fobos se recolorean.',
+  },
 ]
 
 export const SOFTWARE_CREDITS: readonly { name: string; license: string }[] = [

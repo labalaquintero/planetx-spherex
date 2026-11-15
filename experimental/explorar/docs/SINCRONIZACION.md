@@ -47,6 +47,9 @@
   animadas, área más grande y planetas «Plano galáctico», «Burbuja» y «Polvo de Vela». Después, perfil de
   rendimiento propio de Windows (`?perfil=`), colas con movimiento y planetas «Lazos galácticos», «Nebulosa de
   Vela» y «Filamentos» con un área algo mayor.
+- **15-11-2026, rama `quintero/alpha-planetas`:** primera copia del sector α al visor (hasta ahora salía como
+  «Próximamente» en `web/`): `sectors/alpha/` completo, sus vistas previas y las texturas de NASA/JPL. El JSON de
+  la medición va en `data/campo-wise0855.json` y `campo.ts` lo importa desde ahí (única adaptación).
 
 ## Qué habrá que portar en la sincronización final
 
