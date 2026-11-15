@@ -17,9 +17,47 @@ const IO = new URL('../../scene/assets/io-galileo.webp', import.meta.url).href
 const GANIMEDES = new URL('../../scene/assets/ganimedes-voyager.webp', import.meta.url).href
 const VENUS = new URL('../../scene/assets/venus-magellan.webp', import.meta.url).href
 const MARTE = new URL('../../scene/assets/marte-viking.webp', import.meta.url).href
+const EUROPA = new URL('../../scene/assets/europa-voyager.webp', import.meta.url).href
+const FOBOS = new URL('../../scene/assets/fobos-viking.webp', import.meta.url).href
 const JPL = 'Imagen: NASA/JPL-Caltech/USGS (Solar System Simulator de JPL). Solo su luminancia, recoloreada.'
 
 export const BETA_INFO: Readonly<Record<string, ObjectInfo>> = {
+  escarcha: {
+    title: 'Mundo de escarcha',
+    summary:
+      'Escarcha es inventado y flota muy por encima de la entrada del sector. Su superficie parte del mapa ' +
+      'de Europa, la luna helada de Júpiter, usado solo por su luminancia y teñido de lila.',
+    facts: ['Las líneas oscuras de la Europa real son grietas en su corteza de hielo, sobre un océano de agua líquida.'],
+    images: [{ src: EUROPA, caption: 'Europa · Voyager (NASA/JPL/USGS)' }],
+    credit: JPL,
+  },
+  hollin: {
+    title: 'Pequeña luna de hollín',
+    summary:
+      'Hollín es una esfera inventada, justo debajo de la entrada. Usa el mapa de Fobos, la luna mayor de Marte, ' +
+      'en grises muy oscuros.',
+    facts: ['Fobos es uno de los cuerpos más oscuros del sistema solar: refleja muy poca luz.'],
+    images: [{ src: FOBOS, caption: 'Fobos · Viking (NASA/JPL/USGS)' }],
+    credit: JPL,
+  },
+  argento: {
+    title: 'Planeta con anillo plateado',
+    summary:
+      'Argento es inventado y está alto, detrás y a la derecha. Sus bandas y su anillo parten de las texturas ' +
+      'de Saturno, solo por su luminancia, en grises plateados.',
+    facts: ['Los anillos de Saturno son sobre todo hielo de agua: por eso son tan brillantes.'],
+    images: [{ src: SATURNO, caption: 'Mapa de Saturno (solo su luminancia)' }],
+    credit: 'Imagen: Solar System Scope, CC BY 4.0.',
+  },
+  abisal: {
+    title: 'Planeta abisal',
+    summary:
+      'Abisal es inventado y está muy abajo, a la izquierda. Su superficie es el mapa de todo el cielo de ' +
+      'SPHEREx, usado solo por su luminancia y teñido de azules profundos.',
+    facts: ['La franja más clara corresponde al plano de la Vía Láctea en el mapa original.'],
+    images: [{ src: CIELO_ORIGINAL, caption: 'SPHEREx · mapa de todo el cielo (PIA26600)' }],
+    credit: 'Imagen: NASA/JPL-Caltech (SPHEREx). Solo su luminancia, recoloreada.',
+  },
   brasa: {
     title: 'Mundo volcánico',
     summary:
