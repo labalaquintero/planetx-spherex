@@ -97,7 +97,7 @@ export default function SectorScene(props: Props) {
         arrive={arrive}
         trailParticles={settings.trailParticles}
       />
-      {settings.bloom && <Bloom strength={settings.bloomStrength} samples={samples} />}
+      {settings.bloom && <Bloom strength={settings.bloomStrength} samples={samples} chromatic={settings.chromatic} grain={settings.grain} />}
       <Governor quality={quality} onChange={onQualityChange} onFps={onFps} />
     </Canvas>
   )

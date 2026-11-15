@@ -19,10 +19,16 @@ describe('presets de calidad', () => {
       expect(lo.stars).toBeLessThan(hi.stars)
       expect(lo.debris).toBeLessThan(hi.debris)
       expect(lo.bloomStrength).toBeLessThanOrEqual(hi.bloomStrength)
+      expect(lo.chromatic).toBeLessThanOrEqual(hi.chromatic)
+      expect(lo.grain).toBeLessThanOrEqual(hi.grain)
+      expect(lo.nebulaLayers).toBeLessThanOrEqual(hi.nebulaLayers)
+      expect(lo.nearStars).toBeLessThan(hi.nearStars)
     }
   })
-  it('en baja no hay bloom y el dpr se limita a 1; nunca pasa de 2', () => {
+  it('en baja no hay bloom ni efectos de lente y el dpr se limita a 1; nunca pasa de 2', () => {
     expect(QUALITY_PRESETS.low.bloom).toBe(false)
+    expect(QUALITY_PRESETS.low.chromatic).toBe(0)
+    expect(QUALITY_PRESETS.low.nebulaLayers).toBe(0)
     expect(QUALITY_PRESETS.low.dprMax).toBe(1)
     for (const l of LEVELS) expect(QUALITY_PRESETS[l].dprMax).toBeLessThanOrEqual(2)
   })

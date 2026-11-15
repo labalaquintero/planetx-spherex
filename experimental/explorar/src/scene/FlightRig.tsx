@@ -120,8 +120,10 @@ export function FlightRig({ state, input, bounds, obstacles, animate, arrive, tr
     <>
       <group ref={ship} scale={CHASE.shipScale}>
         <Ship thrust={emitterL} />
-        {/* Relleno suave desde arriba y detrás: la nave se ve a contraluz de la estrella. */}
-        <pointLight position={[0, 4, 5]} intensity={6} distance={18} decay={1} color="#bae6fd" />
+        {/* Relleno suave desde arriba y detrás (lado de la cámara). */}
+        <pointLight position={[0, 4, 5]} intensity={2.6} distance={18} decay={1} color="#bae6fd" />
+        {/* Contraluz: fría, delante y arriba de la nave; dibuja su silueta contra el fondo. */}
+        <pointLight position={[0, 1.2, -11]} intensity={4.5} distance={18} decay={1.4} color="#a5b4fc" />
       </group>
       <Trail count={Math.ceil(trailParticles / 2)} emitter={emitterL} animate={animate} />
       <Trail count={Math.ceil(trailParticles / 2)} emitter={emitterR} animate={animate} />
