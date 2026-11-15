@@ -50,6 +50,7 @@ export function FrameImage({ frame, mode, index, total }: FrameImageProps) {
           src={frame.image_url}
           alt={altText}
           className={`frame-image ${imgState === 'loaded' ? 'visible' : ''}`}
+          style={{ imageRendering: 'pixelated' }}
           onLoad={() => setImgState('loaded')}
           onError={() => setImgState('error')}
           draggable={false}

@@ -155,6 +155,13 @@ export function CoordinateForm({ onSubmit, isLoading }: CoordinateFormProps) {
         <span className="presets-label">Acceso rápido:</span>
         <button
           type="button"
+          onClick={() => applyPresetAndSubmit('133.795129166667', '-7.245147222222')}
+          data-testid="preset-wise-0855"
+        >
+          WISE 0855
+        </button>
+        <button
+          type="button"
           onClick={() => applyPresetAndSubmit('10.25', '-12.5')}
           data-testid="preset-ready"
         >

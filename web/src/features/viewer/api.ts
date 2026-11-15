@@ -34,10 +34,11 @@ export class ApiValidationError extends Error {
 /* ------------------------------------------------------------------ */
 
 async function realFetch(
-  raDeg: number,
-  decDeg: number,
+  raDeg: number | string,
+  decDeg: number | string,
   signal?: AbortSignal,
 ): Promise<ComparisonResponse> {
+  // Ruta relativa (/api/v1/..., sin localhost:8000) enviando ra_deg y dec_deg exactos sin redondear
   const url = `/api/v1/comparisons?ra_deg=${encodeURIComponent(raDeg)}&dec_deg=${encodeURIComponent(decDeg)}`;
   const res = await fetch(url, { signal });
 
@@ -97,10 +98,13 @@ function cloneWithQuery(
 }
 
 async function mockFetch(
-  raDeg: number,
-  decDeg: number,
+  raDeg: number | string,
+  decDeg: number | string,
   signal?: AbortSignal,
 ): Promise<ComparisonResponse> {
+  const numRa = typeof raDeg === 'string' ? parseFloat(raDeg) : raDeg;
+  const numDec = typeof decDeg === 'string' ? parseFloat(decDeg) : decDeg;
+
   await new Promise<void>((resolve, reject) => {
     const timer = setTimeout(resolve, mockDelayMs);
     signal?.addEventListener('abort', () => {
@@ -111,12 +115,12 @@ async function mockFetch(
 
   // Validación 422: Coordenadas inválidas
   if (
-    !Number.isFinite(raDeg) ||
-    !Number.isFinite(decDeg) ||
-    raDeg < 0 ||
-    raDeg >= 360 ||
-    decDeg < -90 ||
-    decDeg > 90
+    !Number.isFinite(numRa) ||
+    !Number.isFinite(numDec) ||
+    numRa < 0 ||
+    numRa >= 360 ||
+    numDec < -90 ||
+    numDec > 90
   ) {
     throw new ApiValidationError(
       'Coordenadas fuera de rango: RA debe estar en [0, 360) y Dec en [-90, 90].',
@@ -129,24 +133,24 @@ async function mockFetch(
   mockAttempts.set(key, attempts);
 
   // Región de error 503: simula fallo temporal en el primer intento, reintento devuelve ready
-  if (raDeg >= 0 && raDeg < 1 && decDeg >= 0 && decDeg < 1 && attempts === 1) {
+  if (numRa >= 0 && numRa < 1 && numDec >= 0 && numDec < 1 && attempts === 1) {
     throw new ArchiveUnavailableError(
       'El servicio de archivo no está disponible temporalmente. Intente de nuevo.',
     );
   }
 
   // Región sin cobertura (polos)
-  if (decDeg > 85 || decDeg < -85) {
-    return cloneWithQuery(noCoverageFixture, raDeg, decDeg);
+  if (numDec > 85 || numDec < -85) {
+    return cloneWithQuery(noCoverageFixture, numRa, numDec);
   }
 
   // Región insuficiente (una sola época)
-  if ((decDeg > 60 && decDeg <= 85) || (decDeg < -60 && decDeg >= -85)) {
-    return cloneWithQuery(insufficientFixture, raDeg, decDeg);
+  if ((numDec > 60 && numDec <= 85) || (numDec < -60 && numDec >= -85)) {
+    return cloneWithQuery(insufficientFixture, numRa, numDec);
   }
 
   // Ready (A/B disponible)
-  return cloneWithQuery(readyFixture, raDeg, decDeg);
+  return cloneWithQuery(readyFixture, numRa, numDec);
 }
 
 /* ------------------------------------------------------------------ */
@@ -154,8 +158,8 @@ async function mockFetch(
 /* ------------------------------------------------------------------ */
 
 export async function fetchComparison(
-  raDeg: number,
-  decDeg: number,
+  raDeg: number | string,
+  decDeg: number | string,
   signal?: AbortSignal,
 ): Promise<ComparisonResponse> {
   if (!import.meta.env.PROD) {
