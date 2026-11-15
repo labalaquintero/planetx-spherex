@@ -2,7 +2,7 @@ import { aimAt, REFERENCE_ASPECT } from '../../engine/projection'
 import type { SectorConfig, SmallBodyField, Waypoint } from '../../engine/types'
 import { selectorFromSketch } from '../selector'
 import { CAMPO, RECORTE } from './campo'
-import { ENTRY_CAMERA, OBJECTS } from './objects'
+import { ENTRY_CAMERA, EXTRAS, OBJECTS } from './objects'
 import { WAYPOINTS } from './waypoints'
 
 /**
@@ -48,7 +48,7 @@ const alpha: SectorConfig = {
   scene: {
     startId: 'entry',
     waypoints: ROUTE,
-    objects: OBJECTS,
+    objects: [...OBJECTS, ...EXTRAS],
     field: FIELD,
   },
 }

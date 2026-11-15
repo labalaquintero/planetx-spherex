@@ -16,6 +16,13 @@ export const TEXTURES = {
   'lazos-spherex': new URL('./assets/lazos-spherex.webp', import.meta.url).href,
   'filamentos-spherex': new URL('./assets/filamentos-spherex.webp', import.meta.url).href,
   'nebulosa-vela': new URL('./assets/nebulosa-vela.webp', import.meta.url).href,
+  // Mapas globales de NASA/JPL/USGS para los planetas de α (tools/alpha/texturas_nasa.py).
+  'marte-viking': new URL('./assets/marte-viking.webp', import.meta.url).href,
+  'io-galileo': new URL('./assets/io-galileo.webp', import.meta.url).href,
+  'europa-voyager': new URL('./assets/europa-voyager.webp', import.meta.url).href,
+  'ganimedes-voyager': new URL('./assets/ganimedes-voyager.webp', import.meta.url).href,
+  'fobos-viking': new URL('./assets/fobos-viking.webp', import.meta.url).href,
+  'venus-magellan': new URL('./assets/venus-magellan.webp', import.meta.url).href,
 } as const
 
 export type TextureId = keyof typeof TEXTURES

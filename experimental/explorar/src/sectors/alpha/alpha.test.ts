@@ -7,7 +7,8 @@ import { scatterBodies } from '../../engine/scatter'
 import { smallBodiesOf } from '../../scene/bodies'
 import alpha, { FIELD, FRACCION_RECORTE } from '.'
 import { aPantalla, CAMPO, FUENTES, LADO_PX, RECORTE } from './campo'
-import { ENTRY_CAMERA, OBJECTS } from './objects'
+import { ENTRY_CAMERA, EXTRAS, OBJECTS } from './objects'
+import { TEXTURES } from '../../scene/assets'
 
 const scene = alpha.scene!
 
@@ -100,6 +101,44 @@ describe('sector α: relleno', () => {
       const s = worldToScreen(b.position, ENTRY_CAMERA)
       const insideRecorte = s.depth > 0 && s.depth < 320 && s.u > 0 && s.u < 1 && s.v > 0 && s.v < 1
       expect(insideRecorte).toBe(false)
+    }
+  })
+})
+
+describe('sector α: planetas con mapas de la NASA', () => {
+  it('los cuerpos con nombre usan texturas empaquetadas y tienen ficha con imagen y crédito', () => {
+    const named = scene.objects.filter((o) => o.label)
+    expect(named.length).toBe(6)
+    for (const o of named) {
+      expect(o.texture, o.id).toBeDefined()
+      expect(Object.keys(TEXTURES)).toContain(o.texture!.map)
+      expect(o.info, o.id).toBeDefined()
+      expect(o.info!.images.length).toBeGreaterThan(0)
+      expect(o.info!.credit).toMatch(/NASA\/JPL/)
+      expect(`${o.info!.summary} ${o.info!.facts.join(' ')}`).toMatch(/ilustrativ/i)
+    }
+  })
+
+  it('no repiten las texturas de β: son planetas distintos', () => {
+    const betaMaps = ['luna-color', 'bandas-saturno', 'cielo-spherex', 'vela-spherex', 'plano-galactico', 'burbuja-spherex', 'lazos-spherex', 'filamentos-spherex', 'nebulosa-vela']
+    for (const o of scene.objects) if (o.texture) expect(betaMaps, o.id).not.toContain(o.texture.map)
+  })
+
+  it('los de fuera del recorte no asoman en la vista de entrada ni se solapan con nada', () => {
+    for (const o of EXTRAS) {
+      const s = worldToScreen(o.position, ENTRY_CAMERA)
+      const r = s.depth > 0 ? o.radius / (s.depth * Math.tan((ENTRY_CAMERA.fovDeg * Math.PI) / 360)) / 2 : 0
+      const visible = s.depth > 0 && s.u + r > 0 && s.u - r < 1 && s.v + r > 0 && s.v - r < 1
+      expect(visible, o.id).toBe(false)
+      for (const b of scene.objects) {
+        if (b.id === o.id) continue
+        const d = Math.hypot(o.position[0] - b.position[0], o.position[1] - b.position[1], o.position[2] - b.position[2])
+        expect(d, `${o.id}–${b.id}`).toBeGreaterThan(o.radius + b.radius * (b.ring?.outer ?? 1) + 10)
+      }
+      for (const w of scene.waypoints) {
+        const d = Math.hypot(o.position[0] - w.position[0], o.position[1] - w.position[1], o.position[2] - w.position[2])
+        expect(d, `${o.id} y ${w.id}`).toBeGreaterThan(o.radius + 20)
+      }
     }
   })
 })

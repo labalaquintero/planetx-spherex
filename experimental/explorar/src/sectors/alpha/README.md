@@ -29,10 +29,14 @@ mismo motor que β (vuelo libre, cámara de persecución, mapa, límites y colis
 2. **Escena** (`campo.ts`, `objects.ts`). El recorte cuadrado se centra en la vista de entrada (16:9),
    ocupa el 84 % del alto y no se estira. Cada fuente da un objeto con su mismo id, colocado con
    `screenToWorld` para que, visto desde la entrada, su centro caiga en el centroide medido.
-   - **`f01`** (la más brillante) es el **objeto focal**: un gigante helado.
-   - **`f02`**: un planeta con anillo.
-   - **`f03`** y **`f04`**: lunas.
+   - **`f01`** (la más brillante) es el **objeto focal**: «Óxido», con el mapa en color de Marte (Viking).
+   - **`f02`**: «Hielo rayado», con anillo y el mapa de Europa (Voyager) en azules.
+   - **`f03`** y **`f04`**: las lunas «Azufre» (Ío, Voyager con color de Galileo) y «Surcos» (Ganímedes, Voyager).
    - **`f05`…`f24`**: rocas, más cercanas cuanto más brillante es la fuente.
+   - **Fuera del recorte** (detrás de la entrada, no son fuentes medidas): «Radar», con el mapa de Venus por
+     radar (Magellan), y su luna «Cráter», con el de Fobos (Viking).
+   - Cada cuerpo con nombre tiene ficha en el HUD (`info.ts`) con el mapa original y su crédito. Los mapas son
+     mosaicos globales de NASA/JPL/USGS (`tools/alpha/texturas_nasa.py`), distintos de las texturas de β.
 3. **Relleno** (`index.ts`, `FIELD`), con semilla fija 855. La cantidad sale de la densidad medida: el
    recorte ocupa el 39,7 % de la vista de entrada, así que fuera caben 24 × (1 − 0,397) / 0,397 ≈ 36 cuerpos.
    Los tamaños van de la roca más pequeña a la más grande colocadas sobre fuentes. El motor descarta el
@@ -48,7 +52,7 @@ mismo motor que β (vuelo libre, cámara de persecución, mapa, límites y colis
 | Posición relativa de las 24 fuentes en el recorte | Que sean planetas, lunas o rocas: son fuentes puntuales vistas por el instrumento, no discos |
 | Orden de brillo (cuál es el objeto focal y quién está más cerca) | Profundidad de cada objeto |
 | Tamaño relativo de las manchas de las rocas (× 0,45) | Tamaño de los cuatro cuerpos grandes, exagerado para que se lean como planetas |
-| Densidad de fuentes, usada para la cantidad de relleno | Colores, texturas, atmósferas y anillo |
+| Densidad de fuentes, usada para la cantidad de relleno | Colores, atmósferas y anillo; las superficies son mapas reales de otros cuerpos (Marte, Ío, Europa, Ganímedes, Venus y Fobos) usados como textura |
 | Estabilidad entre épocas (sin cambios marcados) | Posición de cada cuerpo de relleno y todo lo que queda fuera del recorte |
 
 **Límite:** son recortes de 64 × 64 px en infrarrojo cercano, sin discos de planeta ni paisajes. Identificar
@@ -65,6 +69,8 @@ WISE 0855 o medir su brillo o movimiento requiere un análisis aparte; aquí no 
   permitidos.
 - Ningún objeto se solapa con otro ni tapa un punto de ruta.
 - El relleno es determinista y no invade la vista del recorte.
+- Los cuerpos con nombre usan texturas empaquetadas distintas de las de β y tienen ficha con imagen y crédito;
+  los de fuera del recorte no asoman en la vista de entrada ni se solapan con nada.
 
 ## Cómo correrlo
 
@@ -89,9 +95,10 @@ python -m venv <tmp>/alphavenv
   use of data products from the Spectro-Photometer for the History of the Universe, Epoch of Reionization
   and Ices Explorer (SPHEREx), which is a joint project of the Jet Propulsion Laboratory and the California
   Institute of Technology, and is funded by the National Aeronautics and Space Administration.*
-- **Texturas:** son las mismas que usa β (`ATTRIBUTIONS.md`). Las bandas y el anillo de Júpiter y Saturno son
-  de Solar System Scope (CC BY 4.0), y el color y el relieve lunares, de NASA SVS (dominio público).
-  α no añade texturas nuevas.
+- **Superficies de los planetas:** mapas globales del Solar System Simulator de JPL (https://maps.jpl.nasa.gov/tmaps/),
+  mosaicos de Caltech/JPL/USGS con imágenes de Viking, Voyager, Galileo y Magellan. «Courtesy NASA/JPL-Caltech»
+  (política de uso de imágenes de JPL). Se regeneran con `tools/alpha/texturas_nasa.py --cache <carpeta temporal>`.
+- **Anillo de «Hielo rayado»:** anillo de Saturno de Solar System Scope (CC BY 4.0), el mismo que usa β.
 
 ## Propuestas para el motor (para Isaac; no se tocó el motor)
 

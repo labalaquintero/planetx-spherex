@@ -2,6 +2,7 @@ import { BASE_FOV_DEG } from '../../engine/motion'
 import { radiusForScreenSize, REFERENCE_ASPECT, screenToWorld, type ViewCamera } from '../../engine/projection'
 import type { SceneObject, SceneObjectKind } from '../../engine/types'
 import { aPantalla, diametroEnPantalla, FUENTES, type FuenteMedida } from './campo'
+import { ALPHA_INFO } from './info'
 import { WAYPOINTS } from './waypoints'
 
 /**
@@ -47,13 +48,15 @@ const ROCA: readonly [string, string, string] = ['#8f96a3', '#5d6470', '#2f343c'
  * brillante (f01) es el objeto focal. Profundidad y aspecto son elección de diseño.
  */
 const GRANDES: Readonly<Record<string, Staging>> = {
-  // Gigante helado: bandas de Júpiter (Solar System Scope, CC BY 4.0) solo en luminancia, teñidas de azul.
-  f01: { kind: 'planet', depth: 230, diameter: 0.2, label: 'Fuente f01 · gigante helado', palette: ['#dbeafe', '#60a5fa', '#1e3a8a'], surface: 'bands', atmosphere: '#93c5fd', texture: { map: 'bandas-jupiter', mode: 'palette' } },
-  // Con anillo: bandas y anillo de Saturno (Solar System Scope, CC BY 4.0), en tonos arena.
-  f02: { kind: 'ringedPlanet', depth: 285, diameter: 0.19, label: 'Fuente f02 · planeta con anillo', palette: ['#f1e4c3', '#c9a86a', '#7a5a2e'], surface: 'bands', atmosphere: '#fde68a', texture: { map: 'bandas-saturno', mode: 'palette', ringMap: 'anillo-saturno' }, ring: { tiltDeg: 14 } },
-  // Lunas: color y relieve lunares (NASA SVS, dominio público) con paletas propias.
-  f03: { kind: 'sphere', depth: 175, diameter: 0.075, label: 'Fuente f03 · luna gris', palette: ['#e2e8f0', '#94a3b8', '#334155'], surface: 'rocky', texture: { map: 'luna-color', mode: 'palette', bump: 'luna-relieve' } },
-  f04: { kind: 'sphere', depth: 205, diameter: 0.07, label: 'Fuente f04 · luna ocre', palette: ['#f5e1c8', '#b08968', '#4a3426'], surface: 'rocky', texture: { map: 'luna-color', mode: 'palette', bump: 'luna-relieve' } },
+  // Superficies: mapas globales reales de NASA/JPL/USGS (tools/alpha/texturas_nasa.py), usados como textura.
+  // Desierto oxidado: Marte en color (Viking).
+  f01: { kind: 'planet', depth: 230, diameter: 0.2, label: 'Óxido · f01', palette: ['#fde4c8', '#c2410c', '#3b1206'], surface: 'rocky', atmosphere: '#fdba74', texture: { map: 'marte-viking', mode: 'color' } },
+  // Hielo rayado con anillo: Europa (Voyager) en azules; anillo de Saturno (Solar System Scope, CC BY 4.0).
+  f02: { kind: 'ringedPlanet', depth: 285, diameter: 0.19, label: 'Hielo rayado · f02', palette: ['#f0f9ff', '#7dd3fc', '#0c4a6e'], surface: 'rocky', atmosphere: '#bae6fd', texture: { map: 'europa-voyager', mode: 'palette', ringMap: 'anillo-saturno' }, ring: { tiltDeg: 14 } },
+  // Luna de azufre: Ío (Voyager con color de Galileo).
+  f03: { kind: 'sphere', depth: 175, diameter: 0.075, label: 'Azufre · f03', palette: ['#fef08a', '#ca8a04', '#422006'], surface: 'rocky', texture: { map: 'io-galileo', mode: 'color' } },
+  // Luna de surcos: Ganímedes (Voyager) en grises cálidos.
+  f04: { kind: 'sphere', depth: 205, diameter: 0.07, label: 'Surcos · f04', palette: ['#e7e5e4', '#78716c', '#1c1917'], surface: 'rocky', texture: { map: 'ganimedes-voyager', mode: 'palette' } },
 }
 
 /** Rocas: más cerca cuanto más brillante es la fuente (da paralaje al moverse). */
@@ -85,6 +88,7 @@ function build(f: FuenteMedida): SceneObject {
     ...(st.surface ? { surface: st.surface } : {}),
     ...(st.atmosphere ? { atmosphere: st.atmosphere } : {}),
     ...(st.texture ? { texture: st.texture } : {}),
+    ...(ALPHA_INFO[f.id] ? { info: ALPHA_INFO[f.id] } : {}),
   }
   if (st.kind === 'ringedPlanet') {
     // El diámetro elegido abarca el anillo: el planeta es el radio externo / 2,27.
@@ -94,3 +98,37 @@ function build(f: FuenteMedida): SceneObject {
 }
 
 export const OBJECTS: readonly SceneObject[] = FUENTES.map(build)
+
+/**
+ * Planetas de α fuera del recorte (no están sobre ninguna fuente medida): detrás y a los lados de la
+ * entrada, así que la primera vista sigue siendo la del campo real. Se descubren al volar.
+ */
+const EXTRA_DEFS: SceneObject[] = [
+  {
+    // Superficie: Venus por radar (Magellan).
+    id: 'radar',
+    kind: 'planet',
+    label: 'Radar',
+    position: [-300, 25, 130],
+    radius: 30,
+    seed: 811,
+    palette: ['#fde68a', '#b45309', '#2b1302'],
+    surface: 'rocky',
+    atmosphere: '#fde68a',
+    texture: { map: 'venus-magellan', mode: 'color' },
+  },
+  {
+    // Superficie: Fobos (Viking), en grises; acompaña a Radar.
+    id: 'crater',
+    kind: 'sphere',
+    label: 'Cráter',
+    position: [-235, 5, 175],
+    radius: 6,
+    seed: 813,
+    palette: ['#d6d3d1', '#78716c', '#292524'],
+    surface: 'rocky',
+    texture: { map: 'fobos-viking', mode: 'palette' },
+  },
+]
+
+export const EXTRAS: readonly SceneObject[] = EXTRA_DEFS.map((o) => (ALPHA_INFO[o.id] ? { ...o, info: ALPHA_INFO[o.id] } : o))
