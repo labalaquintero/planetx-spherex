@@ -1,21 +1,61 @@
 import { describe, expect, it } from 'vitest'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { validateGraph } from '../engine/graph'
 import { nearbyObject, nearestLabelled, validateFocus } from '../engine/nearest'
+import { SectorSelect } from '../screens/SectorSelect'
 import { SECTORS, getSector } from './index'
 import beta from './beta'
 import { fromView } from './view'
 
 describe('registro de sectores', () => {
-  it('descubre α, β y ε en orden, con ids y órdenes únicos', () => {
-    expect(SECTORS.map((s) => s.symbol)).toEqual(['α', 'β', 'ε'])
+  it('descubre los sectores en orden, con ids, símbolos y órdenes únicos', () => {
+    expect(SECTORS.length).toBeGreaterThan(0)
     expect(new Set(SECTORS.map((s) => s.id)).size).toBe(SECTORS.length)
+    expect(new Set(SECTORS.map((s) => s.symbol)).size).toBe(SECTORS.length)
     expect(new Set(SECTORS.map((s) => s.order)).size).toBe(SECTORS.length)
+    const orders = SECTORS.map((s) => s.order)
+    expect(orders).toEqual([...orders].sort((a, b) => a - b))
+    for (const s of SECTORS) expect(getSector(s.id)).toBe(s)
+    expect(getSector('sector-que-no-existe')).toBeUndefined()
   })
 
-  it('solo β es navegable por ahora; α y ε son «Próximamente»', () => {
-    expect(SECTORS.filter((s) => s.scene).map((s) => s.id)).toEqual(['beta'])
-    expect(getSector('alpha')?.scene).toBeUndefined()
-    expect(getSector('epsilon')?.scene).toBeUndefined()
-    expect(getSector('nada')).toBeUndefined()
+  // Sin listas fijas: vale para cualquier sector que se añada o se active.
+  describe.each(SECTORS.filter((s) => s.scene).map((s) => [s.id, s] as const))('sector con escena: %s', (_id, sector) => {
+    const scene = sector.scene!
+    it('su grafo de puntos de ruta es válido (inicio existente, vínculos de ida y vuelta, todo alcanzable)', () => {
+      expect(validateGraph(scene.waypoints, scene.startId)).toEqual([])
+    })
+    it('sus focusId apuntan a objetos con nombre y no hay objetos duplicados', () => {
+      expect(validateFocus(scene.waypoints, scene.objects)).toEqual([])
+    })
+  })
+
+  it('los sectores sin escena aparecen como «Próximamente» en la selección, y los demás como disponibles', () => {
+    const html = renderToStaticMarkup(
+      createElement(SectorSelect, {
+        sectors: SECTORS,
+        onEnter: () => {},
+        jump: null,
+        reduced: true,
+        quality: 'low',
+        forced: true,
+        focusId: null,
+      }),
+    )
+    for (const s of SECTORS) {
+      const card = html.slice(html.indexOf(`id="ex-card-${s.id}"`))
+      const end = card.indexOf('</div></li>')
+      const cardHtml = end > 0 ? card.slice(0, end) : card
+      if (s.scene) {
+        expect(html).toContain(`aria-label="${s.name}, entrar"`)
+        expect(cardHtml).toContain('Disponible')
+        expect(cardHtml).not.toContain('Próximamente')
+      } else {
+        expect(html).toContain(`aria-label="${s.name}, próximamente"`)
+        expect(cardHtml).toContain('Próximamente')
+      }
+    }
   })
 
   it('las esferas de la selección caben en el campo y no se solapan', () => {
