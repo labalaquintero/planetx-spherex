@@ -26,7 +26,7 @@ export function Sky({ stars, octaves, animate }: Props) {
       new ShaderMaterial({
         vertexShader: SKY_VERT,
         fragmentShader: SKY_FRAG,
-        uniforms: { uLight: { value: LIGHT_DIR }, uOct: { value: octaves } },
+        uniforms: { uLight: { value: LIGHT_DIR }, uOct: { value: octaves }, uStarGain: { value: 1 } },
         side: BackSide,
         depthWrite: false,
       }),

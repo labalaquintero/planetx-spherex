@@ -1,5 +1,6 @@
-import { useEffect, useMemo } from 'react'
-import { ExtrudeGeometry, LatheGeometry, Shape, Vector2 } from 'three'
+import { useEffect, useMemo, useRef, type MutableRefObject } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { Color, ExtrudeGeometry, LatheGeometry, Shape, Vector2, type MeshBasicMaterial } from 'three'
 import { SHIP } from '../engine/shipSpec'
 
 const HULL = '#cbd5e1'
@@ -61,17 +62,26 @@ function useGeometries() {
 }
 
 /**
- * Nave genérica procedural, vista desde atrás y arriba: fuselaje torneado con nariz puntiaguda,
+ * Nave genérica procedural, vista desde atrás (cámara de persecución): fuselaje torneado con nariz puntiaguda,
  * cabina, alas barridas con franja luminosa y bloque de motor con tobera. Las cotas (nariz, hombro,
  * envergadura, punta de ala, motor) salen del ajuste a la silueta del boceto. Unos mil triángulos.
  */
-export function Ship() {
+export function Ship({ thrust }: { thrust?: MutableRefObject<{ thrust: number }> }) {
   const { fuselage, wing } = useGeometries()
   const engineLen = SHIP.tailZ - SHIP.engineZ
+  const glow = useRef<MeshBasicMaterial>(null)
+  const strobe = useRef<MeshBasicMaterial>(null)
+  const glowBase = useMemo(() => new Color(GLOW), [])
+  useFrame((state) => {
+    // Brillo de la tobera según el empuje (el bloom lo recoge) y luz estroboscópica de cola.
+    const k = thrust?.current.thrust ?? 0.3
+    glow.current?.color.copy(glowBase).multiplyScalar(0.35 + 1.3 * k)
+    if (strobe.current) strobe.current.opacity = state.clock.elapsedTime % 1.4 < 0.07 ? 1 : 0
+  })
   return (
     <group>
       <mesh geometry={fuselage}>
-        <meshStandardMaterial color={HULL} metalness={0.2} roughness={0.6} />
+        <meshStandardMaterial color={HULL} metalness={0.45} roughness={0.45} envMapIntensity={1} />
       </mesh>
       {/* Cabina, justo detrás del hombro */}
       <mesh position={[0, R_BODY * 0.5, SHIP.shoulderZ + 0.55]} scale={[R_BODY * 0.42, R_BODY * 0.28, 0.55]}>
@@ -81,22 +91,27 @@ export function Ship() {
       {[1, -1].map((side) => (
         <group key={side} scale={[side, 1, 1]} position={[0, -0.06, 0]}>
           <mesh geometry={wing}>
-            <meshStandardMaterial color={WING} metalness={0.3} roughness={0.5} />
+            <meshStandardMaterial color={WING} metalness={0.6} roughness={0.38} envMapIntensity={1.1} />
           </mesh>
           <mesh position={[(LE.x0 + LE.x1) / 2, 0.06, (LE.z0 + LE.z1) / 2]} rotation={[0, -LE_ANGLE, 0]}>
             <boxGeometry args={[LE_LEN, 0.02, 0.05]} />
             <meshBasicMaterial color={ACCENT} toneMapped={false} />
           </mesh>
+          {/* Luces de navegación: roja a babor (izquierda), verde a estribor (derecha). */}
           <mesh position={[SHIP.tipX, 0.03, SHIP.tipZ - 0.16]}>
-            <boxGeometry args={[0.06, 0.08, 0.32]} />
-            <meshBasicMaterial color={ACCENT} toneMapped={false} />
+            <sphereGeometry args={[0.09, 10, 8]} />
+            <meshBasicMaterial color={side > 0 ? '#4ade80' : '#f87171'} toneMapped={false} />
           </mesh>
         </group>
       ))}
       {/* Bloque de motor: caja del ancho del cuerpo, como en el boceto */}
       <mesh position={[0, -0.02, SHIP.engineZ + engineLen / 2]}>
         <boxGeometry args={[SHIP.bodyWidth * 0.95, 0.62, engineLen]} />
-        <meshStandardMaterial color={DARK} metalness={0.45} roughness={0.45} />
+        <meshStandardMaterial color={DARK} metalness={0.7} roughness={0.35} envMapIntensity={1.1} />
+      </mesh>
+      <mesh position={[0, 0.36, SHIP.tailZ - 0.1]}>
+        <sphereGeometry args={[0.06, 8, 6]} />
+        <meshBasicMaterial ref={strobe} color="#ffffff" transparent opacity={0} toneMapped={false} />
       </mesh>
       <mesh position={[0, -0.02, SHIP.tailZ + 0.05]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.3, 0.26, 0.2, 20, 1, true]} />
@@ -104,7 +119,7 @@ export function Ship() {
       </mesh>
       <mesh position={[0, -0.02, NOZZLE[2] - 0.02]}>
         <circleGeometry args={[0.24, 24]} />
-        <meshBasicMaterial color={GLOW} toneMapped={false} />
+        <meshBasicMaterial ref={glow} color={GLOW} toneMapped={false} />
       </mesh>
     </group>
   )

@@ -1,29 +1,36 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, type MutableRefObject } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, ShaderMaterial, type PerspectiveCamera, type Vector3 } from 'three'
+import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, ShaderMaterial, type PerspectiveCamera, Vector3 } from 'three'
 import { mulberry32 } from '../engine/random'
 import { TRAIL_FRAG, TRAIL_VERT } from './shaders/sky'
 
+/** Emisor de la estela, escrito por el rig en cada cuadro (en coordenadas del mundo). */
+export interface Emitter {
+  origin: Vector3
+  /** Dirección de salida de los gases (hacia atrás de la nave). */
+  direction: Vector3
+  /** Velocidad de la nave: las partículas la heredan en parte. */
+  velocity: Vector3
+  /** Empuje 0..1. */
+  thrust: number
+}
+
 interface Props {
   count: number
-  /** Tobera y dirección de salida en el espacio del rig (se recalculan si cambia el encuadre). */
-  origin: Vector3
-  direction: Vector3
-  /** Empuje actual 0..1 (se lee en cada cuadro). */
-  thrust: () => number
+  emitter: MutableRefObject<Emitter>
   animate: boolean
 }
 
 /**
- * Estela de partículas del motor (Points aditivos, un draw call). Cuanto más empuje, más
- * partículas, más rápidas y más largas: reacciona al avanzar.
+ * Estela del motor en el espacio del mundo (Points aditivos, un draw call): las partículas se
+ * quedan atrás cuando la nave avanza, y su cantidad, velocidad y tamaño siguen al empuje.
  */
-export function Trail({ count, origin, direction, thrust, animate }: Props) {
+export function Trail({ count, emitter, animate }: Props) {
   const camera = useThree((s) => s.camera) as PerspectiveCamera
   const height = useThree((s) => s.size.height)
   const dpr = useThree((s) => s.viewport.dpr)
   const rnd = useMemo(() => mulberry32(77), [])
-  const state = useRef({ budget: 0 })
+  const budget = useRef(0)
 
   const { geometry, pos, vel, life, maxLife, size } = useMemo(() => {
     const pos = new Float32Array(count * 3)
@@ -44,7 +51,7 @@ export function Trail({ count, origin, direction, thrust, animate }: Props) {
       new ShaderMaterial({
         vertexShader: TRAIL_VERT,
         fragmentShader: TRAIL_FRAG,
-        uniforms: { uScale: { value: 1 }, uHot: { value: new Color('#7dd3fc').multiplyScalar(0.9) }, uCool: { value: new Color('#0369a1').multiplyScalar(0.6) } },
+        uniforms: { uScale: { value: 1 }, uHot: { value: new Color('#bae6fd') }, uCool: { value: new Color('#0369a1').multiplyScalar(0.6) } },
         transparent: true,
         depthWrite: false,
         blending: AdditiveBlending,
@@ -55,42 +62,42 @@ export function Trail({ count, origin, direction, thrust, animate }: Props) {
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05)
-    const k = thrust()
+    const e = emitter.current
+    const k = e.thrust
     material.uniforms.uScale!.value = (height * dpr) / (2 * Math.tan((camera.fov * Math.PI) / 360))
     if (!animate) {
-      // Movimiento reducido: un brillo fijo y corto, sin partículas en movimiento.
-      for (let i = 0; i < count; i++) life[i] = 0
+      life.fill(0)
       life[0] = 0.9
-      pos[0] = origin.x
-      pos[1] = origin.y
-      pos[2] = origin.z
-      size[0] = 0.06
+      pos[0] = e.origin.x
+      pos[1] = e.origin.y
+      pos[2] = e.origin.z
+      size[0] = 0.25
     } else {
-      const lifeSpan = 0.25 + 0.45 * k
-      state.current.budget += ((count / lifeSpan) * dt * (0.35 + 0.65 * k))
-      const speed = 2 + 10 * k
+      const lifeSpan = 0.25 + 0.55 * k
+      budget.current = Math.min(count, budget.current + (count / lifeSpan) * dt * (0.3 + 0.7 * k))
+      const speed = 3 + 14 * k
       for (let i = 0; i < count; i++) {
         if (life[i]! > 0) {
           life[i] = life[i]! - dt / maxLife[i]!
           pos[i * 3] = pos[i * 3]! + vel[i * 3]! * dt
           pos[i * 3 + 1] = pos[i * 3 + 1]! + vel[i * 3 + 1]! * dt
           pos[i * 3 + 2] = pos[i * 3 + 2]! + vel[i * 3 + 2]! * dt
-        } else if (state.current.budget >= 1) {
-          state.current.budget -= 1
-          const j = 0.09
-          pos[i * 3] = origin.x + (rnd() - 0.5) * j
-          pos[i * 3 + 1] = origin.y + (rnd() - 0.5) * j
-          pos[i * 3 + 2] = origin.z + (rnd() - 0.5) * j
+        } else if (budget.current >= 1) {
+          budget.current -= 1
+          const j = 0.12
+          pos[i * 3] = e.origin.x + (rnd() - 0.5) * j
+          pos[i * 3 + 1] = e.origin.y + (rnd() - 0.5) * j
+          pos[i * 3 + 2] = e.origin.z + (rnd() - 0.5) * j
           const s = speed * (0.75 + rnd() * 0.5)
-          vel[i * 3] = direction.x * s + (rnd() - 0.5) * 0.6
-          vel[i * 3 + 1] = direction.y * s + (rnd() - 0.5) * 0.6
-          vel[i * 3 + 2] = direction.z * s + (rnd() - 0.5) * 0.6
+          // Hereda el 60 % de la velocidad de la nave: la estela se estira detrás al avanzar.
+          vel[i * 3] = e.direction.x * s + e.velocity.x * 0.6 + (rnd() - 0.5) * 0.8
+          vel[i * 3 + 1] = e.direction.y * s + e.velocity.y * 0.6 + (rnd() - 0.5) * 0.8
+          vel[i * 3 + 2] = e.direction.z * s + e.velocity.z * 0.6 + (rnd() - 0.5) * 0.8
           maxLife[i] = lifeSpan * (0.7 + rnd() * 0.6)
           life[i] = 1
-          size[i] = (0.022 + rnd() * 0.022) * (0.7 + 0.8 * k)
+          size[i] = (0.05 + rnd() * 0.05) * (0.7 + 0.9 * k)
         }
       }
-      state.current.budget = Math.min(state.current.budget, count)
     }
     geometry.attributes.position!.needsUpdate = true
     geometry.attributes.aLife!.needsUpdate = true

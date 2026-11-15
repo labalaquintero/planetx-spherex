@@ -1,28 +1,33 @@
-import { useRef } from 'react'
+import { useMemo, useRef, type MutableRefObject } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import type { NavController } from '../engine/controller'
+import { AgXToneMapping } from 'three'
+import type { Bounds, FlightInput, FlightState, Obstacle } from '../engine/flight'
 import type { AdaptiveQuality, QualitySettings } from '../engine/quality'
 import type { SectorScene as SectorSceneData } from '../engine/types'
+import { smallBodiesOf } from './bodies'
 import { Bloom } from './Effects'
+import { FlightRig } from './FlightRig'
 import { LIGHT_DIR } from './light'
 import { Planet } from './Planet'
-import { Rig } from './Rig'
 import { Sky } from './Sky'
+import { SkyEnvironment } from './SkyEnvironment'
 import { SmallBodies } from './SmallBodies'
+import { SpaceDust } from './SpaceDust'
 import { Station } from './Station'
 
 interface Props {
   scene: SectorSceneData
-  controller: NavController
+  flight: MutableRefObject<FlightState>
+  input: MutableRefObject<FlightInput>
+  bounds: Bounds
+  /** Obstáculos de los objetos (los cuerpos pequeños se añaden aquí, según la calidad). */
+  obstacles: readonly Obstacle[]
   /** false con prefers-reduced-motion: sin giros, vaivén ni partículas; render bajo demanda. */
   animate: boolean
-  /** Llegada desde atrás con FOV amplio. */
   arrive: boolean
   settings: QualitySettings
   quality: AdaptiveQuality
-  /** Se llama cuando la calidad adaptativa cambia de nivel. */
   onQualityChange: () => void
-  /** Se llama cada ~0,5 s con los FPS medidos (solo si se pasa: ?debug). */
   onFps?: (fps: number) => void
 }
 
@@ -45,20 +50,29 @@ function Governor({ quality, onChange, onFps }: { quality: AdaptiveQuality; onCh
   return null
 }
 
-/** Escena 3D de un sector. Es la única parte que importa three: se carga de forma diferida. */
-export default function SectorScene({ scene, controller, animate, arrive, settings, quality, onQualityChange, onFps }: Props) {
+/** Escena 3D de un sector con vuelo libre. Es la única parte que importa three (carga diferida). */
+export default function SectorScene(props: Props) {
+  const { scene, flight, input, bounds, obstacles, animate, arrive, settings, quality, onQualityChange, onFps } = props
   const light = LIGHT_DIR.clone().multiplyScalar(200)
+  const bodies = useMemo(() => smallBodiesOf(scene, settings.debris), [scene, settings.debris])
+  // Las rocas también son obstáculos (con su holgura): no se atraviesan.
+  const allObstacles = useMemo(
+    () => [...obstacles.filter((o) => !scene.objects.find((x) => x.id === o.id && x.kind === 'smallBody')), ...bodies.map((b, i) => ({ id: `roca-${i}`, center: b.position, radius: b.radius * 1.2 + 2 }))],
+    [obstacles, bodies, scene],
+  )
+  const samples = settings.level === 'high' ? 4 : settings.level === 'medium' ? 2 : 0
   return (
     <Canvas
       dpr={[1, settings.dprMax]}
       frameloop={animate ? 'always' : 'demand'}
       camera={{ fov: 50, near: 0.1, far: 4000, position: [0, 0, 0] }}
-      gl={{ antialias: settings.level !== 'low', powerPreference: 'high-performance' }}
+      gl={{ antialias: settings.level !== 'low', powerPreference: 'high-performance', toneMapping: AgXToneMapping, toneMappingExposure: 1.15 }}
       aria-hidden="true"
     >
       <color attach="background" args={['#030712']} />
-      <hemisphereLight args={['#7dd3fc', '#0f172a', 0.55]} />
-      <directionalLight position={[light.x, light.y, light.z]} intensity={3.2} color="#fff1dc" />
+      <SkyEnvironment intensity={0.9} />
+      <hemisphereLight args={['#7dd3fc', '#0f172a', 0.35]} />
+      <directionalLight position={[light.x, light.y, light.z]} intensity={2.7} color="#fff1dc" />
       <Sky stars={settings.stars} octaves={settings.nebulaOctaves} animate={animate} />
       {scene.objects.map((o) => {
         switch (o.kind) {
@@ -72,9 +86,18 @@ export default function SectorScene({ scene, controller, animate, arrive, settin
             return null // se dibujan todos juntos, instanciados
         }
       })}
-      <SmallBodies scene={scene} debris={settings.debris} spin={animate} />
-      <Rig controller={controller} animate={animate} arrive={arrive} trailParticles={settings.trailParticles} />
-      {settings.bloom && <Bloom strength={settings.bloomStrength} />}
+      <SmallBodies bodies={bodies} palette={scene.field?.palette ?? ['#9a9083', '#6b6358', '#3d3832']} spin={animate} />
+      <SpaceDust count={settings.level === 'low' ? 160 : settings.level === 'medium' ? 320 : 520} animate={animate} />
+      <FlightRig
+        state={flight}
+        input={input}
+        bounds={bounds}
+        obstacles={allObstacles}
+        animate={animate}
+        arrive={arrive}
+        trailParticles={settings.trailParticles}
+      />
+      {settings.bloom && <Bloom strength={settings.bloomStrength} samples={samples} />}
       <Governor quality={quality} onChange={onQualityChange} onFps={onFps} />
     </Canvas>
   )

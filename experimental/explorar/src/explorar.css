@@ -752,6 +752,104 @@
   grid-area: 3 / 2;
 }
 
+/* Vuelo libre: datos del HUD, mapa del área y controles con subir/bajar */
+.ex-hud-stats {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 2px 14px;
+  margin: 6px 0 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--ex-border);
+}
+.ex-hud-stats div {
+  display: grid;
+}
+.ex-hud-stats dt {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ex-dim);
+}
+.ex-hud-stats dd {
+  margin: 0;
+  font-family: var(--ex-mono);
+  font-size: 0.85rem;
+  color: var(--ex-text);
+  white-space: nowrap;
+}
+.ex-hud-edge {
+  margin: 8px 0 0;
+}
+.ex-minimap {
+  margin: 0;
+}
+.ex-minimap-body {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.ex-minimap svg {
+  display: block;
+}
+.ex-minimap-bounds {
+  fill: none;
+  stroke: var(--ex-accent-line);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+.ex-minimap-bounds[data-edge] {
+  stroke: var(--ex-warn);
+  stroke-dasharray: none;
+}
+.ex-minimap-label {
+  font-family: var(--ex-sans);
+  font-size: 9px;
+  fill: var(--ex-label);
+  paint-order: stroke;
+  stroke: rgba(3, 7, 18, 0.85);
+  stroke-width: 3px;
+}
+.ex-minimap-alt {
+  position: relative;
+  width: 6px;
+  margin: 10px 0;
+  border-radius: 3px;
+  background: linear-gradient(to top, var(--ex-raised), var(--ex-border-strong));
+}
+.ex-minimap-alt-mark {
+  position: absolute;
+  left: -4px;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--ex-accent);
+  transform: translateY(50%);
+}
+.ex-pad {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: auto;
+}
+.ex-pad-vertical {
+  display: grid;
+  gap: 6px;
+}
+.ex-pad-vertical .ex-dpad-btn {
+  width: 64px;
+  height: 40px;
+}
+.ex-pad-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.ex-dpad-btn {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 /* Créditos: diálogo con el estilo de tarjeta del visor */
 .ex-credits {
   width: min(560px, calc(100% - 32px));
@@ -864,6 +962,22 @@
   .ex-route svg {
     width: 64px;
     height: auto;
+  }
+  .ex-minimap svg {
+    width: 120px;
+    height: 120px;
+  }
+  .ex-hud-stats {
+    gap: 2px 8px;
+  }
+  .ex-hud-stats dd {
+    font-size: 0.75rem;
+  }
+  .ex-route-caption {
+    gap: 6px;
+  }
+  .ex-minimap-label {
+    display: none;
   }
   .ex-hint {
     display: none;

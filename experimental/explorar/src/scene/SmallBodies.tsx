@@ -1,76 +1,68 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
-import { Color, DynamicDrawUsage, Euler, IcosahedronGeometry, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three'
-import { mulberry32 } from '../engine/random'
-import { scatterBodies, type ScatteredBody } from '../engine/scatter'
-import { BASE_FOV_DEG } from '../engine/motion'
-import { REFERENCE_ASPECT, worldToScreen } from '../engine/projection'
-import type { SceneObject, SectorScene } from '../engine/types'
+import { useFrame, useThree } from '@react-three/fiber'
+import { Color, DynamicDrawUsage, Euler, IcosahedronGeometry, InstancedMesh, Matrix4, Quaternion, Vector3, type BufferGeometry, type MeshStandardMaterial } from 'three'
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { fbm3, makeNoise3 } from '../engine/noise'
+import type { ScatteredBody } from '../engine/scatter'
+import { loadTexture } from './textureCache'
 
-const VARIANTS = 3
-
-/** Forma base: icosaedro deformado (sombreado plano), una por variante. */
-function baseGeometry(seed: number, detail: number): IcosahedronGeometry {
-  const g = new IcosahedronGeometry(1, detail)
-  const rnd = mulberry32(seed)
+/**
+ * Forma base de roca: icosaedro subdividido deformado con ruido suave (bultos y entrantes, no
+ * pinchos), con normales suavizadas para que el relieve de la textura se lea bien.
+ */
+function baseGeometry(seed: number, detail: number): BufferGeometry {
+  const ico = new IcosahedronGeometry(1, detail)
+  ico.deleteAttribute('normal')
+  const g = mergeVertices(ico)
+  const noise = makeNoise3(seed)
   const p = g.attributes.position!
-  const shift = new Map<string, number>()
   for (let i = 0; i < p.count; i++) {
-    const key = `${p.getX(i).toFixed(3)},${p.getY(i).toFixed(3)},${p.getZ(i).toFixed(3)}`
-    let k = shift.get(key)
-    if (k === undefined) {
-      k = 0.68 + rnd() * 0.62
-      shift.set(key, k)
-    }
-    p.setXYZ(i, p.getX(i) * k, p.getY(i) * k * 0.82, p.getZ(i) * k * 1.05)
+    const x = p.getX(i)
+    const y = p.getY(i)
+    const z = p.getZ(i)
+    const k = 0.62 + 0.62 * fbm3(noise, x * 1.4 + 5, y * 1.4, z * 1.4, 4)
+    p.setXYZ(i, x * k, y * k * 0.8, z * k * 1.08)
   }
   g.computeVertexNormals()
   return g
 }
 
 interface Props {
-  scene: SectorScene
-  /** Cuántos del relleno se dibujan (calidad). */
-  debris: number
+  bodies: readonly ScatteredBody[]
+  palette: readonly [string, string, string]
   spin: boolean
 }
 
 /**
- * Cuerpos pequeños: los del boceto (objetos `smallBody`) más el relleno sembrado, todos con
- * instancias (un draw call por forma base) y variación de tamaño, giro y color.
+ * Cuerpos pequeños instanciados (un draw call por forma base), con variación de tamaño, giro y
+ * tono. La superficie usa el mapa lunar de NASA (color y relieve) teñido por instancia.
  */
-export function SmallBodies({ scene, debris, spin }: Props) {
-  const bodies = useMemo<ScatteredBody[]>(() => {
-    const listed = scene.objects
-      .filter((o: SceneObject) => o.kind === 'smallBody')
-      .map((o, i) => {
-        const r = mulberry32(o.seed)
-        return {
-          position: o.position,
-          radius: o.radius,
-          rotation: [r() * 6.28, r() * 6.28, r() * 6.28] as const,
-          spin: (r() * 2 - 1) * 0.3,
-          tint: r(),
-          variant: i % VARIANTS,
-        }
-      })
-    // La vista inicial reproduce el boceto: el relleno no aparece en ella (salvo muy lejos);
-    // se descubre al moverse.
-    const start = scene.waypoints.find((w) => w.id === scene.startId)
-    const cam = start && { position: start.position, yawDeg: start.yawDeg, pitchDeg: start.pitchDeg, fovDeg: BASE_FOV_DEG, aspect: REFERENCE_ASPECT }
-    const inView = (p: readonly [number, number, number]) => {
-      if (!cam) return false
-      const s = worldToScreen(p, cam)
-      return s.depth > 0 && s.depth < 320 && s.u > -0.08 && s.u < 1.08 && s.v > -0.08 && s.v < 1.08
+export function SmallBodies({ bodies, palette, spin }: Props) {
+  const geometries = useMemo(() => [0, 1, 2].map((v) => baseGeometry(900 + v * 17, 3)), [])
+  // Textura lunar (color + relieve) en las rocas; mientras carga, color liso.
+  const invalidate = useThree((st) => st.invalidate)
+  const materials = useRef<(MeshStandardMaterial | null)[]>([])
+  const setMaterial = (v: number) => (m: MeshStandardMaterial | null) => {
+    materials.current[v] = m
+  }
+  useEffect(() => {
+    let alive = true
+    Promise.all([loadTexture('luna-color'), loadTexture('luna-relieve', 'data')]).then(([map, bump]) => {
+      if (!alive) return
+      for (const m of materials.current) {
+        if (!m) continue
+        m.map = map
+        m.bumpMap = bump
+        m.needsUpdate = true
+      }
+      invalidate()
+    }, () => {})
+    return () => {
+      alive = false
     }
-    const extra = scene.field ? scatterBodies(scene.field, scene.waypoints, scene.objects, debris, VARIANTS, inView) : []
-    return [...listed, ...extra]
-  }, [scene, debris])
-
-  const geometries = useMemo(() => [0, 1, 2].map((v) => baseGeometry(900 + v * 17, v === 2 ? 2 : 1)), [])
+  }, [invalidate, bodies])
   useEffect(() => () => geometries.forEach((g) => g.dispose()), [geometries])
 
-  const palette = scene.field?.palette ?? ['#9a9083', '#6b6358', '#3d3832']
   const refs = useRef<(InstancedMesh | null)[]>([])
   const groups = useMemo(() => [0, 1, 2].map((v) => bodies.filter((b) => b.variant === v)), [bodies])
 
@@ -121,7 +113,7 @@ export function SmallBodies({ scene, debris, spin }: Props) {
             args={[geometries[v], undefined, list.length]}
             frustumCulled={false}
           >
-            <meshStandardMaterial flatShading roughness={0.95} metalness={0} />
+            <meshStandardMaterial ref={setMaterial(v)} roughness={0.92} metalness={0} bumpScale={2.2} />
           </instancedMesh>
         ),
       )}

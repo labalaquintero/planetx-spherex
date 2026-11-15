@@ -14,6 +14,7 @@ void main() {
 export const SKY_FRAG = /* glsl */ `
 uniform vec3 uLight;
 uniform float uOct;
+uniform float uStarGain; // 1 en el cielo; menor en el mapa de entorno (reflejos sin quemar)
 varying vec3 vDir;
 ${NOISE}
 void main() {
@@ -30,7 +31,7 @@ void main() {
   // Estrella clave: núcleo muy brillante (lo recoge el bloom) y halo amplio.
   float k = max(dot(d, uLight), 0.0);
   vec3 starCol = vec3(1.0, 0.94, 0.84);
-  col += starCol * (pow(k, 4000.0) * 9.0 + pow(k, 300.0) * 0.9 + pow(k, 24.0) * 0.08);
+  col += starCol * (pow(k, 4000.0) * 6.0 * uStarGain + pow(k, 300.0) * 0.45 + pow(k, 24.0) * 0.035);
   gl_FragColor = vec4(col, 1.0);
   ${OUTPUT}
 }

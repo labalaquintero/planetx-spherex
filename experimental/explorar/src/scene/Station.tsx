@@ -47,26 +47,27 @@ export function Station({ o, spin }: { o: SceneObject; spin: boolean }) {
             emissiveMap={hull.emissive}
             emissive="#ffffff"
             emissiveIntensity={1.4}
-            metalness={0.35}
-            roughness={0.5}
+            metalness={0.6}
+            roughness={0.35}
+            envMapIntensity={1.2}
           />
         </mesh>
         {[-1, 1].map((s) => (
           <mesh key={s} position={[0, (s * length) / 2, 0]}>
             <cylinderGeometry args={[o.radius * 1.08, o.radius * 1.08, o.radius * 0.35, 32]} />
-            <meshStandardMaterial color={o.palette[2]} metalness={0.35} roughness={0.5} />
+            <meshStandardMaterial color={o.palette[2]} metalness={0.7} roughness={0.3} envMapIntensity={1.2} />
           </mesh>
         ))}
         <mesh position={[0, -length / 2 - o.radius * 0.2, 0]}>
           <cylinderGeometry args={[o.radius * 0.35, o.radius * 0.45, o.radius * 0.35, 16]} />
-          <meshStandardMaterial color={o.palette[1]} metalness={0.4} roughness={0.45} />
+          <meshStandardMaterial color={o.palette[1]} metalness={0.7} roughness={0.3} envMapIntensity={1.2} />
         </mesh>
       </group>
       {/* Asa del boceto: anillo de atraque que sale del extremo derecho, en el plano de la pantalla. */}
       <group ref={ringRef} position={[length / 2 + handle.length / 2, -o.radius * 0.15, 0]}>
         <mesh scale={[handle.length / handle.height, 1, 1]}>
           <torusGeometry args={[handle.height / 2, o.radius * 0.13, 10, 48]} />
-          <meshStandardMaterial color={o.palette[1]} metalness={0.3} roughness={0.5} />
+          <meshStandardMaterial color={o.palette[1]} metalness={0.75} roughness={0.25} envMapIntensity={1.2} />
         </mesh>
       </group>
       {tips.map((p, i) => (
