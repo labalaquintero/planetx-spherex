@@ -1,13 +1,14 @@
 import {
   archiveNote, comparisonLink, comparisonMode, coordinateParams, dateMark, epoch, escapeHtml,
-  fieldLabel, fieldName, formatBand, fullDate, imageLink, nasaVela, prepared, reportStatuses,
+  fieldLabel, fieldName, formatBand, nasaVela, prepared,
 } from './datos.js';
-import { frameMarks, lastMarkedArea } from './anotaciones.js';
+import { frameMarks } from './anotaciones.js';
 import {
   canReview, clearSharedMarks, fileDataUrl, reportById, setSharedPage, sharedPage, sharedRequest,
 } from './colaboracion.js';
-import { back, badge, dataRows, missingView, pageHeading, toast } from './ui.js';
+import { pdfButton, reportDocument, reportEvidence, statusBadge } from './informe.js';
 import { badgeShelf, exampleProfile, isoWeek, statsFromReports, weeklyMark } from './insignias.js';
+import { back, badge, missingView, pageHeading, toast } from './ui.js';
 import { comparisonFor } from './visor.js';
 import { cacheImages, isEditableReport, readWorkspace, reportFile, writeWorkspace } from './workspace.js';
 
@@ -38,11 +39,6 @@ async function submitShared(form, error, action) {
   }
 }
 
-function statusBadge(report) {
-  const state = Object.hasOwn(reportStatuses, report.status) ? reportStatuses[report.status] : reportStatuses.draft;
-  return badge(state.title, state.color);
-}
-
 function initials(alias) {
   return alias.trim().split(/\s+/).slice(0, 2).map((word) => word[0]).join('').toUpperCase() || 'PX';
 }
@@ -51,58 +47,6 @@ function avatar(profile, size = 'large') {
   return /^data:image\/(?:png|jpeg|webp);base64,/.test(profile.avatar)
     ? `<img class="avatar avatar-${size}" src="${escapeHtml(profile.avatar)}" alt="">`
     : `<span class="avatar avatar-${size}" aria-hidden="true">${escapeHtml(initials(profile.alias))}</span>`;
-}
-
-function reportEvidence(data, annotations, { reportId, from } = {}) {
-  const editable = from === 'manual' || from === 'pdf';
-  const frames = data.frames.map((frame, index) => ({
-    frame, index, marks: frameMarks(annotations, frame.id),
-  }));
-  const releases = [...new Set(data.frames.map((frame) => frame.release.toUpperCase()))].join(' / ');
-  const markTypes = new Set(frames.flatMap(({ marks }) => marks.map(({ type }) => type)));
-  return `<aside class="panel attachment-panel" aria-labelledby="attachment-title">
-    <h2 id="attachment-title">Observaciones asociadas</h2>
-    <p class="muted">${fieldName(data.query)} · SPHEREx ${releases}</p>
-    ${editable && !markTypes.size ? '<p class="input-hint">Abre una época para dibujar o señalar un área.</p>' : ''}
-    <div class="report-frames">
-      ${frames.map(({ frame, index, marks }) => {
-        const label = `Época ${epoch(index)}`;
-        const action = `${editable ? 'Anotar' : 'Ampliar'} época ${epoch(index)}`;
-        const [date, time] = fullDate(frame.observed_at).split(' · ');
-        return `<figure class="report-frame"${marks.length ? ` data-report-marks="${escapeHtml(JSON.stringify(marks))}"` : ''}>
-          <figcaption class="report-frame-info">
-            <strong>${label}</strong>
-            <time datetime="${escapeHtml(frame.observed_at)}"><span>${date}</span><span>${time ?? ''}</span></time>
-          </figcaption>
-          <a class="report-frame-link" href="${escapeHtml(imageLink(index, data, reportId, from))}" aria-label="${action}">
-            <div class="report-image">
-              <img class="science-image" src="${escapeHtml(frame.src)}" data-frame-id="${escapeHtml(frame.id)}" alt="Recorte SPHEREx · ${label}" width="64" height="64">
-              ${marks.length ? '<canvas class="report-overlay" width="512" height="512" aria-hidden="true" hidden></canvas>' : ''}
-              <span class="image-error" role="alert" hidden>Imagen no disponible.</span>
-            </div>
-            <span class="report-annotate">${action} <span aria-hidden="true">→</span></span>
-          </a>
-          <div class="report-frame-meta">
-            ${marks.length ? `<span>${marks.length} ${marks.length === 1 ? 'marca' : 'marcas'}</span>` : ''}
-            ${frame.source_url ? `<a class="report-fits" href="${escapeHtml(frame.source_url)}" target="_blank" rel="noopener">FITS · ${escapeHtml(frame.observation_id)}</a>` : ''}
-          </div>
-          ${lastMarkedArea(marks) ? `<div class="report-crop" hidden>
-            <p>Detalle del último recorte</p>
-            <canvas class="science-image" width="512" height="512" aria-hidden="true"></canvas>
-          </div>` : ''}
-        </figure>`;
-      }).join('')}
-    </div>
-    ${markTypes.size ? `<p class="report-legend">
-      ${markTypes.has('draw') ? '<span class="legend-draw">Trazo de observación</span>' : ''}
-      ${markTypes.has('crop') ? '<span class="legend-crop">Área seleccionada</span>' : ''}
-    </p>` : ''}
-    ${dataRows([
-      ['Banda aproximada', formatBand(data.band)],
-      ['Campo', fieldLabel(data.query)],
-      ['Centro ICRS', `RA ${data.query.ra_deg}° · Dec ${data.query.dec_deg}°`],
-    ])}
-  </aside>`;
 }
 
 function draftKey(params, data) {
@@ -213,15 +157,6 @@ function downloadLocalFile(file, name) {
     URL.revokeObjectURL(link.href);
     link.remove();
   }, 2000);
-}
-
-function pdfButton(report) {
-  if (report.shared && report.hasPdf) {
-    return `<a class="button secondary" href="/api/v1/workspace/reports/${report.id}/attachment">Descargar PDF</a>`;
-  }
-  return report.hasPdf
-    ? `<button class="button secondary" type="button" data-pdf-download="${escapeHtml(report.id)}">Descargar PDF</button>`
-    : '';
 }
 
 function exportButtons(report) {
@@ -388,33 +323,19 @@ function bindReport(_id, params) {
 function confirmationView(id) {
   const report = reportById(id);
   if (!report) return missingView();
-  const lead = report.shared ? (report.status === 'review' ? 'El equipo revisor ya puede abrir la ficha.' : 'Consulta aquí el estado de la ficha y su evidencia.')
-    : report.status === 'review'
-    ? 'La ficha se registró en la bandeja de revisión de este navegador.'
-    : 'La ficha y sus referencias están disponibles en este navegador.';
   const profileLink = report.shared || !sharedPage.enabled ? '#perfil' : '#perfil?local=1';
-  return `${back(profileLink, 'Mi espacio')}
-    ${pageHeading(report.status === 'review' ? 'Ficha en revisión' : report.status === 'draft' ? 'Borrador guardado' : 'Estado de tu ficha', lead, '', true)}
-    <div class="split report-layout">
-    <section class="panel report-confirmation">
-      <div class="row between"><h2>${escapeHtml(report.title)}</h2>${statusBadge(report)}</div>
-      <p class="muted">${escapeHtml(report.author)} · ${dateMark(report.created, true)}</p>
-      ${report.notes || report.fileName ? `<p class="preserve-lines">${escapeHtml(report.notes || report.fileName)}</p>` : ''}
-      ${report.reviewNote ? `<p class="callout ${report.status === 'rejected' ? 'danger' : 'info'}">${escapeHtml(report.reviewNote)}</p>` : ''}
-      <div class="row">
-        <a class="button primary" href="${profileLink}">Ver mis fichas</a>
-        ${pdfButton(report)}
-        ${isEditableReport(report) && (!report.shared || report.mine) ? `<a class="button secondary" href="${editURL(report)}">Editar ficha</a>` : ''}
-        ${report.status === 'review' && (!report.shared || canReview(sharedPage.account)) ? `<a class="button secondary" href="#administracion/${report.id}${!report.shared && sharedPage.enabled ? '?local=1' : ''}">Ver bandeja de revisión</a>` : ''}
-        ${report.status === 'published' ? `<a class="button secondary" href="#articulo/${report.id}">Ver publicación</a>` : ''}
-      </div>
-      <div class="row">
+  const reportId = encodeURIComponent(report.id);
+  const controls = `<div class="row report-document-actions">
+        ${isEditableReport(report) && (!report.shared || report.mine) ? `<a class="button primary" href="${editURL(report)}">Editar ficha</a>` : ''}
+        ${report.status === 'review' && (!report.shared || canReview(sharedPage.account)) ? `<a class="button secondary" href="#administracion/${reportId}${!report.shared && sharedPage.enabled ? '?local=1' : ''}">Ver bandeja de revisión</a>` : ''}
+        ${report.status === 'published' ? `<a class="button secondary" href="#articulo/${reportId}">Ver publicación</a>` : ''}
         <button class="button secondary" id="print-report" type="button">Imprimir ficha</button>
-        ${exportButtons(report)}
-      </div>
-    </section>
-    ${reportEvidence(report.comparison ?? prepared, report.annotations, { reportId: report.id })}
+        <details class="report-export">
+          <summary class="button secondary">Exportar <span aria-hidden="true">⌄</span></summary>
+          <div class="report-export-options">${exportButtons(report)}</div>
+        </details>
     </div>`;
+  return reportDocument(report, { previous: back(profileLink, 'Mis fichas'), controls });
 }
 
 function editURL(report) {
@@ -854,5 +775,5 @@ function bindModeration(_id, params) {
 
 export {
   accountView, avatar, bindAccount, bindModeration, bindReport, bindSettings, confirmationView,
-  moderationView, pdfButton, profileView, publicProfileView, reportEvidence, reportView, settingsView,
+  moderationView, profileView, publicProfileView, reportView, settingsView,
 };

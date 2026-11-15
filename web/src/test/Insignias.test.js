@@ -109,6 +109,11 @@ describe('ficha de la semana en el modo local', () => {
     window.dispatchEvent(new HashChangeEvent('hashchange'));
     const card = [...document.querySelectorAll('.blog-report-card')].find((item) => item.textContent.includes('Ficha pub'));
     expect(card.querySelector('.weekly-mark')).toHaveTextContent('Ficha de la semana');
+
+    history.replaceState(null, '', '#articulo/pub');
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+    const cover = screen.getByRole('article', { name: 'Ficha pub' }).querySelector('.report-cover');
+    expect(within(cover).getByText('Ficha de la semana')).toBeInTheDocument();
   });
 });
 
