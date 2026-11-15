@@ -1,10 +1,10 @@
-from conftest import FakeCatalog, FakeScience, make_client, synthetic
+from conftest import FakeCatalog, FakeScience, make_client, synthetic, synthetic_prepared
 
 PARAMS = {"ra_deg": "10.25", "dec_deg": "-12.5"}
 
 
 def test_prepared_path_is_served_and_live_is_not_called():
-    catalog = FakeCatalog(synthetic(mode="prepared"))
+    catalog = FakeCatalog(synthetic_prepared())
     science = FakeScience(synthetic())
     client = make_client(prepared=catalog, science=science)
 
@@ -18,8 +18,8 @@ def test_prepared_path_is_served_and_live_is_not_called():
 
 def test_live_path_sets_mode_and_uses_same_center_and_serves_images():
     catalog = FakeCatalog(None)
-    live = synthetic(mode="live")  # el servicio añade el modo; la ciencia no lo decide
-    science = FakeScience(live, images={"fixture-a": _png(), "fixture-b": _png()})
+    live = synthetic_prepared(mode="live")  # el servicio añade el modo; la ciencia no lo decide
+    science = FakeScience(live, images={"synthetic-a": _png(), "synthetic-b": _png()})
     client = make_client(prepared=catalog, science=science)
 
     response = client.get("/api/v1/comparisons", params=PARAMS)
@@ -30,7 +30,7 @@ def test_live_path_sets_mode_and_uses_same_center_and_serves_images():
     assert catalog.calls[0]["dec_deg"] == science.calls[0]["dec_deg"] == -12.5
     assert science.calls[0]["fov_deg"] == 0.1
     # Los PNG emitidos por ciencia quedan accesibles solo por su ID.
-    assert client.get("/api/v1/images/fixture-a").headers["content-type"] == "image/png"
+    assert client.get("/api/v1/images/synthetic-a").headers["content-type"] == "image/png"
 
 
 def _png():
@@ -40,12 +40,10 @@ def _png():
 
 
 def test_insufficient_and_no_coverage_pass_through_unchanged():
-    insufficient = synthetic(
-        mode="prepared", status="insufficient", reason="single_epoch", frames=synthetic()["frames"][:1]
+    insufficient = synthetic_prepared(
+        status="insufficient", reason="single_epoch", frames=synthetic_prepared()["frames"][:1]
     )
-    no_coverage = synthetic(
-        mode="prepared", status="no_coverage", reason="no_observations", band=None, frames=[]
-    )
+    no_coverage = synthetic_prepared(status="no_coverage", reason="no_observations", band=None, frames=[])
     for payload in (insufficient, no_coverage):
         client = make_client(prepared=FakeCatalog(payload))
         response = client.get("/api/v1/comparisons", params=PARAMS)
@@ -66,7 +64,7 @@ def test_fixture_payload_is_blocked_by_default_and_allowed_in_dev():
 
 
 def test_image_url_must_be_same_origin_path():
-    payload = synthetic(mode="prepared")
+    payload = synthetic_prepared()
     payload["frames"][0]["image_url"] = "https://evil.example/x.png"
     response = make_client(prepared=FakeCatalog(payload)).get("/api/v1/comparisons", params=PARAMS)
     assert response.status_code == 500

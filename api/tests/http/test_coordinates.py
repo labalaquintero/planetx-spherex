@@ -1,11 +1,11 @@
 import pytest
 
-from conftest import FakeCatalog, make_client, synthetic
+from conftest import FakeCatalog, make_client, synthetic_prepared
 
 
 def _client_and_catalog():
     # Catálogo con payload preparado sintético: si la validación falla, no se llama.
-    catalog = FakeCatalog(synthetic(mode="prepared"))
+    catalog = FakeCatalog(synthetic_prepared())
     return make_client(prepared=catalog), catalog
 
 

@@ -1,4 +1,7 @@
-"""Integración con ``planetx.catalog`` (DeValle). Datos SINTÉTICOS: el JSON de §5, marcado.
+"""Integración con ``planetx.catalog`` (DeValle). Datos SINTÉTICOS marcados (ids ``synthetic-*``).
+
+Los manifiestos usan valores de forma realista (``synthetic_prepared``): release ``dr1``, ``source_url``
+ficticia con forma de IRSA y fechas UTC con ``Z``; un caso preparado no admite ``fixture`` ni ``null``.
 
 Las pruebas con módulo simulado no dependen del catálogo real; las de «catálogo real» se omiten
 si ``planetx.catalog`` no está en el árbol (p. ej. antes de integrar ``origin/main``).
@@ -6,15 +9,18 @@ si ``planetx.catalog`` no está en el árbol (p. ej. antes de integrar ``origin/
 
 import json
 import logging
+import re
 import sys
 import types
 
 import pytest
 
-from conftest import TINY_PNG, FakeScience, make_client, synthetic
+from conftest import TINY_PNG, FakeScience, make_client, synthetic, synthetic_prepared
 from planetx.http import create_app
 from planetx.http.catalog_adapter import CatalogAdapter, load_catalog_module
 from planetx.http.factory import REPO_ROOT, resolve_catalog_manifest, resolve_products_dir
+from planetx.irsa.config import IrsaConfig
+from planetx.irsa.urls import validate_access_url
 
 PARAMS = {"ra_deg": "10.25", "dec_deg": "-12.5"}
 
@@ -128,7 +134,7 @@ def real_catalog():
 
 def write_catalog(root, ids=("synthetic-a", "synthetic-b"), entry=None):
     """Manifiesto y PNG SINTÉTICOS en ``root``; devuelve (manifest, products)."""
-    payload = entry or synthetic(mode="prepared")
+    payload = entry or synthetic_prepared()  # release dr1, source_url con forma de IRSA, fechas con Z
     for frame, frame_id in zip(payload["frames"], ids):
         frame["id"], frame["image_url"] = frame_id, f"/api/v1/images/{frame_id}"
     products = root / "products"
@@ -188,3 +194,20 @@ def test_real_catalog_accepts_ids_the_images_route_would_refuse(real_catalog, tm
     manifest, products = write_catalog(tmp_path, ids=("frame 1", "frame 2"))
     response = make_client(catalog_manifest=manifest, products_dir=products).get("/api/v1/comparisons", params=PARAMS)
     assert response.status_code == 500 and response.json()["error"]["code"] == "internal_error"
+
+
+# ------------------------------------------- forma realista de los casos preparados sintéticos
+def test_synthetic_prepared_has_realistic_shape_and_is_still_marked_synthetic():
+    payload = synthetic_prepared()
+    assert payload["mode"] == "prepared"
+    date = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z\Z")
+    assert date.match(payload["checked_at"])
+    for frame in payload["frames"]:
+        assert frame["release"] in ("dr1", "qr3")  # nunca «fixture»
+        assert date.match(frame["observed_at"])  # UTC con «Z», no «+00:00» ni sin zona
+        # source_url: no nulo y con la forma exacta que valida el adaptador IRSA (https, host permitido,
+        # patrón /ibe/data/spherex/...fits), aunque es FICTICIA (semana SYNTHnnn).
+        assert validate_access_url(frame["source_url"], f"spherex_{frame['release']}", IrsaConfig())
+        assert "SYNTH" in frame["source_url"] and "SYNTH" in frame["observation_id"]
+        assert frame["id"].startswith("synthetic-")  # marcado como sintético en el id
+    assert len({f["observation_id"] for f in payload["frames"]}) == 2

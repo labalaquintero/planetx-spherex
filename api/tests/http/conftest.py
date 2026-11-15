@@ -14,6 +14,7 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
+from irsa_helpers import access_url
 from planetx.http import create_app
 from planetx.http.services import SequenceResult
 
@@ -53,6 +54,34 @@ SYNTHETIC_READY: dict[str, Any] = {
 
 def synthetic(**overrides: Any) -> dict[str, Any]:
     payload = copy.deepcopy(SYNTHETIC_READY)
+    payload.update(overrides)
+    return payload
+
+
+def synthetic_prepared(**overrides: Any) -> dict[str, Any]:
+    """Caso ``prepared`` SINTÉTICO con valores de forma realista (para manifiestos y payloads preparados).
+
+    Un caso preparado público no admite ``release: "fixture"`` ni ``source_url: null`` (esos valores
+    solo valen en modo ``fixture`` de dev/pruebas). Aquí: release ``dr1``, ``source_url`` con la
+    forma de una URL de IRSA pero FICTICIA (semana ``SYNTHnnn``), fechas UTC con ``Z`` y ids
+    ``synthetic-*``. No es ninguna observación real de SPHEREx.
+    """
+    payload = copy.deepcopy(SYNTHETIC_READY)
+    payload["mode"] = "prepared"
+    payload["frames"] = [
+        {
+            "id": frame_id,  # SINTÉTICO
+            "observed_at": observed_at,
+            "release": "dr1",
+            "observation_id": f"SYNTH{n:03d}_1A_0001_1/D2",  # SINTÉTICO: <obs_id>/D<n>
+            "source_url": access_url("dr1", n, 2),  # FICTICIA, con forma válida de IRSA
+            "image_url": f"/api/v1/images/{frame_id}",
+            "quality_flags": [],
+        }
+        for n, (frame_id, observed_at) in enumerate(
+            (("synthetic-a", "2026-01-05T08:24:22Z"), ("synthetic-b", "2026-07-05T17:41:09Z")), start=1
+        )
+    ]
     payload.update(overrides)
     return payload
 
