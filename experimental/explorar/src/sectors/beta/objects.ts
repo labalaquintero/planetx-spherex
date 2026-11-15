@@ -1,4 +1,4 @@
-import { objetoBoceto } from '../../boceto'
+import { objetoBoceto } from './boceto'
 import { BASE_FOV_DEG } from '../../engine/motion'
 import { radiusForScreenSize, REFERENCE_ASPECT, screenToWorld, type ViewCamera } from '../../engine/projection'
 import type { SceneObject, SceneObjectKind } from '../../engine/types'
