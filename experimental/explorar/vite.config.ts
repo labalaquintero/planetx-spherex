@@ -7,7 +7,7 @@ export default defineConfig({
   server: { host: '127.0.0.1', port: 5174, strictPort: true },
   build: {
     // three pesa; se carga de forma diferida y se parte en su propio chunk.
-    chunkSizeWarningLimit: 900,
+    chunkSizeWarningLimit: 1000,
   },
   test: {
     // Lógica pura (grafo y navegación): no necesita DOM.

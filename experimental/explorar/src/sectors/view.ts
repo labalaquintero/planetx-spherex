@@ -1,7 +1,7 @@
 import type { Vec3 } from '../engine/types'
 
 /** Campo de visión vertical de la escena y relación de aspecto de referencia (boceto, 16:9). */
-export const REFERENCE_FOV_DEG = 60
+export const REFERENCE_FOV_DEG = 50
 const ASPECT = 16 / 9
 
 /**

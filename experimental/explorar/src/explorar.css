@@ -148,3 +148,139 @@
     transform: none;
   }
 }
+
+/* ---------- Pantalla 2: navegación en nave ---------- */
+.ex-nav {
+  position: absolute;
+  inset: 0;
+}
+.ex-canvas {
+  position: absolute;
+  inset: 0;
+}
+.ex-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 24px;
+  text-align: center;
+  color: var(--ex-muted);
+}
+.ex-hud {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  pointer-events: none;
+}
+.ex-hud > * {
+  pointer-events: auto;
+}
+.ex-hud-top {
+  top: 0;
+  align-items: flex-start;
+}
+.ex-hud-bottom {
+  bottom: 0;
+  align-items: flex-end;
+}
+.ex-hud-info {
+  min-width: 0;
+  padding: 8px 14px;
+  background: var(--ex-panel);
+  border: 1px solid var(--ex-border);
+  border-radius: 10px;
+  pointer-events: none;
+}
+.ex-hud-point {
+  margin: 0;
+  font-weight: 600;
+}
+.ex-hud-near {
+  min-height: 1.2em;
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  color: var(--ex-muted);
+}
+.ex-back {
+  padding: 8px 14px;
+  color: var(--ex-text);
+  font: inherit;
+  background: var(--ex-panel);
+  border: 1px solid var(--ex-border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.ex-back:hover {
+  background: #17306a;
+}
+.ex-back kbd {
+  margin-left: 6px;
+  padding: 1px 6px;
+  font: inherit;
+  font-size: 0.75rem;
+  color: var(--ex-muted);
+  border: 1px solid var(--ex-border);
+  border-radius: 4px;
+}
+.ex-disclaimer-inline,
+.ex-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--ex-muted);
+  text-shadow: 0 1px 3px #000;
+}
+.ex-hint {
+  margin-top: 4px;
+}
+
+/* Cruceta: cuatro botones con triángulos */
+.ex-dpad {
+  display: grid;
+  grid-template: repeat(3, 46px) / repeat(3, 46px);
+  gap: 4px;
+}
+.ex-dpad-btn {
+  display: grid;
+  place-items: center;
+  color: #b9d4ff;
+  background: var(--ex-panel);
+  border: 2px solid #3d5bff;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.ex-dpad-btn:hover:not(:disabled) {
+  background: #1a3170;
+}
+.ex-dpad-btn:disabled {
+  color: #4a5b86;
+  border-color: #26356a;
+  cursor: not-allowed;
+}
+.ex-dpad-up {
+  grid-area: 1 / 2;
+}
+.ex-dpad-left {
+  grid-area: 2 / 1;
+}
+.ex-dpad-right {
+  grid-area: 2 / 3;
+}
+.ex-dpad-down {
+  grid-area: 3 / 2;
+}
+
+@media (max-width: 560px) {
+  .ex-hint {
+    display: none;
+  }
+  .ex-hud-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
