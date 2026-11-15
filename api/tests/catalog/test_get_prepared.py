@@ -301,7 +301,7 @@ def test_get_prepared_validates_frame_id_format(
                 "observed_at": f"2025-05-1{i}T02:15:00Z",
                 "release": "dr1",
                 "observation_id": f"obs-valid-{i}",
-                "source_url": None,
+                "source_url": f"https://example.com/dr1/{valid_id}.fits",
                 "image_url": f"/api/v1/images/{valid_id}",
                 "quality_flags": [],
             },
@@ -310,7 +310,7 @@ def test_get_prepared_validates_frame_id_format(
                 "observed_at": f"2025-11-1{i}T06:40:00Z",
                 "release": "qr3",
                 "observation_id": f"obs-valid-{i}-e2",
-                "source_url": None,
+                "source_url": f"https://example.com/qr3/epoch2-{i}.fits",
                 "image_url": f"/api/v1/images/epoch2-{i}",
                 "quality_flags": [],
             },
@@ -329,3 +329,200 @@ def test_get_prepared_validates_frame_id_format(
         )
         assert result is not None
         assert result["frames"][0]["id"] == valid_id
+
+
+def test_get_prepared_rejects_non_utc_or_incoherent_timestamps(
+    sample_catalog: tuple[Path, Path],
+) -> None:
+    manifest_path, products_dir = sample_catalog
+
+    invalid_timestamps = [
+        "2025-05-06T12:20:24+02:00",  # offset no UTC
+        "2025-05-06T12:20:24+00:00",  # falta sufijo Z explícito
+        "2025-05-06 12:20:24Z",       # separador con espacio en vez de T
+        "2025-05-06",                 # fecha sin hora
+        "invalid-date",               # no fecha
+    ]
+
+    for bad_ts in invalid_timestamps:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        payload["entries"][0]["frames"][0]["observed_at"] = bad_ts
+        manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+
+        with pytest.raises(ManifestCorruptError, match="Formato ISO-8601 UTC estricto"):
+            get_prepared(
+                ra_deg=WISE0855_RA,
+                dec_deg=WISE0855_DEC,
+                fov_deg=WISE0855_FOV,
+                science_version=WISE0855_VERSION,
+                manifest_path=manifest_path,
+                products_dir=products_dir,
+            )
+
+    # Incoherencia temporal: observed_at posterior a checked_at
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    payload["entries"][0]["frames"][0]["observed_at"] = "2025-05-06T12:20:24.888Z"
+    payload["entries"][0]["checked_at"] = "2025-05-01T00:00:00Z"
+    # frames[0].observed_at es "2025-05-06T12:20:24.888Z" (> 2025-05-01)
+    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ManifestCorruptError, match="Incoherencia temporal"):
+        get_prepared(
+            ra_deg=WISE0855_RA,
+            dec_deg=WISE0855_DEC,
+            fov_deg=WISE0855_FOV,
+            science_version=WISE0855_VERSION,
+            manifest_path=manifest_path,
+            products_dir=products_dir,
+        )
+
+
+def test_get_prepared_validates_provenance_fields(
+    sample_catalog: tuple[Path, Path],
+) -> None:
+    manifest_path, products_dir = sample_catalog
+
+    # source_url faltante o no https:// en dr1/qr3
+    invalid_urls = [
+        None,
+        "",
+        "   ",
+        "http://irsa.ipac.caltech.edu/test.fits",  # http rechazado en dr1
+        "ftp://irsa.ipac.caltech.edu/test.fits",   # ftp rechazado
+        "https:///sin-host.fits",                  # sin netloc
+    ]
+
+    for bad_url in invalid_urls:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        payload["entries"][0]["frames"][0]["source_url"] = bad_url
+        manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+
+        with pytest.raises(ManifestCorruptError, match="source_url"):
+            get_prepared(
+                ra_deg=WISE0855_RA,
+                dec_deg=WISE0855_DEC,
+                fov_deg=WISE0855_FOV,
+                science_version=WISE0855_VERSION,
+                manifest_path=manifest_path,
+                products_dir=products_dir,
+            )
+
+    # Caso fixture: source_url puede ser None o http/https válido
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    payload["entries"][0]["frames"][0]["release"] = "fixture"
+    payload["entries"][0]["frames"][0]["source_url"] = None
+    payload["entries"][0]["frames"][1]["release"] = "fixture"
+    payload["entries"][0]["frames"][1]["source_url"] = "http://localhost:8000/fixture.fits"
+    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    res = get_prepared(
+        ra_deg=WISE0855_RA,
+        dec_deg=WISE0855_DEC,
+        fov_deg=WISE0855_FOV,
+        science_version=WISE0855_VERSION,
+        manifest_path=manifest_path,
+        products_dir=products_dir,
+    )
+    assert res is not None
+    assert res["frames"][0]["source_url"] is None
+    assert res["frames"][1]["source_url"] == "http://localhost:8000/fixture.fits"
+
+    # Caso fixture con URL malformada
+    payload["entries"][0]["frames"][1]["source_url"] = "ftp://localhost/fixture.fits"
+    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ManifestCorruptError, match="source_url inválido en frame fixture"):
+        get_prepared(
+            ra_deg=WISE0855_RA,
+            dec_deg=WISE0855_DEC,
+            fov_deg=WISE0855_FOV,
+            science_version=WISE0855_VERSION,
+            manifest_path=manifest_path,
+            products_dir=products_dir,
+        )
+
+    # observation_id inválido
+    invalid_obs_ids = [
+        "obs 1",        # espacios
+        "obs#1",        # símbolo no permitido
+        "-obs-1",       # inicia con guión
+        ".obs-1",       # inicia con punto
+        "_obs-1",       # inicia con guión bajo
+        "x" * 129,      # supera 128 caracteres
+    ]
+    for bad_obs in invalid_obs_ids:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        payload["entries"][0]["frames"][0]["observation_id"] = bad_obs
+        manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+
+        with pytest.raises(ManifestCorruptError, match="observation_id inválido"):
+            get_prepared(
+                ra_deg=WISE0855_RA,
+                dec_deg=WISE0855_DEC,
+                fov_deg=WISE0855_FOV,
+                science_version=WISE0855_VERSION,
+                manifest_path=manifest_path,
+                products_dir=products_dir,
+            )
+
+
+def test_get_prepared_validates_science_and_schema_version(
+    sample_catalog: tuple[Path, Path],
+) -> None:
+    manifest_path, products_dir = sample_catalog
+
+    # Consulta con science_version malformado
+    invalid_versions = [" v1 ", "v 1", "v1$", ".v1", "-v1", "_v1", "a" * 65]
+    for bad_ver in invalid_versions:
+        with pytest.raises(InvalidCatalogQueryError, match="science_version inválido"):
+            get_prepared(
+                ra_deg=WISE0855_RA,
+                dec_deg=WISE0855_DEC,
+                fov_deg=WISE0855_FOV,
+                science_version=bad_ver,
+                manifest_path=manifest_path,
+                products_dir=products_dir,
+            )
+
+    # Entrada del manifiesto con science_version inválido
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    payload["entries"][0]["science_version"] = " v1 "
+    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ManifestCorruptError, match="science_version"):
+        get_prepared(
+            ra_deg=WISE0855_RA,
+            dec_deg=WISE0855_DEC,
+            fov_deg=WISE0855_FOV,
+            science_version="v1",
+            manifest_path=manifest_path,
+            products_dir=products_dir,
+        )
+
+    # schema_version raíz distinto a "1" debe ser rechazado
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    payload["entries"][0]["science_version"] = "v1"
+    payload["schema_version"] = "2"
+    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ManifestCorruptError, match="schema_version raíz"):
+        get_prepared(
+            ra_deg=WISE0855_RA,
+            dec_deg=WISE0855_DEC,
+            fov_deg=WISE0855_FOV,
+            science_version="v1",
+            manifest_path=manifest_path,
+            products_dir=products_dir,
+        )
+
+    # schema_version raíz == "1" es válido
+    payload["schema_version"] = "1"
+    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+    res = get_prepared(
+        ra_deg=WISE0855_RA,
+        dec_deg=WISE0855_DEC,
+        fov_deg=WISE0855_FOV,
+        science_version="v1",
+        manifest_path=manifest_path,
+        products_dir=products_dir,
+    )
+    assert res is not None

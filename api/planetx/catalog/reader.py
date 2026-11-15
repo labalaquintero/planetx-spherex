@@ -4,9 +4,10 @@ import json
 import math
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from .exceptions import (
     InvalidCatalogQueryError,
@@ -26,7 +27,12 @@ ALLOWED_RELEASES = {"dr1", "qr3", "fixture"}
 
 # Debe coincidir con FRAME_ID_RE de planetx.http.images para que todo frame_id
 # emitido por get_prepared() sea servible por /api/v1/images/<frame_id>.
-FRAME_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z", re.ASCII)
+FRAME_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z", re.ASCII)
+OBSERVATION_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z", re.ASCII)
+SCIENCE_VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}\Z", re.ASCII)
+UTC_TIMESTAMP_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z\Z", re.ASCII
+)
 
 
 def _validate_finite_number(value: Any, name: str) -> float:
@@ -41,16 +47,21 @@ def _validate_finite_number(value: Any, name: str) -> float:
 def _parse_utc_iso(timestamp_str: Any, field_name: str) -> datetime:
     if not isinstance(timestamp_str, str) or not timestamp_str.strip():
         raise ManifestCorruptError(f"Campo temporal '{field_name}' ausente o vacío.")
-    normalized = timestamp_str.replace("Z", "+00:00")
+    if not UTC_TIMESTAMP_RE.match(timestamp_str):
+        raise ManifestCorruptError(
+            f"Formato ISO-8601 UTC estricto inválido en '{field_name}': '{timestamp_str}'. "
+            "Debe usar separador 'T' y sufijo 'Z' (YYYY-MM-DDTHH:MM:SS[.ffffff]Z)."
+        )
+    normalized = timestamp_str[:-1] + "+00:00"
     try:
         parsed = datetime.fromisoformat(normalized)
     except ValueError as exc:
         raise ManifestCorruptError(
-            f"Formato ISO-8601 inválido en '{field_name}': {timestamp_str}"
+            f"Fecha/hora inválida en '{field_name}': '{timestamp_str}'"
         ) from exc
-    if parsed.tzinfo is None:
+    if parsed.utcoffset() != timedelta(0):
         raise ManifestCorruptError(
-            f"El timestamp '{field_name}' debe incluir zona horaria UTC: {timestamp_str}"
+            f"El timestamp '{field_name}' debe ser UTC estricto: '{timestamp_str}'"
         )
     return parsed
 
@@ -64,6 +75,38 @@ def _validate_safe_frame_id(frame_id: Any) -> str:
             f"Debe cumplir ^[A-Za-z0-9][A-Za-z0-9._-]{{0,127}}$"
         )
     return frame_id
+
+
+def _validate_source_url(source_url: Any, release: str, frame_id: str) -> str | None:
+    if release in {"dr1", "qr3"}:
+        if not isinstance(source_url, str) or not source_url.strip():
+            raise ManifestCorruptError(
+                f"source_url obligatorio para release '{release}' en frame '{frame_id}'."
+            )
+        parsed = urlparse(source_url)
+        if parsed.scheme != "https" or not parsed.netloc:
+            raise ManifestCorruptError(
+                f"source_url inválido para release '{release}' en frame '{frame_id}': '{source_url}'. "
+                "Debe ser una URL https:// con host válido."
+            )
+        return source_url
+
+    if release == "fixture":
+        if source_url is None:
+            return None
+        if not isinstance(source_url, str) or not source_url.strip() or " " in source_url:
+            raise ManifestCorruptError(
+                f"source_url inválido en frame fixture '{frame_id}': '{source_url}'."
+            )
+        parsed = urlparse(source_url)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ManifestCorruptError(
+                f"source_url inválido en frame fixture '{frame_id}': '{source_url}'. "
+                "Debe ser una URL http:// o https:// con host válido."
+            )
+        return source_url
+
+    raise ManifestCorruptError(f"Release no válido en frame '{frame_id}': {release}")
 
 
 def _validate_and_normalize_entry(
@@ -95,11 +138,14 @@ def _validate_and_normalize_entry(
     fov_deg = _validate_finite_number(query.get("fov_deg"), "query.fov_deg")
 
     checked_at = entry.get("checked_at")
-    _parse_utc_iso(checked_at, "checked_at")
+    checked_dt = _parse_utc_iso(checked_at, "checked_at")
 
     science_version = entry.get("science_version")
-    if not isinstance(science_version, str) or not science_version.strip():
-        raise ManifestCorruptError("science_version debe ser una cadena no vacía.")
+    if not isinstance(science_version, str) or not SCIENCE_VERSION_RE.match(science_version):
+        raise ManifestCorruptError(
+            f"science_version inválido en entrada: '{science_version}'. "
+            "Debe cumplir ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+        )
 
     warnings = entry.get("warnings", [])
     if not isinstance(warnings, list) or not all(isinstance(w, str) for w in warnings):
@@ -146,8 +192,11 @@ def _validate_and_normalize_entry(
         seen_frame_ids.add(frame_id)
 
         obs_id = frame.get("observation_id")
-        if not isinstance(obs_id, str) or not obs_id.strip():
-            raise ManifestCorruptError(f"observation_id inválido en frame '{frame_id}'.")
+        if not isinstance(obs_id, str) or not OBSERVATION_ID_RE.match(obs_id):
+            raise ManifestCorruptError(
+                f"observation_id inválido en frame '{frame_id}': '{obs_id}'. "
+                "Debe cumplir ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+            )
         if obs_id in seen_obs_ids:
             raise ManifestCorruptError(
                 f"Observación duplicada en secuencia ('{obs_id}'): no repetir misma visita."
@@ -159,15 +208,18 @@ def _validate_and_normalize_entry(
             raise ManifestCorruptError(
                 f"Los fotogramas no están en orden cronológico estricto en '{frame_id}'."
             )
+        if observed_dt > checked_dt:
+            raise ManifestCorruptError(
+                f"Incoherencia temporal en frame '{frame_id}': observed_at ({frame.get('observed_at')}) "
+                f"es posterior a checked_at ({checked_at})."
+            )
         prev_observed_at = observed_dt
 
         release = frame.get("release")
         if release not in ALLOWED_RELEASES:
             raise ManifestCorruptError(f"Release no válido en frame '{frame_id}': {release}")
 
-        source_url = frame.get("source_url")
-        if source_url is not None and not isinstance(source_url, str):
-            raise ManifestCorruptError(f"source_url inválido en frame '{frame_id}'.")
+        source_url = _validate_source_url(frame.get("source_url"), release, frame_id)
 
         expected_image_url = f"/api/v1/images/{frame_id}"
         if frame.get("image_url") != expected_image_url:
@@ -245,9 +297,11 @@ def get_prepared(
         raise InvalidCatalogQueryError("fov_deg debe ser mayor que 0.")
 
     raw_version = version if version is not None else science_version
-    if not isinstance(raw_version, str) or not raw_version.strip():
-        raise InvalidCatalogQueryError("science_version debe ser una cadena no vacía.")
-    target_version = raw_version.strip()
+    if not isinstance(raw_version, str) or not SCIENCE_VERSION_RE.match(raw_version):
+        raise InvalidCatalogQueryError(
+            f"science_version inválido: '{raw_version}'. Debe cumplir ^[A-Za-z0-9][A-Za-z0-9._-]{{0,63}}$"
+        )
+    target_version = raw_version
 
     resolved_manifest: Path | None
     if manifest_path is not None:
@@ -267,6 +321,11 @@ def get_prepared(
 
     if not isinstance(raw_data, dict) or not isinstance(raw_data.get("entries"), list):
         raise ManifestCorruptError("El manifiesto debe ser un objeto con lista 'entries'.")
+
+    if "schema_version" in raw_data and raw_data["schema_version"] != "1":
+        raise ManifestCorruptError(
+            f"schema_version raíz del manifiesto debe ser '1', recibido: '{raw_data['schema_version']}'."
+        )
 
     resolved_products_dir: Path
     if products_dir is not None:
@@ -291,10 +350,13 @@ def get_prepared(
             raise ManifestCorruptError(str(exc)) from exc
 
         entry_sv = item.get("science_version")
-        if not isinstance(entry_sv, str) or not entry_sv.strip():
-            raise ManifestCorruptError("Entrada de manifiesto sin 'science_version' válida.")
+        if not isinstance(entry_sv, str) or not SCIENCE_VERSION_RE.match(entry_sv):
+            raise ManifestCorruptError(
+                f"Entrada de manifiesto sin 'science_version' válida: '{entry_sv}'. "
+                "Debe cumplir ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+            )
 
-        index_key = (entry_ra, entry_dec, entry_fov, entry_sv.strip())
+        index_key = (entry_ra, entry_dec, entry_fov, entry_sv)
         if index_key in seen_index_keys:
             raise ManifestCorruptError(
                 f"Entrada duplicada en manifiesto para clave {index_key}."
