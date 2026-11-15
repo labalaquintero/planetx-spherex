@@ -93,7 +93,7 @@ export function SectorSelect({ sectors, onEnter, jump, reduced, quality, forced,
         <h2 id="ex-select-title" className="ex-select-title">
           Elige un sector
         </h2>
-        <p className="ex-select-sub">Recorre en nave una región ilustrativa, de punto en punto.</p>
+        <p className="ex-select-sub">Vuela libremente en nave por una región ilustrativa.</p>
       </header>
 
       <div className="ex-select-actions">
@@ -163,8 +163,7 @@ export function SectorSelect({ sectors, onEnter, jump, reduced, quality, forced,
                 <p className="ex-card-text">{s.description}</p>
                 {s.scene && (
                   <p className="ex-card-meta">
-                    {s.scene.waypoints.length} puntos de ruta · {s.scene.objects.filter((o) => o.label).length} objetos
-                    con nombre
+                    {s.scene.objects.filter((o) => o.label).length} objetos con nombre · vuelo libre
                   </p>
                 )}
                 {!soon && <p className="ex-card-cta">Clic o Enter para entrar</p>}

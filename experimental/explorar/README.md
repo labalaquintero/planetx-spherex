@@ -1,7 +1,7 @@
 # Explorar (extra independiente)
 
 Pequeña simulación de exploración espacial para Planet X. Se elige un sector en un campo estelar y se salta a él;
-después se navega en nave, de punto en punto, por una escena 3D. **Es ilustrativa: no usa datos reales de SPHEREx.**
+después se **vuela libremente** en nave por todo el sector, en una escena 3D. **Es ilustrativa: no usa datos reales de SPHEREx.**
 
 El proyecto vive aislado en `experimental/explorar/`, con su propio `package.json` y `pnpm-lock.yaml`, fuera de
 cualquier workspace. No toca `web/`, `api/`, `infra/` ni Docker. **No hace llamadas de red en ejecución:** no usa
@@ -27,7 +27,7 @@ pnpm build && pnpm preview  # build de producción: http://localhost:4173
 | ---------------- | ----------------------------------------------------------- |
 | `pnpm dev`       | Servidor de desarrollo                                      |
 | `pnpm typecheck` | `tsc --noEmit` (modo estricto)                              |
-| `pnpm test`      | Vitest (148 pruebas: lógica, proyección del boceto, créditos y CSS) |
+| `pnpm test`      | Vitest (167 pruebas: vuelo, proyección del boceto, créditos, CSS…) |
 | `pnpm build`     | Typecheck + build de producción en `dist/`                  |
 | `pnpm preview`   | Sirve `dist/`                                               |
 
@@ -47,13 +47,26 @@ Se pueden combinar: `?quality=low&debug`.
   Hoy solo β es navegable; α y ε muestran «Próximamente».
 - **Salto:** rayas de estrellas y acercamiento (cambio de campo de visión) hacia el sector, un destello, y la cámara
   llega desde atrás con un FOV amplio hasta el primer punto. Con `prefers-reduced-motion` solo hay un fundido.
-- **Navegación:** `W`/`↑` avanza, `S`/`↓` retrocede, `A`/`←` y `D`/`→` van a los laterales. Cada tramo dura 1 s con
-  suavizado y las entradas se ignoran mientras dura; mantener la tecla encadena el siguiente tramo. La cruceta
-  (abajo a la derecha) usa el mismo manejador y muestra su atajo. Sus estados son deshabilitado (sin punto en esa
-  dirección), activo (moviéndose en esa dirección) y pulsado. `Esc` o «Volver a sectores» regresan a la selección
-  con el foco en el sector visitado.
-- **HUD:** sector, punto actual, objeto cercano y su tipo, e indicador de ruta (plano cenital con el punto actual
-  resaltado y el tramo en curso animado).
+- **Vuelo libre:** se mantiene pulsada la tecla o el botón:
+
+  | Acción | Teclas |
+  | --- | --- |
+  | Acelerar | `W` o `↑` |
+  | Frenar o ir marcha atrás | `S` o `↓` |
+  | Girar | `A`/`D` o `←`/`→` |
+  | Subir | `E` o `Espacio` |
+  | Bajar | `Q` o `C` |
+
+  La nave mira al frente y la cámara la sigue desde atrás. Se alabea al girar y se inclina al subir o bajar. Los
+  controles en pantalla (abajo a la derecha, la cruz del boceto más «Subir» y «Bajar») funcionan igual y sirven en
+  pantallas táctiles. `Esc` o «Volver a sectores» regresan a la selección con el foco en el sector visitado.
+- **Área visitable:** es la caja que contiene todo el sector (todos los objetos, con margen), así que se puede
+  llegar a cualquiera. Cerca del borde la nave frena sola, aparece el aviso «Límite del sector» y el borde del mapa
+  se pone amarillo. Planetas, estación y rocas no se atraviesan: la nave se desliza por su borde. Los anillos sí se
+  cruzan, porque son partículas.
+- **HUD:** muestra el sector, el objeto con nombre más cercano (tipo y distancia) y la velocidad. El **mapa del
+  área** (200 px; 120 px en pantallas estrechas) es una vista cenital del rectángulo visitable con los objetos a
+  escala y con nombre, la nave como flecha con su cono de visión, y una barra de altura.
 - **Sonido:** opcional, sintetizado con WebAudio (sin archivos). **Apagado por defecto.** No se crea el contexto de
   audio hasta pulsar el botón «Silencio/Sonido», así que nunca suena solo.
 
@@ -135,9 +148,11 @@ para comprobar que los datos llegan bien a la escena y que el encuadre de la app
 cabeceo 4° del punto de entrada). Los **tamaños aparentes** quedan a menos del 15 % de lo medido y conservan su
 orden.
 
-**Nave** (6 puntos de la silueta, error tras el ajuste): nariz 0,019 · hombro 0,019 · ala izquierda 0,009 · ala
-derecha 0,009 · motor arriba 0,020 · motor abajo 0,020. El error de ~0,019 es casi todo horizontal: en el boceto la
-nave está algo a la izquierda (u = 0,475) y en la app va centrada. Proporciones medidas:
+**Nave.** Por decisión posterior (la nave debe mirar al frente), ya no se reproduce la vista casi en planta del
+boceto (el ajuste daba un cabeceo de 66°). Se conservan las proporciones medidas de la geometría y, en la primera
+vista, su posición y su envergadura en pantalla: 0,292 frente a 0,2745 del boceto, centrada en el tercio inferior
+(prueba en `composicion.test.ts`). El ajuste original, con un error de 0,009 a 0,020 en los 6 puntos de la
+silueta, sigue en `layout.json` como referencia. Proporciones medidas:
 
 - envergadura/largo 1,20;
 - nariz 30 % del largo;
@@ -146,7 +161,7 @@ nave está algo a la izquierda (u = 0,475) y en la app va centrada. Proporciones
 - punta de ala al 76 % del largo;
 - barrido del borde de ataque 46°.
 
-El ajuste da un cabeceo de 66°: el boceto es casi una vista en planta desde atrás y arriba.
+El ajuste daba un cabeceo de 66° porque el boceto es casi una vista en planta. Ahora la nave vuela horizontal.
 
 **Selección** (centro en el marco): α 0,323, 0,270 · β 0,652, 0,353 · ε 0,457, 0,652, con un error ≤ 0,0005. Los
 diámetros dibujados son ε > β > α (8,8 %, 8,1 % y 6,3 % del ancho del marco). Se conserva ese orden, escalado ×1,6
@@ -161,8 +176,8 @@ para que se puedan señalar con comodidad.
 | 3 | «Ocho cuerpos pequeños dispersos» | **Cuatro** cuerpos pequeños (uno triangular) más una esfera; c1 también es redondo | Corregido: 4 cuerpos con su posición medida. El relleno sembrado no aparece en la vista inicial |
 | 4 | Estación con anillo **alrededor del centro** y radios | El asa sale **del extremo derecho** (hueco medido a la derecha del cilindro) | Corregido: anillo de atraque en el extremo, en el plano de la pantalla, con el largo y alto medidos |
 | 5 | Nave cabeceada 29°, a contraluz | Silueta casi en planta, con la envergadura 1,2 veces el largo | Corregido: geometría y cabeceo ajustados a 6 puntos |
-| 6 | Ruta de 7 puntos | — | Sin cambio. Los miradores laterales ahora apuntan a su objeto, calculado con los datos |
-| 7 | Botones según el destino durante el movimiento | — | Sin cambio |
+| 6 | Ruta de 7 puntos | — | **Sustituido por vuelo libre** (petición posterior). Los puntos siguen en los datos: la entrada es el punto de salida y el resto marca zonas despejadas para el relleno de rocas |
+| 7 | Botones según el destino durante el movimiento | — | Sustituido: los botones se mantienen pulsados, como las teclas |
 | 8 | Esc en la selección no hace nada | — | Sin cambio |
 | 9 | α y ε enfocables | — | Sin cambio |
 | 10 | Posición de las esferas «según proporciones» | Medidas: α, β y ε a ≤ 0,05 de lo que había | Corregido: posición exacta medida y orden de tamaños ε > β > α (antes β era la mayor) |
@@ -261,12 +276,12 @@ independiente (`main.tsx`) y no viaja con `<Explorar />`.
 
 ### Tamaños de los chunks (build de producción)
 
-| Archivo                  | Etapa 1               | Etapa 2 (pulido)      | Fidelidad (esta)      |
-| ------------------------ | --------------------- | --------------------- | --------------------- |
-| `index-*.js` (principal) | 234,26 kB / 74,03 gz  | 256,95 kB / 82,53 gz  | 268,37 kB / 87,19 gz  |
-| `index-*.css`            | 5,43 kB / 1,86 gz     | 15,80 kB / 4,28 gz    | 17,57 kB / 4,62 gz    |
-| `SectorScene-*.js` (three, diferido) | 928,59 kB / 246,11 gz | 963,59 kB / 255,53 gz | 970,71 kB / 260,60 gz |
-| Texturas (diferidas)     | —                     | —                     | 139,9 kB en 4 archivos + anillo incrustado |
+| Archivo                  | Etapa 1               | Etapa 2 (pulido)      | Fidelidad             | Vuelo libre (esta)    |
+| ------------------------ | --------------------- | --------------------- | --------------------- | --------------------- |
+| `index-*.js` (principal) | 234,26 kB / 74,03 gz  | 256,95 kB / 82,53 gz  | 268,37 kB / 87,19 gz  | 271,99 kB / 88,66 gz  |
+| `index-*.css`            | 5,43 kB / 1,86 gz     | 15,80 kB / 4,28 gz    | 17,57 kB / 4,62 gz    | 19,13 kB / 4,95 gz    |
+| `SectorScene-*.js` (three, diferido) | 928,59 kB / 246,11 gz | 963,59 kB / 255,53 gz | 970,71 kB / 260,60 gz | 975,56 kB / 262,23 gz |
+| Texturas (diferidas)     | —                     | —                     | 139,9 kB + anillo     | igual                 |
 
 El chunk principal crece por `layout.json` (~10 kB): la selección y los datos de β lo leen.
 
@@ -287,8 +302,25 @@ El chunk principal crece por `layout.json` (~10 kB): la selección y los datos d
 - **Cuerpos pequeños:** los 4 medidos en el boceto más un relleno sembrado (hasta 40). El relleno **nunca queda a
   menos de 14 unidades de la ruta** ni dentro de planetas, anillos o la estación (probado), y no aparece en la vista
   inicial, para que esta reproduzca el boceto. Al bajar la calidad solo se quitan cuerpos, no se mueven.
-- **Movimiento:** sigue siendo lineal por puntos de ruta. Al pose del grafo se le suman la llegada, el empuje de FOV
-  (+7° a mitad de tramo), una leve oscilación de cámara y el alabeo de la nave en A/D.
+- **Vuelo** (`engine/flight.ts`, puro y probado):
+  - El modelo es «arcade»: rumbo, empuje y altura, sin cabeceo controlable, para que sea fácil de manejar.
+  - Velocidad máxima 30 u/s y 9 u/s marcha atrás; giro de hasta 60°/s con respuesta suave.
+  - La nave no derrapa (sigue su morro) y se frena sola al soltar.
+  - Límites con margen suave de 30 u y tope duro; colisiones de esfera con deslizamiento.
+- **Cámara de persecución** (`scene/chase.ts`):
+  - Detrás y arriba de la nave (2,5 u arriba, 8 u atrás), mirando 6° hacia abajo; la nave queda en el tercio
+    inferior.
+  - Sigue a la nave con suavizado: al girar, la nave se adelanta y la cámara la alcanza.
+  - El FOV se abre hasta 9° con la velocidad.
+  - El punto de salida se define con esta misma cámara, así la **primera vista sigue siendo la del boceto**.
+- **Realismo, sin dependencias nuevas:**
+  - Mapa de entorno generado del propio cielo (PMREM), con el que la nave y la estación reflejan la nebulosa y la
+    estrella.
+  - Tono fílmico AgX, MSAA en el composer, viñeta suave y bloom contenido.
+  - Polvo espacial que se estira en rayas con la velocidad (efecto de referencia de movimiento, no un objeto).
+  - Estela en el espacio del mundo (queda atrás al avanzar) y brillo de la tobera que sigue al empuje.
+  - Luces de navegación (roja a babor, verde a estribor, estroboscópica en la cola).
+  - Rocas con forma de ruido suave y la textura lunar de NASA (color y relieve).
 - **Pantallas verticales:** se conserva el campo de visión horizontal del encuadre 16:9 (hasta 92° vertical) y la
   nave se reduce y baja (`cameraFit`, probado). El HUD se apila y la cruceta crece para el tacto.
 - **Sin WebGL:** se comprueba antes de montar la escena y se muestra un aviso con el estilo de error del visor y un
@@ -361,8 +393,10 @@ en Chrome y, ya cargada, **desconecta la red** (Wi-Fi apagado) y recarga.
 | -- | ------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | 1  | Mover el cursor en la selección             | Las estrellas y la nebulosa se desplazan con suavidad, sin tirones                         |
 | 2  | Tab hasta β, luego Enter                    | Aparece la tarjeta; rayas, destello y llegada fluida (~1,1 s + ~1,5 s)                     |
-| 3  | Leer el contador `?debug` en la navegación  | **≥ 55 FPS en «alta»: ideal. 45–55: aceptable. < 42 sostenidos:** a los ~4 s debe bajar sola a «media» |
-| 4  | Recorrer con W/A/S/D y con la cruceta       | Tramos de ~1 s, estela más larga al avanzar, nave inclinada en A/D, botones con estado correcto |
+| 3  | Leer el contador `?debug` en el vuelo       | **≥ 55 FPS en «alta»: ideal. 45–55: aceptable. < 42 sostenidos:** a los ~4 s debe bajar sola a «media» |
+| 4  | Volar con W/A/S/D, E/Q y con los botones    | Aceleración y frenado suaves, giro con alabeo, cámara que sigue sin tirones, polvo y estela con la velocidad |
+| 4b | Ir hasta el borde del mapa y hacia un planeta | Frena sola en el borde («Límite del sector»), no atraviesa planetas, rocas ni la estación |
+| 4c | Mirar hacia la estrella clave (arriba a la derecha) | Brillo y reflejos en la nave sin quemar la imagen |
 | 5  | Pulsar Esc                                  | Vuelve a la selección con el foco en β                                                     |
 | 6  | Botón «Silencio» → «Sonido»                 | Zumbido bajo; barrido en cada tramo y en el salto; vuelve a silencio al pulsarlo           |
 | 7  | Pantalla completa (F11) y ventana estrecha  | El HUD no tapa la nave; en vertical, la cruceta crece y la nave se reduce                  |
@@ -394,9 +428,11 @@ Verificado con Chrome sin interfaz y render **por software** (SwiftShader), con 
 
 ## Límites conocidos
 
-- Las pruebas cubren la lógica (148): grafo, navegación, pose, calidad adaptativa, parámetros de URL, estados de la
-  cruceta, plano de ruta, dispersión, curvas de movimiento, ruido, sonido, encapsulación del CSS, proyección del
-  boceto (objetos, tamaños, nave, selección y miradores) y créditos de las texturas. No hay pruebas de componentes
+- Las pruebas cubren la lógica (167): **vuelo libre** (aceleración, frenado, giro, altura, límites, obstáculos,
+  determinismo), controles, mapa del área, área visitable del sector, calidad adaptativa, parámetros de URL,
+  dispersión, curvas de movimiento, ruido, sonido, encapsulación del CSS, proyección del boceto (objetos, tamaños,
+  nave en la primera vista, selección) y créditos. El motor de puntos de ruta (`graph`, `navigation`, `pose`,
+  `controller`, `dpad`, `routeMap`) sigue en `engine/` con sus pruebas, pero β ya no lo usa. No hay pruebas de componentes
   DOM. El render se compara con `tools/comparar_vista.py`, fuera de `pnpm test`.
 - La vista inicial reproduce el boceto en 16:9. En pantallas más anchas, los objetos se acercan al centro en
   horizontal; en más estrechas, se alejan (el FOV vertical es fijo en horizontal).
