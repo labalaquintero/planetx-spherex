@@ -175,7 +175,9 @@
 }
 .blog-guide-copy h3 a::after, .blog-report-card h3 a::after { content: ""; position: absolute; inset: 0; }
 .blog-guide-copy h3 span, .blog-report-card h3 span { color: var(--gold); font: .75em/1 var(--body); }
-.blog-guide-copy > p:last-child, .blog-report-card > p:last-child { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
+.blog-guide-copy > p:last-child, .blog-report-card > p:not(.blog-kicker) { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
+.blog-report-card .blog-report-summary { margin-top: 7px; }
+.blog-report-grid + .blog-section-note { margin-top: 12px; }
 .blog-pagination { margin-top: 16px; }
 
 .blog-article { max-width: 1170px; margin-inline: auto; }
@@ -223,6 +225,9 @@
 .blog-article-text h2 { margin-bottom: 7px; font: 400 clamp(1.85rem, 3vw, 2.6rem)/1.05 var(--display); }
 .blog-article-text section p, .blog-article-text > p { color: var(--muted); line-height: 1.75; }
 .blog-article-text .blog-science-note { padding-left: 13px; border-left: 2px solid var(--gold); color: var(--gold); }
+.blog-report-difference { width: min(100%, 330px); }
+.blog-report-difference img { width: 100%; height: auto; border-radius: 7px; }
+.blog-report-difference figcaption { margin-top: 8px; color: var(--muted); font-size: .79rem; }
 .blog-guide-article { max-width: 870px; }
 .blog-guide-figure {
   overflow: hidden;

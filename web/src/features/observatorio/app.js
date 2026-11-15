@@ -7,6 +7,7 @@ import {
   moderationView, profileView, publicProfileView, reportView, settingsView,
 } from './espacio.js';
 import { articleView, bindArticle, blogCommunity, blogView } from './blog.js';
+import { samplePublications } from './ejemplos-blog.js';
 import { back, badge, dataRows, miniPair, missingView, pageHeading } from './ui.js';
 import {
   bindComparisonSlider, bindInspector, bindViewer, cancelSearch, comparisonFor, comparisonSlider,
@@ -317,7 +318,9 @@ function renderSearch() {
   const term = fold(searchInput.value);
   const matches = [
     ...targets.map((target) => ({ label: target.name, detail: 'Objetivo', href: `#objetivo/${target.id}` })),
-    ...articles.map((article) => ({ label: article.title, detail: 'Guía', href: `#articulo/${article.id}` })),
+    ...[...articles, ...samplePublications].map((article) => ({
+      label: article.title, detail: article.example ? 'Ejemplo de la comunidad' : 'Guía', href: `#articulo/${article.id}`,
+    })),
   ].filter((result) => fold(result.label).includes(term));
   searchResults.innerHTML = matches.length
     ? matches.slice(0, 7).map((result) => `<li><a href="${result.href}">${result.label}<small>${result.detail} ↗</small></a></li>`).join('')
