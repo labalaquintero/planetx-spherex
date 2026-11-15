@@ -944,6 +944,10 @@
 .ex-credits {
   width: min(560px, calc(100% - 32px));
   max-height: min(80vh, 640px);
+  /* El diálogo vive dentro del HUD (pointer-events: none): sin esto la rueda y el arrastre lo atraviesan. */
+  pointer-events: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 18px 20px;
   color: var(--ex-text);
   font-family: var(--ex-sans);

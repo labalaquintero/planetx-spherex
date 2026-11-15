@@ -71,7 +71,10 @@ const targets = [
   {
     id: 'r-draconis', name: 'R Draconis', type: 'Estrella variable Mira',
     ra: 248.167611, dec: 66.754979,
-    description: 'Estrella variable del reto. El archivo contiene varias épocas candidatas. Hace falta procesar los recortes para saber cuáles se pueden comparar.',
+    // Caso preparado del catálogo del servidor (docs/decisiones/caso-preparado-r-draconis.md): la galería
+    // lo reconoce desde una sesión nueva y precarga su comparación.
+    preparedCase: true,
+    description: 'Estrella variable Mira del reto. Su caso preparado compara dos épocas de SPHEREx en la misma banda e incluye la imagen de diferencia.',
   },
 ];
 

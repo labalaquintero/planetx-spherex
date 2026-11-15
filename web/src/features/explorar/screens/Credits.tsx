@@ -26,7 +26,7 @@ export function Credits() {
           </button>
         </div>
         <p className="ex-credits-note">
-          Representación ilustrativa: los planetas, la estación y la nave son inventados. Algunas superficies usan
+          Representación ilustrativa: los planetas y la nave son inventados. Algunas superficies usan
           mapas reales como textura, sin pretender ser esos cuerpos.
         </p>
         <ul className="ex-credits-list">
