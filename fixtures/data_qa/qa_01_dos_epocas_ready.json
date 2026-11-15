@@ -1,0 +1,39 @@
+{
+  "schema_version": "1",
+  "status": "ready",
+  "reason": null,
+  "mode": "fixture",
+  "query": {
+    "ra_deg": 248.167611,
+    "dec_deg": 66.754979,
+    "frame": "ICRS",
+    "fov_deg": 0.1
+  },
+  "band": {
+    "center_um": 2.03,
+    "tolerance_um": 0.05
+  },
+  "checked_at": "2026-11-14T18:00:00Z",
+  "science_version": "v1",
+  "warnings": [],
+  "frames": [
+    {
+      "id": "qa-01-frame-a",
+      "observed_at": "2025-05-16T22:56:23Z",
+      "release": "fixture",
+      "observation_id": "qa-fixture-obs-01a",
+      "source_url": null,
+      "image_url": "/api/v1/images/qa-01-frame-a",
+      "quality_flags": []
+    },
+    {
+      "id": "qa-01-frame-b",
+      "observed_at": "2026-05-13T05:55:57Z",
+      "release": "fixture",
+      "observation_id": "qa-fixture-obs-01b",
+      "source_url": null,
+      "image_url": "/api/v1/images/qa-01-frame-b",
+      "quality_flags": []
+    }
+  ]
+}

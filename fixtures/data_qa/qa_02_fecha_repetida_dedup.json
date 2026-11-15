@@ -1,0 +1,30 @@
+{
+  "schema_version": "1",
+  "status": "insufficient",
+  "reason": "single_epoch",
+  "mode": "fixture",
+  "query": {
+    "ra_deg": 269.452077,
+    "dec_deg": 4.693365,
+    "frame": "ICRS",
+    "fov_deg": 0.1
+  },
+  "band": {
+    "center_um": 1.25,
+    "tolerance_um": 0.02
+  },
+  "checked_at": "2026-11-14T18:00:00Z",
+  "science_version": "v1",
+  "warnings": [],
+  "frames": [
+    {
+      "id": "qa-02-frame-dedup-a",
+      "observed_at": "2025-08-15T20:45:11Z",
+      "release": "fixture",
+      "observation_id": "qa-fixture-obs-02-dedup",
+      "source_url": null,
+      "image_url": "/api/v1/images/qa-02-frame-dedup-a",
+      "quality_flags": []
+    }
+  ]
+}
