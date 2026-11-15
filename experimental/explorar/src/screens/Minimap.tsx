@@ -11,6 +11,8 @@ interface Props {
   /** 0..1: cercanía al borde del área (para resaltar el límite). */
   edge: number
   size: number
+  /** Bitácora: los planetas con nombre que aún no se descubrieron salen como «?» (sin nombre ni color). */
+  discovered?: ReadonlySet<string>
 }
 
 const KIND_COLOR: Record<string, string> = {
@@ -39,7 +41,7 @@ export function labelledNearest(objects: readonly SceneObject[], position: Vec3,
  * la nave con su rumbo y su cono de visión. A la derecha, la altura dentro del área. Solo llevan
  * nombre los objetos más cercanos a la nave.
  */
-export function Minimap({ bounds, objects, position, yaw, edge, size }: Props) {
+export function Minimap({ bounds, objects, position, yaw, edge, size, discovered }: Props) {
   const frame: MapFrame = useMemo(() => ({ size, padding: 10, bounds }), [size, bounds])
   const rect = boundsRect(frame)
   const k = rect.w / (bounds.max[0] - bounds.min[0])
@@ -51,13 +53,14 @@ export function Minimap({ bounds, objects, position, yaw, edge, size }: Props) {
     const named = new Set(nearKey.split('|'))
     const list = objects.map((o) => {
       const p = toMap(o.position, frame)
-      const r = Math.max(o.kind === 'smallBody' ? 1.5 : 3, o.radius * k * (o.ring ? 1.4 : 1))
+      const hidden = Boolean(discovered && o.label && o.kind !== 'smallBody' && !discovered.has(o.id))
+      const r = hidden ? 3.2 : Math.max(o.kind === 'smallBody' ? 1.5 : 3, o.radius * k * (o.ring ? 1.4 : 1))
       const left = p.x > size * 0.55
-      const label = o.label && named.has(o.id) ? o.label : undefined
+      const label = o.label && named.has(o.id) && !hidden ? o.label : undefined
       // Caja horizontal aproximada del texto (9 px de fuente ≈ 4,8 px por carácter).
       const w = (label?.length ?? 0) * 4.8
       const x0 = left ? p.x - r * (o.ring ? 1.7 : 1) - 3 - w : p.x + r + 3
-      return { o, p, r, left, label, ly: p.y + 3, x0, x1: x0 + w }
+      return { o, p, r, left, label, hidden, ly: p.y + 3, x0, x1: x0 + w }
     })
     // Etiquetas sin solaparse: si dos textos se cruzan a lo ancho y quedan a < 11 px en vertical,
     // el segundo baja; si tuviera que alejarse mucho de su punto, se oculta (el punto queda).
@@ -71,7 +74,7 @@ export function Minimap({ bounds, objects, position, yaw, edge, size }: Props) {
       else placed.push(b)
     }
     return list
-  }, [objects, frame, k, size, nearKey])
+  }, [objects, frame, k, size, nearKey, discovered])
   return (
     <figure className="ex-minimap" aria-label="Mapa del sector">
       <div className="ex-minimap-body">
@@ -91,7 +94,16 @@ export function Minimap({ bounds, objects, position, yaw, edge, size }: Props) {
             height={rect.h}
             rx="6"
           />
-          {statics.map(({ o, p, r, left, label, ly }) => (
+          {statics.map(({ o, p, r, left, label, hidden, ly }) =>
+            hidden ? (
+              // Sin descubrir: un «?» tenue (ve a verlo para conocerlo).
+              <g key={o.id} className="ex-minimap-unknown">
+                <circle cx={p.x} cy={p.y} r={r + 2.5} fill="rgba(148,163,184,0.15)" stroke="rgba(148,163,184,0.55)" strokeDasharray="2 2" />
+                <text x={p.x} y={p.y + 3} textAnchor="middle" className="ex-minimap-q">
+                  ?
+                </text>
+              </g>
+            ) : (
             <g key={o.id}>
               {o.ring && <ellipse cx={p.x} cy={p.y} rx={r * 1.6} ry={r * 0.55} fill="none" stroke={KIND_COLOR[o.kind]} strokeOpacity="0.6" />}
               {/* Planetas con su propio color (el más claro de su paleta); el resto, por tipo. */}
@@ -114,7 +126,8 @@ export function Minimap({ bounds, objects, position, yaw, edge, size }: Props) {
                 </text>
               )}
             </g>
-          ))}
+            ),
+          )}
           <g transform={`translate(${me.x} ${me.y}) rotate(${headingDeg(yaw)})`}>
             <path d="M0 0 L-22 -34 A40 40 0 0 1 22 -34 Z" fill="rgba(56,189,248,0.14)" />
             <path d="M0 -8 L5.5 6 L0 3 L-5.5 6 Z" fill="#38bdf8" stroke="#e0f2fe" strokeWidth="1" />
