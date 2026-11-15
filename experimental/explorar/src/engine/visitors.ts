@@ -166,6 +166,13 @@ export function spawnVisitor(kind: VisitorKind, id: number, ship: Vec3, r: reado
 }
 
 /** Opacidad de entrada y salida (0..1): aparecen y se apagan sin saltos. */
+/** Crecimiento de la estela al aparecer: 0 al nacer y 1 tras `seconds`, con salida suave. */
+export function streakGrow(age: number, seconds: number): number {
+  if (!(seconds > 0)) return 1
+  const x = Math.min(1, Math.max(0, age / seconds))
+  return 1 - (1 - x) ** 3
+}
+
 export function visitorFade(v: Pick<Visitor, 'age' | 'life'>): number {
   const f = VISITORS.fadeSeconds
   return Math.max(0, Math.min(1, v.age / f, (v.life - v.age) / f))

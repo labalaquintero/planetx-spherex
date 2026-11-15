@@ -17,11 +17,15 @@ uniform float uW1;
 uniform float uTime;
 uniform float uSeed;
 uniform float uWave;
+uniform float uGrow;
+uniform float uKink;
 varying vec2 vUv;
 void main() {
   float t = uv.y;
   float s = uv.x * 2.0 - 1.0;
-  vec3 c = uHead + uAxis * (t * uLength) + uBend * (t * t * uLength * uCurve);
+  // Al aparecer, la estela crece desde la cabeza; su largo además late un poco.
+  float len = uLength * uGrow * (1.0 + 0.06 * uWave * sin(uTime * 3.1 + uSeed * 2.3));
+  vec3 c = uHead + uAxis * (t * len) + uBend * (t * t * len * uCurve);
   vec3 tangent = normalize(uAxis + uBend * (2.0 * t * uCurve));
   vec3 toCam = normalize(cameraPosition - c);
   vec3 side = cross(tangent, toCam);
@@ -32,7 +36,10 @@ void main() {
   w *= 1.0 + 0.14 * uWave * sin(t * 7.0 - uTime * 4.0 + uSeed);
   // Ondulación lateral: la cola se mece como una bandera, nada en la cabeza y más hacia la punta.
   float sway = sin(t * 8.5 - uTime * 2.6 + uSeed * 1.7) * 0.6 + sin(t * 17.0 - uTime * 4.9 + uSeed) * 0.25;
-  vec3 wobble = side * sway * uWave * t * t * w * 0.9;
+  // Quiebros que viajan de la cabeza a la punta, uno cada pocos segundos (como en las colas de iones).
+  float kt = fract(uTime * 0.16 + uSeed * 0.37);
+  float kink = exp(-pow((t - kt) * 7.0, 2.0)) * sin(t * 22.0 - uTime * 6.0 + uSeed) * uKink;
+  vec3 wobble = side * (sway * uWave * t * t + kink * t) * w * 0.9;
   vUv = vec2(s, t);
   gl_Position = projectionMatrix * viewMatrix * vec4(c + wobble + side * s * w, 1.0);
 }
@@ -49,6 +56,8 @@ uniform float uGlitter;
 uniform float uFalloff;
 uniform float uFlow;
 uniform float uWave;
+uniform float uFlicker;
+uniform float uKink;
 varying vec2 vUv;
 float ex_h1(float x) { return fract(sin(x * 127.1 + uSeed * 31.7) * 43758.5453); }
 float ex_n1(float x) {
@@ -74,7 +83,11 @@ void main() {
   // Pulsos de luz que corren de la cabeza a la punta y centelleo fino del polvo.
   float pulse = 1.0 + 0.4 * uWave * smoothstep(0.55, 1.0, sin((t - uTime * (0.35 + uFlow)) * 16.0 + s * 1.5 + uSeed));
   float shimmer = 0.88 + 0.24 * ex_h2(floor(vec2(t * 160.0, s * 9.0)) + floor(uTime * 14.0));
-  float a = across * streaks * along * pulse * mix(1.0, shimmer, smoothstep(0.08, 0.4, t));
+  // Parpadeo de conjunto (un meteoro que se quema no brilla parejo) y nudos de luz que recorren la cola.
+  float flick = 1.0 - uFlicker * (0.45 * ex_n1(uTime * 17.0) + 0.25 * ex_n1(uTime * 41.0 + 5.0));
+  float kt = fract(uTime * 0.16 + uSeed * 0.37);
+  float knot = 1.0 + 1.3 * uKink * exp(-pow((t - kt) * 9.0, 2.0)) * exp(-s * s * 6.0);
+  float a = across * streaks * along * pulse * knot * flick * mix(1.0, shimmer, smoothstep(0.08, 0.4, t));
   vec3 col = mix(uEdge, uCore, clamp(across * 1.3 - t * 0.6, 0.0, 1.0));
   // Destellos: puntos que titilan a lo largo del rastro (estrella fugaz).
   if (uGlitter > 0.0) {
