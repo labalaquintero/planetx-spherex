@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Backdrop, type BackdropInput } from '../backdrop/Backdrop'
 import { sphereSprite } from '../backdrop/sphereSprite'
 import type { QualityLevel } from '../engine/quality'
@@ -25,9 +25,11 @@ interface Props {
   forced: boolean
   /** Sector que recibe el foco al volver de la navegación. */
   focusId: string | null
+  /** Controles extra arriba a la derecha (p. ej., sonido). */
+  extraControls?: ReactNode
 }
 
-export function SectorSelect({ sectors, onEnter, jump, reduced, quality, forced, focusId }: Props) {
+export function SectorSelect({ sectors, onEnter, jump, reduced, quality, forced, focusId, extraControls }: Props) {
   const layer = useRef<HTMLElement | null>(null)
   const input = useRef<BackdropInput>({ pointerX: 0, pointerY: 0, jumpStart: null, jumpX: 0.5, jumpY: 0.5 })
   const buttons = useRef(new Map<string, HTMLButtonElement>())
@@ -91,6 +93,8 @@ export function SectorSelect({ sectors, onEnter, jump, reduced, quality, forced,
         </h2>
         <p className="ex-select-sub">Recorre en nave una región ilustrativa, de punto en punto.</p>
       </header>
+
+      {extraControls && <div className="ex-select-actions">{extraControls}</div>}
 
       <ul className="ex-sector-list">
         {sectors.map((s) => {

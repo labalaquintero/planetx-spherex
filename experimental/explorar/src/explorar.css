@@ -148,6 +148,19 @@
   pointer-events: none;
   transition: opacity 400ms ease;
 }
+.ex-select-actions {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 3;
+  transition: opacity 400ms ease;
+}
+.ex-select[data-jumping] .ex-select-actions {
+  opacity: 0;
+}
+.ex-sound svg {
+  flex: none;
+}
 .ex-select-title {
   margin: 10px 0 4px;
   font-size: clamp(1.35rem, 3.2cqmin, 2rem);
@@ -781,6 +794,11 @@
   .ex-select-head {
     top: 12px;
     left: 12px;
+    max-width: calc(100% - 140px);
+  }
+  .ex-select-actions {
+    top: 12px;
+    right: 12px;
   }
   .ex-select-foot {
     left: 12px;

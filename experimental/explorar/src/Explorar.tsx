@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './explorar.css'
+import { createSound } from './audio/sound'
+import { SoundToggle } from './audio/SoundToggle'
 import { FADE_MS, JUMP_MS } from './engine/motion'
 import { initialQuality } from './engine/quality'
 import { currentParams } from './params'
@@ -29,6 +31,15 @@ export function Explorar({ className }: ExplorarProps) {
   const quality = useMemo(() => initialQuality(params.quality), [params])
   const [phase, setPhase] = useState<Phase>({ kind: 'select', returnFocus: null })
   const token = useRef(0)
+  // Sonido: apagado por defecto y sin AudioContext hasta que se enciende con un clic.
+  const sound = useMemo(() => createSound(), [])
+  const [soundOn, setSoundOn] = useState(false)
+  useEffect(() => () => sound.dispose(), [sound])
+  const toggleSound = useCallback(() => {
+    sound.setEnabled(!sound.enabled)
+    setSoundOn(sound.enabled)
+  }, [sound])
+  const soundButton = <SoundToggle on={soundOn} onToggle={toggleSound} />
 
   useEffect(
     () => () => {
@@ -43,13 +54,14 @@ export function Explorar({ className }: ExplorarProps) {
       if (!sector?.scene) return
       const my = ++token.current
       setPhase({ kind: 'jump', jump: { id, start: performance.now(), x, y } })
+      if (!reduced) sound.jump()
       const wait = new Promise((r) => setTimeout(r, reduced ? FADE_MS : JUMP_MS))
       // Si el chunk falla, igualmente se entra: la pantalla de navegación muestra el error.
       void Promise.all([wait, loadScene().catch(() => null)]).then(() => {
         if (token.current === my) setPhase({ kind: 'nav', id, arrive: !reduced })
       })
     },
-    [reduced],
+    [reduced, sound],
   )
 
   const exit = useCallback(() => {
@@ -71,6 +83,8 @@ export function Explorar({ className }: ExplorarProps) {
           quality={quality.level}
           forced={quality.forced}
           debug={params.debug}
+          extraControls={soundButton}
+          onMoved={(d) => sound.move(d)}
         />
       ) : (
         <SectorSelect
@@ -81,6 +95,7 @@ export function Explorar({ className }: ExplorarProps) {
           quality={quality.level}
           forced={quality.forced}
           focusId={phase.kind === 'select' ? phase.returnFocus : null}
+          extraControls={soundButton}
         />
       )}
     </div>

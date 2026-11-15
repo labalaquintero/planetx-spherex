@@ -27,6 +27,8 @@ interface Props {
   debug: boolean
   /** Ranura para controles extra en la barra superior del HUD (p. ej., sonido). */
   extraControls?: ReactNode
+  /** Se llama cuando un movimiento se acepta (p. ej., para el sonido). */
+  onMoved?: (dir: Direction) => void
 }
 
 function isTextField(target: EventTarget | null): boolean {
@@ -41,7 +43,7 @@ const KIND_LABEL: Record<string, string> = {
   smallBody: 'Cuerpo menor',
 }
 
-export function NavigationScreen({ sector, onExit, arrive, reduced, quality: initialLevel, forced, debug, extraControls }: Props) {
+export function NavigationScreen({ sector, onExit, arrive, reduced, quality: initialLevel, forced, debug, extraControls, onMoved }: Props) {
   const { scene } = sector
   const webgl = useMemo(() => detectWebGL(), [])
   const adaptive = useMemo(() => new AdaptiveQuality(initialLevel, forced), [initialLevel, forced])
@@ -58,6 +60,12 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
   const available = useMemo(() => new Set(DIRECTIONS.filter((d) => node?.links[d] !== undefined)), [node])
   const moving = snap.movingTo ? (controller.state.transition?.direction ?? null) : null
   const [pressed, setPressed] = useState<ReadonlySet<Direction>>(new Set())
+  const move = useCallback(
+    (dir: Direction) => {
+      if (controller.move(dir)) onMoved?.(dir)
+    },
+    [controller, onMoved],
+  )
 
   const press = useCallback((dir: Direction, down: boolean) => {
     setPressed((prev) => {
@@ -83,7 +91,7 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
       if (!dir) return
       e.preventDefault() // evita que las flechas desplacen la página
       press(dir, true)
-      controller.move(dir)
+      move(dir)
     }
     const onUp = (e: KeyboardEvent) => {
       const dir = KEY_CODES[e.code]
@@ -98,7 +106,7 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
       window.removeEventListener('keyup', onUp)
       window.removeEventListener('blur', clear)
     }
-  }, [controller, onExit, press])
+  }, [move, onExit, press])
 
   return (
     <section
@@ -175,7 +183,7 @@ export function NavigationScreen({ sector, onExit, arrive, reduced, quality: ini
             <kbd>D</kbd> o flechas para moverte · <kbd>Esc</kbd> volver
           </p>
         </div>
-        {webgl && <DPad available={available} moving={moving} pressed={pressed} onMove={(d) => controller.move(d)} onPress={press} />}
+        {webgl && <DPad available={available} moving={moving} pressed={pressed} onMove={move} onPress={press} />}
       </div>
     </section>
   )
