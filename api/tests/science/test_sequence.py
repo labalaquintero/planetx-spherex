@@ -6,6 +6,7 @@ from astropy.io import fits
 from astropy.wcs import WCS
 import numpy as np
 from PIL import Image
+import pytest
 
 from api.planetx.science import Cutout, build_sequence
 
@@ -18,7 +19,7 @@ _OCT = "2025-10-31T18:55:38.358"
 
 def _cutout(
     folder, obs_id, date, *, wavelength=1.0, rotate=False, offset=0, bad_pixels=False,
-    empty=False,
+    empty=False, detector=1, use_product_key=False,
 ):
     size = 80
     wcs = WCS(naxis=2)
@@ -46,6 +47,7 @@ def _cutout(
 
     header = wcs.to_header()
     header["OBSID"] = obs_id
+    header["DETECTOR"] = detector
     header["DATE-OBS"] = date
     header["TIMESYS"] = "UTC"
     header["BUNIT"] = "MJy/sr"
@@ -70,14 +72,15 @@ def _cutout(
         ],
         name="WCS-WAVE",
     )
-    path = folder / f"{obs_id}.fits"
+    path = folder / f"{obs_id}_D{detector}.fits"
     fits.HDUList([
         fits.PrimaryHDU(),
         fits.ImageHDU(data, header, name="IMAGE"),
         fits.ImageHDU(flags, name="FLAGS"),
         wave_table,
     ]).writeto(path)
-    return Cutout(obs_id, "dr1", f"https://irsa.ipac.caltech.edu/{obs_id}", path)
+    cutout_id = f"{obs_id}/D{detector}" if use_product_key else obs_id
+    return Cutout(cutout_id, "dr1", f"https://irsa.ipac.caltech.edu/{obs_id}/D{detector}", path)
 
 
 def _sequence(*cutouts):
@@ -85,13 +88,14 @@ def _sequence(*cutouts):
 
 
 def test_pair_uses_one_sky_grid_mask_and_contrast(tmp_path):
-    first = _cutout(tmp_path, "a", _MAY, bad_pixels=True)
+    first = _cutout(tmp_path, "a", _MAY, bad_pixels=True, use_product_key=True)
     last = _cutout(tmp_path, "b", _OCT, rotate=True, offset=0.5)
     result, pngs = _sequence(last, first)
 
     assert result.status == "ready"
     assert result.reason is None
     assert [frame["observed_at"] for frame in result.frames] == [_MAY + "Z", _OCT + "Z"]
+    assert [frame["observation_id"] for frame in result.frames] == ["a", "b"]
     assert [frame["source_url"] for frame in result.frames] == [first.source_url, last.source_url]
     images = []
     for frame in result.frames:
@@ -121,17 +125,26 @@ def test_incompatible_bands_keep_one_frame(tmp_path):
 
 
 def test_repeated_observation_or_timestamp_is_one_epoch(tmp_path):
-    first = _cutout(tmp_path, "a", _MAY)
+    first = _cutout(tmp_path, "a", _MAY, use_product_key=True)
     same_time = _cutout(tmp_path, "b", _MAY, rotate=True)
-    alternative = tmp_path / "other-release"
-    alternative.mkdir()
-    same_observation = _cutout(alternative, "a", _OCT, rotate=True)
+    same_observation = _cutout(
+        tmp_path, "a", "2025-05-06T12:20:24.889", detector=4, use_product_key=True,
+    )
 
     for duplicate in (same_time, same_observation):
         result, pngs = _sequence(first, duplicate)
         assert result.status == "insufficient"
         assert result.reason == "single_epoch"
         assert len(result.frames) == len(pngs) == 1
+        assert result.frames[0]["observation_id"] == "a"
+
+
+def test_product_key_has_to_match_the_fits_detector(tmp_path):
+    first = _cutout(tmp_path, "a", _MAY, detector=1)
+    mislabeled = Cutout("a/D4", first.release, first.source_url, first.local_path)
+
+    with pytest.raises(ValueError, match="OBSID and detector"):
+        _sequence(mislabeled)
 
 
 def test_unusable_pixels_produce_no_frame(tmp_path):

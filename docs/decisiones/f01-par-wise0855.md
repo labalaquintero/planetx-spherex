@@ -38,10 +38,11 @@ $F01Python = '.\data\processed\f01\.venv\Scripts\python.exe'
 & $F01Python -m pytest api/tests/science
 ```
 
-Con ese mismo Python, el siguiente ejemplo guarda los PNG y la evidencia en la carpeta local de productos.
+Con ese mismo Python, el siguiente ejemplo genera la evidencia y un respaldo con `manifest.json` y sus dos PNG.
 
 ```python
 from dataclasses import asdict
+from datetime import UTC, datetime
 import json
 from pathlib import Path
 
@@ -49,6 +50,8 @@ from api.planetx.science import Cutout, build_sequence
 
 raw = Path("data/raw/f01")
 output = Path("data/processed/f01/wise0855")
+prepared = output / "respaldo"
+products = prepared / "products"
 archive = "https://irsa.ipac.caltech.edu/ibe/data/spherex/dr1/level2"
 cutouts = []
 for observation_id, build in [
@@ -64,18 +67,59 @@ result, pngs = build_sequence(
     ra_deg=133.795129166667, dec_deg=-7.245147222222, fov_deg=0.1, cutouts=cutouts
 )
 assert result.status == "ready", result
-output.mkdir(parents=True, exist_ok=True)
+products.mkdir(parents=True, exist_ok=True)
 for frame_id, png in pngs.items():
-    (output / f"{frame_id}.png").write_bytes(png)
+    (products / f"{frame_id}.png").write_bytes(png)
 (output / "evidencia.json").write_text(
     json.dumps(asdict(result), indent=2) + "\n", encoding="utf-8"
 )
+entry = {
+    "schema_version": "1",
+    "status": result.status,
+    "reason": result.reason,
+    "mode": "prepared",
+    "query": {"ra_deg": 133.795129166667, "dec_deg": -7.245147222222,
+              "frame": "ICRS", "fov_deg": 0.1},
+    "band": result.band,
+    "checked_at": datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
+    "science_version": result.science_version,
+    "warnings": [],
+    "frames": [
+        {**frame, "image_url": f"/api/v1/images/{frame['id']}"} for frame in result.frames
+    ],
+}
+(prepared / "manifest.json").write_text(
+    json.dumps({"manifest_version": "1", "entries": [entry]}, indent=2, allow_nan=False) + "\n",
+    encoding="utf-8",
+)
 ```
+
+## Servir el respaldo en la API
+
+Usa la API con el PR #3 integrado y ejecuta desde la raíz del repositorio. Las rutas apuntan al manifiesto y a su carpeta `products`.
+
+```powershell
+$respaldo = 'data/processed/f01/wise0855/respaldo'
+$env:PLANETX_CATALOG_MANIFEST = (Resolve-Path "$respaldo/manifest.json").Path
+$env:PLANETX_PRODUCTS_DIR = (Resolve-Path "$respaldo/products").Path
+& $F01Python -m pip install -r api/requirements.txt
+& $F01Python -m uvicorn app:app --app-dir api --host 127.0.0.1 --port 8000
+```
+
+Desde otra terminal, consulta el centro exacto. La respuesta esperada es HTTP `200`, `mode: "prepared"`, `status: "ready"` y dos `image_url` que devuelven PNG.
+
+```powershell
+Invoke-RestMethod 'http://127.0.0.1:8000/api/v1/comparisons?ra_deg=133.795129166667&dec_deg=-7.245147222222'
+```
+
+El preset debe enviar esos valores de RA y Dec completos para que coincidan con la clave del catálogo. La prueba contra `main` en `34a2381` devolvió `200 prepared/ready` y los dos PNG exactos. El verificador de César reportó cero errores con ambos productos presentes. [PR #3 de la API](https://github.com/natwDX/planetx-spherex/pull/3) · [PR #4 de QA](https://github.com/natwDX/planetx-spherex/pull/4).
 
 ## Traspaso para integración
 
-- **Isaac.** Con `api` en la ruta de importación, usar `from planetx.science import Cutout, build_sequence`. El módulo entrega `(ScienceResult, dict[frame_id, bytes])`. La API incorpora `status`, `reason`, `band`, `frames` y `science_version`, y asigna su propio `image_url` a cada ID. Reservar `common_valid_fraction` y `contrast_mjy_sr` para la evidencia. Los errores de lectura y de procedencia requieren diagnóstico del llamador. Para integrar el módulo, revisar Astropy, NumPy, Reproject y Pillow en el entorno de API.
-- **DeValle.** Usar las coordenadas exactas y la versión `v1` como entrada del caso preparado. Asociar los PNG por ID, la fecha de preparación y los metadatos de ambas exposiciones.
+- **Isaac.** Con `api` en la ruta de importación, usar `from planetx.science import Cutout, build_sequence`. El módulo acepta la clave de producto `<obs_id>/D<n>` del adaptador tras contrastarla con el FITS. El `observation_id` devuelto es el `OBSID` de exposición. Dos detectores de una misma exposición cuentan como una época. El módulo entrega `(ScienceResult, dict[frame_id, bytes])`. El servicio HTTP convierte ese par a su `SequenceResult`, agrega `image_url` y los campos de la consulta y resume el estado de la búsqueda. Reservar `common_valid_fraction` y `contrast_mjy_sr` para la evidencia. A las dependencias de la API actual les faltan Reproject y Pillow para integrar este módulo.
+- **DeValle.** Usar la entrada de `manifest.json` y los PNG por ID. Conservar las coordenadas exactas y la versión científica `v1`.
 - **César.** Contrastar `OBSID` y `DATE-OBS` en cada FITS, revisar la máscara y reproducir cobertura y banda con los recortes enlazados.
+
+Usar `SearchSummary` en la integración en vivo. Una consulta espacial completada en todas las colecciones y sin filas da `no_coverage`. Si se agotó el límite de candidatos antes de obtener un par, usar `insufficient/search_limit_reached`. Un fallo de archivo o un plazo agotado que impida comprobar la comparación conserva el `503` correspondiente.
 
 Datos de SPHEREx DR1 Spectral Images, del archivo NASA/IPAC IRSA. [DOI 10.26131/IRSA678](https://doi.org/10.26131/IRSA678) · [Reconocimiento solicitado por IRSA](https://irsa.ipac.caltech.edu/Missions/spherex.html).

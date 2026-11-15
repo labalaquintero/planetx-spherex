@@ -29,12 +29,12 @@ InsufficientReason = Literal["single_epoch", "no_common_band", "no_usable_frames
 
 @dataclass(frozen=True)
 class Cutout:
-    """A local SPHEREx spectral image MEF and its archive provenance."""
+    """A local SPHEREx MEF with an observation ID or an OBSID/D<n> product key."""
 
     observation_id: str
     release: Release
     source_url: str
-    local_path: Path
+    local_path: str | Path
 
 
 class Band(TypedDict):
@@ -65,6 +65,7 @@ class ScienceResult:
 @dataclass(frozen=True)
 class _Projected:
     cutout: Cutout
+    observation_id: str
     date: Time
     observed_at: str
     image: np.ndarray
@@ -102,7 +103,7 @@ def build_sequence(
         return ScienceResult("insufficient", "no_usable_frames", None, [], 0.0, None), {}
 
     candidates.sort(key=lambda frame: (
-        frame.date.jd1, frame.date.jd2, frame.cutout.observation_id, frame.cutout.source_url
+        frame.date.jd1, frame.date.jd2, frame.observation_id, frame.cutout.source_url
     ))
     selected, reason = _select_frames(candidates)
     valid = np.logical_and.reduce([frame.valid for frame in selected])
@@ -119,12 +120,12 @@ def build_sequence(
         png = _render_png(frame.image, valid, contrast)
         identity = json.dumps([
             _SCIENCE_VERSION, ra_deg, dec_deg, fov_deg,
-            cutout.observation_id, cutout.release, cutout.source_url,
+            frame.observation_id, cutout.release, cutout.source_url,
         ]).encode("utf-8")
         frame_id = sha256(identity + png).hexdigest()
         frames.append(Frame(
             id=frame_id,
-            observation_id=cutout.observation_id,
+            observation_id=frame.observation_id,
             observed_at=frame.observed_at,
             release=cutout.release,
             source_url=cutout.source_url,
@@ -155,8 +156,13 @@ def _project_cutout(cutout: Cutout, grid: WCS, sky: SkyCoord) -> _Projected | No
     with fits.open(Path(cutout.local_path), memmap=False) as hdus:
         image = hdus["IMAGE"]
         flags = hdus["FLAGS"].data
-        if not cutout.observation_id or image.header["OBSID"] != cutout.observation_id:
-            raise ValueError("Cutout OBSID does not match its archive provenance")
+        obs_id = image.header["OBSID"]
+        if not isinstance(obs_id, str) or not obs_id.strip():
+            raise ValueError("Expected a non-empty OBSID in the FITS header")
+        if cutout.observation_id != obs_id:
+            detector = image.header.get("DETECTOR")
+            if detector not in range(1, 7) or cutout.observation_id != f"{obs_id}/D{detector}":
+                raise ValueError("Cutout OBSID and detector do not match its archive provenance")
         if image.header["TIMESYS"].strip().upper() != "UTC":
             raise ValueError("Expected SPHEREx observation times in UTC")
         date = Time(image.header["DATE-OBS"], format="isot", scale="utc", precision=9)
@@ -200,7 +206,7 @@ def _project_cutout(cutout: Cutout, grid: WCS, sky: SkyCoord) -> _Projected | No
     )
     if valid.mean() < _MIN_FRAME_COVERAGE:
         return None
-    return _Projected(cutout, date, observed_at, projected, wavelength_um, bandwidth_um, valid)
+    return _Projected(cutout, obs_id, date, observed_at, projected, wavelength_um, bandwidth_um, valid)
 
 
 def _measure_band(frames: tuple[_Projected, ...], valid: np.ndarray) -> tuple[Band, float]:
@@ -218,7 +224,7 @@ def _select_frames(
     best_score = None
     distinct_epochs = False
     for first, last in combinations(candidates, 2):
-        same_observation = first.cutout.observation_id == last.cutout.observation_id
+        same_observation = first.observation_id == last.observation_id
         if same_observation or first.observed_at == last.observed_at:
             continue
         distinct_epochs = True
