@@ -1,5 +1,6 @@
 # Despliegue LOCAL con Docker: «docker compose up --build» y abrir http://localhost (ver README).
 # No es un despliegue a AWS ni a producción.
+# La EC2 de la demo añade compose.prod.yaml (Caddy con HTTPS) mediante COMPOSE_FILE en su .env: ver infra/README.md.
 name: planetx
 
 services:
