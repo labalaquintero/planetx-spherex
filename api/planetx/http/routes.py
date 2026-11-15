@@ -109,7 +109,7 @@ async def comparisons(
                     ra_deg=ra,
                     dec_deg=dec,
                     fov_deg=FOV_DEG,
-                    cutouts=(),  # el adaptador IRSA (subtarea g) los aportará
+                    cutouts=(),  # el servicio en vivo obtiene sus propios recortes de IRSA
                 )
                 payload = _finalize_payload(result.payload, "live", state.allow_fixtures)
                 state.live_images.put_many(result.images)

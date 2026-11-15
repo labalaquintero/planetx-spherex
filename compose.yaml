@@ -13,6 +13,7 @@ services:
       # Caso preparado y PNG, bajo ./data montado en solo lectura. Rutas explícitas y absolutas.
       PLANETX_CATALOG_MANIFEST: ${PLANETX_CATALOG_MANIFEST:-/data/wise0855/manifest.json}
       PLANETX_PRODUCTS_DIR: ${PLANETX_PRODUCTS_DIR:-/data/wise0855/products}
+      PLANETX_ENABLE_LIVE: ${PLANETX_ENABLE_LIVE:-0}
       PLANETX_LIVE_CONCURRENCY: ${PLANETX_LIVE_CONCURRENCY:-2}
     volumes:
       - ./data:/data:ro

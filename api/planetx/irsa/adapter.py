@@ -49,8 +49,15 @@ class IrsaAdapter:
 
     # ------------------------------------------------------------------ API
 
-    def find_cutouts(self, ra_deg: float, dec_deg: float, *, deadline: float | None = None) -> CutoutSearch:
-        """Busca, elige y descarga. ``deadline`` es un instante ``time.monotonic()``."""
+    def find_cutouts(
+        self,
+        ra_deg: float,
+        dec_deg: float,
+        *,
+        deadline: float | None = None,
+        cache_dir: Path | None = None,
+    ) -> CutoutSearch:
+        """Busca y descarga. ``deadline`` usa el reloj monotónico y ``cache_dir`` permite aislar los recortes."""
         cfg = self.config
         if not (math.isfinite(ra_deg) and math.isfinite(dec_deg)):
             raise IrsaRejected("coordenadas inválidas")
@@ -66,7 +73,9 @@ class IrsaAdapter:
             max_attempts=cfg.max_attempts,
         )
 
-        cutouts, attempted, failed, transient = self._download(selection.ordered, ra_deg, dec_deg, deadline)
+        cutouts, attempted, failed, transient = self._download(
+            selection.ordered, ra_deg, dec_deg, deadline, cache_dir=cache_dir,
+        )
         if len(cutouts) < MIN_FRAMES and (failures or transient):
             # Sin secuencia y con algún fallo (una colección caída, 503, plazo): error reintentable.
             # Es la única salida para «no se pudo comprobar»; nunca se degrada a «sin cobertura».
@@ -114,7 +123,8 @@ class IrsaAdapter:
         return results, failures
 
     def _download(
-        self, ordered: tuple[Candidate, ...], ra: float, dec: float, deadline: float
+        self, ordered: tuple[Candidate, ...], ra: float, dec: float, deadline: float, *,
+        cache_dir: Path | None,
     ) -> tuple[list[Cutout], int, int, list[IrsaError]]:
         cfg = self.config
         queue = list(ordered)
@@ -130,7 +140,7 @@ class IrsaAdapter:
                     return False
                 cand = queue.pop(0)
                 attempted += 1
-                pending[pool.submit(self._fetch_cutout, cand, ra, dec, deadline)] = cand
+                pending[pool.submit(self._fetch_cutout, cand, ra, dec, deadline, cache_dir=cache_dir)] = cand
                 return True
 
             for _ in range(cfg.max_frames):  # el pool limita el paralelismo; los fallos se sustituyen abajo
@@ -157,9 +167,12 @@ class IrsaAdapter:
         done.sort(key=lambda item: item[0].t_min_mjd)
         return [c for _, c in done][: cfg.max_frames], attempted, failed, transient
 
-    def _fetch_cutout(self, cand: Candidate, ra: float, dec: float, deadline: float) -> Cutout:
+    def _fetch_cutout(
+        self, cand: Candidate, ra: float, dec: float, deadline: float, *,
+        cache_dir: Path | None,
+    ) -> Cutout:
         cfg = self.config
-        path = self._cache_path(cand, ra, dec)
+        path = self._cache_path(cand, ra, dec, cache_dir=cache_dir)
         cutout = Cutout(cand.observation_id, cand.release, cand.access_url, str(path))
         if _cache_hit(path):
             return cutout
@@ -184,10 +197,13 @@ class IrsaAdapter:
         _write_atomic(path, reduced)
         return cutout
 
-    def _cache_path(self, cand: Candidate, ra: float, dec: float) -> Path:
+    def _cache_path(
+        self, cand: Candidate, ra: float, dec: float, *, cache_dir: Path | None = None,
+    ) -> Path:
         key = hashlib.sha256(f"{ra:.8f},{dec:.8f},{self.config.size_deg:g}".encode()).hexdigest()[:12]
         # obs_id ya se validó con ^[A-Za-z0-9_]+$: el nombre no puede salir del directorio.
-        return self.config.cache_dir / cand.release / f"{cand.obs_id}_D{cand.detector}_{key}.fits"
+        root = self.config.cache_dir if cache_dir is None else cache_dir
+        return root / cand.release / f"{cand.obs_id}_D{cand.detector}_{key}.fits"
 
 
 def _cache_hit(path: Path) -> bool:
