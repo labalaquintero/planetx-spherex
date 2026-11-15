@@ -4,7 +4,7 @@ Recursos de terceros empaquetados en `src/scene/assets/`. Se descargaron solo du
 (con `tools/preparar_texturas.py`); la app no hace ninguna petición de red en ejecución. Cada licencia se
 comprobó en la página de la fuente el 15 de noviembre de 2026.
 
-Los planetas, la estación y la nave son **ilustrativos**. Las texturas reales solo dan detalle de superficie:
+Los planetas y la nave son **ilustrativos**. Las texturas reales solo dan detalle de superficie:
 no se presentan como esos cuerpos.
 
 ## Texturas
@@ -15,6 +15,16 @@ no se presentan como esos cuerpos.
 | `anillo-saturno.webp` (1024×64, 3 KB) | `2k_saturn_ring_alpha.png` | Solar System Scope (INOVE) | CC BY 4.0 | https://www.solarsystemscope.com/textures/ | 2026-11-15 |
 | `luna-color.webp` (1024×512, 72 KB) | `lroc_color_poles_1k.jpg` (CGI Moon Kit) | NASA's Scientific Visualization Studio — Ernie Wright; datos LRO/LROC | Dominio público (NASA) | https://svs.gsfc.nasa.gov/4720/ | 2026-11-15 |
 | `luna-relieve.webp` (512×256, 22 KB) | `ldem_3_8bit.jpg` (CGI Moon Kit) | NASA's Scientific Visualization Studio — Ernie Wright; datos LRO/LOLA | Dominio público (NASA) | https://svs.gsfc.nasa.gov/4720/ | 2026-11-15 |
+| `cielo-spherex.webp` (1024×512, 80 KB) | Primer mapa infrarrojo de todo el cielo de SPHEREx (PIA26600), reproyectado de Mollweide a equirectangular | NASA/JPL-Caltech (SPHEREx) | Courtesy NASA/JPL-Caltech | https://www.jpl.nasa.gov/images/pia26600-spherexs-first-all-sky-map/ | copia del repo |
+| `vela-spherex.webp` (1024×512, 9 KB) | SPHEREx: región molecular de Vela (PIA26354), sin estrellas, suavizada en franjas y fundida en los bordes | NASA/JPL-Caltech (SPHEREx) | Courtesy NASA/JPL-Caltech | https://www.jpl.nasa.gov/images/pia26354-spherex-vela-molecular-ridge/ | copia del repo |
+| `plano-galactico.webp` (1024×512, 7 KB) | Mapa de todo el cielo de SPHEREx (PIA26600): perfil de color de la franja del plano galáctico, en franjas | NASA/JPL-Caltech (SPHEREx) | Courtesy NASA/JPL-Caltech | https://www.jpl.nasa.gov/images/pia26600-spherexs-first-all-sky-map/ | copia del repo |
+| `burbuja-spherex.webp` (1024×512, 41 KB) | Mapa de todo el cielo de SPHEREx (PIA26600): recorte de las burbujas azules, fundido en los bordes | NASA/JPL-Caltech (SPHEREx) | Courtesy NASA/JPL-Caltech | https://www.jpl.nasa.gov/images/pia26600-spherexs-first-all-sky-map/ | copia del repo |
+| `lazos-spherex.webp` (1024×512, 26 KB) | Mapa de todo el cielo de SPHEREx (PIA26600): recorte de los lazos sobre el centro galáctico, fundido en los bordes | NASA/JPL-Caltech (SPHEREx) | Courtesy NASA/JPL-Caltech | https://www.jpl.nasa.gov/images/pia26600-spherexs-first-all-sky-map/ | copia del repo |
+| `filamentos-spherex.webp` (1024×512, 40 KB) | Mapa de todo el cielo de SPHEREx (PIA26600): recorte de filamentos de polvo del sur, fundido en los bordes | NASA/JPL-Caltech (SPHEREx) | Courtesy NASA/JPL-Caltech | https://www.jpl.nasa.gov/images/pia26600-spherexs-first-all-sky-map/ | copia del repo |
+| `nebulosa-vela.webp` (1024×512, 12 KB) | SPHEREx: región molecular de Vela (PIA26354), recorte de la nebulosa naranja sin estrellas | NASA/JPL-Caltech (SPHEREx) | Courtesy NASA/JPL-Caltech | https://www.jpl.nasa.gov/images/pia26354-spherex-vela-molecular-ridge/ | copia del repo |
+
+Las siete últimas se generan sin red con `tools/texturas_spherex.py` a partir de
+`docs/decisiones/prototipo-interfaces/assets/` (las mismas imágenes que muestra el visor).
 
 ## Imágenes de referencia de las fichas
 
@@ -24,6 +34,11 @@ no se presentan como esos cuerpos.
 | `src/sectors/beta/referencias/wise0855-2025-10-31.png` (64×64, 4 KB) | Recorte SPHEREx `2025W44_2B_0322_1` | NASA/JPL-Caltech (SPHEREx), datos de NASA/IPAC IRSA; procesado por el proyecto | Courtesy NASA/JPL-Caltech | https://irsa.ipac.caltech.edu/Missions/spherex.html | 2026-11-15 |
 
 Son copias de `docs/referencias/wise0855/products/` (procedencia y SHA-256 en su `README.md`).
+
+| Archivo empaquetado | Origen | Autor | Licencia / crédito | URL |
+| --- | --- | --- | --- | --- |
+| `src/sectors/beta/referencias/cielo-spherex-original.webp` (480 px) | Mapa de todo el cielo de SPHEREx (PIA26600), reducido | NASA/JPL-Caltech (SPHEREx) | Courtesy NASA/JPL-Caltech | https://www.jpl.nasa.gov/images/pia26600-spherexs-first-all-sky-map/ |
+| `src/sectors/beta/referencias/vela-spherex-original.webp` (480 px) | Región molecular de Vela (PIA26354), reducida | NASA/JPL-Caltech (SPHEREx) | Courtesy NASA/JPL-Caltech | https://www.jpl.nasa.gov/images/pia26354-spherex-vela-molecular-ridge/ |
 
 **Texto de las licencias, tal como aparece en cada fuente:**
 

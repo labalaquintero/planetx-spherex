@@ -37,6 +37,18 @@ export const ASSET_CREDITS: readonly Credit[] = [
     assets: ['wise0855-2025-05-06', 'wise0855-2025-10-31'],
     note: 'Se muestran en la ficha de Ilmara. Procedencia completa en docs/referencias/wise0855/README.md.',
   },
+  {
+    what: 'Primer mapa infrarrojo de todo el cielo de SPHEREx (PIA26600) y región molecular de Vela (PIA26354)',
+    author: 'NASA/JPL-Caltech, misión SPHEREx',
+    license: 'Courtesy NASA/JPL-Caltech (política de uso de imágenes de JPL)',
+    url: 'https://www.jpl.nasa.gov/images/pia26600-spherexs-first-all-sky-map/',
+    assets: ['cielo-spherex', 'vela-spherex', 'plano-galactico', 'burbuja-spherex', 'lazos-spherex', 'filamentos-spherex', 'nebulosa-vela', 'cielo-spherex-original', 'vela-spherex-original'],
+    note:
+      'Son la superficie de los planetas ilustrativos «Cielo infrarrojo» (el mapa del cielo reproyectado sobre la esfera), ' +
+      '«Vela» y «Polvo de Vela» (la imagen de Vela sin estrellas, en franjas), «Plano galáctico» (el perfil de color de la ' +
+      'Vía Láctea), «Burbuja», «Lazos galácticos» y «Filamentos» (recortes del mapa) y «Nebulosa de Vela». ' +
+      'Generadas con tools/texturas_spherex.py.',
+  },
 ]
 
 export const SOFTWARE_CREDITS: readonly { name: string; license: string }[] = [

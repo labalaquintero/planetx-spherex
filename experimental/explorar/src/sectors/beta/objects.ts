@@ -45,7 +45,6 @@ const STAGING: Readonly<Record<string, Staging>> = {
   veshta: { kind: 'planet', depth: 260, label: 'Veshta', seed: 23, palette: ['#c9d6e6', '#6f87a6', '#26364d'], surface: 'rocky', atmosphere: '#7dd3fc', texture: { map: 'luna-color', mode: 'palette', bump: 'luna-relieve' } },
   // Con anillo: bandas y anillo de Saturno (Solar System Scope, CC BY 4.0).
   orun: { kind: 'ringedPlanet', depth: 210, label: 'Orun', seed: 37, palette: ['#e8d9b0', '#c2a56c', '#8a6e3c'], surface: 'bands', atmosphere: '#fde68a', texture: { map: 'bandas-saturno', mode: 'color', ringMap: 'anillo-saturno' } },
-  ancla: { kind: 'station', depth: 150, label: 'Estación Ancla', seed: 41, palette: ['#cfd6de', '#a3adb9', '#5d6775'] },
   esfera: { kind: 'sphere', depth: 140, label: 'Esfera menor', seed: 53, palette: ['#e2e8f0', '#94a3b8', '#334155'], surface: 'rocky', texture: { map: 'luna-color', mode: 'palette', bump: 'luna-relieve' } },
   c1: { kind: 'smallBody', depth: 130, seed: 101, palette: ROCA },
   c2: { kind: 'smallBody', depth: 120, seed: 102, palette: ROCA },
@@ -97,10 +96,129 @@ function build(id: string, st: Staging): SceneObject {
 }
 
 /**
- * Planetas añadidos que no están en el boceto. Se colocan fuera de la vista inicial (detrás de la
- * entrada o muy a los lados), así que la primera vista sigue siendo la del boceto; se descubren al volar.
+ * Objetos del boceto que se retiraron de la escena: la estación (el equipo prefirió solo planetas).
+ * En su lugar del boceto va «Cielo infrarrojo».
+ */
+export const RETIRED_SKETCH_IDS: readonly string[] = ['ancla']
+/** Planeta que ocupa el lugar de cada objeto retirado del boceto (sí aparece en la vista inicial). */
+export const SKETCH_REPLACEMENTS: Readonly<Record<string, string>> = { ancla: 'cielo' }
+
+/** Donde estaba la estación en el boceto, algo más al fondo: ahí va el planeta del cielo de SPHEREx. */
+const CIELO_DEPTH = 235
+const cieloAncla = objetoBoceto('ancla').ancla
+
+/**
+ * Planetas añadidos que no están en el boceto. Salvo «Cielo infrarrojo» (en el sitio de la estación
+ * retirada), se colocan fuera de la vista inicial (detrás de la entrada o muy a los lados), así que la
+ * primera vista sigue siendo la del boceto; se descubren al volar.
  */
 const EXTRA_DEFS: SceneObject[] = [
+  {
+    // Superficie: el primer mapa infrarrojo de todo el cielo de SPHEREx reproyectado sobre la esfera.
+    id: 'cielo',
+    kind: 'planet',
+    label: 'Cielo infrarrojo',
+    position: screenToWorld(cieloAncla.centro[0], cieloAncla.centro[1], CIELO_DEPTH, ENTRY_CAMERA),
+    radius: radiusForScreenSize(0.17, CIELO_DEPTH, ENTRY_CAMERA.fovDeg),
+    seed: 83,
+    palette: ['#e2e8f0', '#9a3f1c', '#1a0d10'],
+    surface: 'bands',
+    atmosphere: '#fdba74',
+    texture: { map: 'cielo-spherex', mode: 'color' },
+  },
+  {
+    // Superficie: la región molecular de Vela vista por SPHEREx, sin estrellas y en franjas.
+    id: 'vela',
+    kind: 'planet',
+    label: 'Vela',
+    position: [-330, -10, -260],
+    radius: 26,
+    seed: 89,
+    palette: ['#bfdbfe', '#1d4ed8', '#0b1030'],
+    surface: 'bands',
+    atmosphere: '#93c5fd',
+    texture: { map: 'vela-spherex', mode: 'color' },
+  },
+  {
+    // Superficie: recorte de las burbujas azules (gas caliente) del mapa del cielo de SPHEREx.
+    id: 'burbuja',
+    kind: 'planet',
+    label: 'Burbuja',
+    position: [390, 25, 120],
+    radius: 22,
+    seed: 97,
+    palette: ['#cffafe', '#0e7490', '#0b1020'],
+    surface: 'bands',
+    atmosphere: '#67e8f9',
+    texture: { map: 'burbuja-spherex', mode: 'color' },
+  },
+  {
+    // Franjas con el perfil de color del plano de la Vía Láctea en el mapa de SPHEREx, recoloreadas
+    // en violetas (solo su luminancia) para no parecerse a Júpiter.
+    id: 'franjas',
+    kind: 'planet',
+    label: 'Plano galáctico',
+    position: [-390, -30, 60],
+    radius: 34,
+    seed: 101,
+    palette: ['#e0e7ff', '#7c3aed', '#1e1b4b'],
+    surface: 'bands',
+    atmosphere: '#c4b5fd',
+    texture: { map: 'plano-galactico', mode: 'palette' },
+  },
+  {
+    // Superficie: la imagen de Vela usada solo por su luminancia, en grises azulados, con relieve lunar.
+    id: 'polvo',
+    kind: 'planet',
+    label: 'Polvo de Vela',
+    position: [140, -50, 430],
+    radius: 17,
+    seed: 103,
+    palette: ['#cbd5e1', '#64748b', '#1e293b'],
+    surface: 'rocky',
+    atmosphere: '#94a3b8',
+    texture: { map: 'vela-spherex', mode: 'palette', bump: 'luna-relieve' },
+  },
+  {
+    // Superficie: los dos lazos blancos que hay sobre el centro de la galaxia en el mapa de SPHEREx.
+    id: 'lazos',
+    kind: 'planet',
+    label: 'Lazos galácticos',
+    position: [530, 15, -170],
+    radius: 24,
+    seed: 107,
+    palette: ['#f1f5f9', '#9a3412', '#1c0a06'],
+    surface: 'bands',
+    atmosphere: '#fda4af',
+    texture: { map: 'lazos-spherex', mode: 'color' },
+  },
+  {
+    // Superficie: la nebulosa naranja de la imagen de Vela, sin estrellas.
+    id: 'nebulosa',
+    kind: 'planet',
+    label: 'Nebulosa de Vela',
+    position: [-510, 35, -60],
+    radius: 28,
+    seed: 109,
+    palette: ['#fbcfe8', '#be185d', '#2a0a1a'],
+    surface: 'storms',
+    atmosphere: '#fcd34d',
+    glow: '#7c2d12',
+    texture: { map: 'nebulosa-vela', mode: 'color' },
+  },
+  {
+    // Superficie: filamentos de polvo del cielo del sur en el mapa de SPHEREx.
+    id: 'filamentos',
+    kind: 'planet',
+    label: 'Filamentos',
+    position: [-40, 45, 610],
+    radius: 20,
+    seed: 113,
+    palette: ['#fecdd3', '#9f1239', '#140611'],
+    surface: 'rocky',
+    atmosphere: '#fb7185',
+    texture: { map: 'filamentos-spherex', mode: 'color' },
+  },
   {
     id: 'tessa',
     kind: 'planet',

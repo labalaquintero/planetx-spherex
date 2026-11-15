@@ -36,6 +36,17 @@
 - **15-11-2026, misma rama** (resincronizaciones con el mismo procedimiento; `rsync` sin `--delete` para no
   borrar el `README.md` propio de la copia del visor): dirigir con clic derecho, HUD reordenado y fichas de
   contexto, acercamiento suave e impactos, Tessa, Calder y Sora, y cometas y meteoritos (hasta `f2c2293`).
+- **15-11-2026, misma rama, tras fusionar #25** (copia archivo por archivo de lo que cambió, comprobando
+  antes que la copia del visor era idéntica): visitantes al azar (cometas, estrellas fugaces y asteroides),
+  cielo y nebulosa horneados en cubemaps, tope de píxeles y HUD que no se encima con el zoom. Además, en
+  `web/src/features/observatorio/observatorio.css`, la cabecera del sitio deja de ser fija en la vista del mapa.
+  Después, con el mismo procedimiento: protección contra NaN antes del bloom, anillos que se desvanecen de canto,
+  HUD sin saltos de texto, β sin estación y planetas «Cielo infrarrojo» y «Vela» con imágenes de SPHEREx.
+  `credits.test.ts` y `ATTRIBUTIONS.md` del visor se editaron a mano (tienen rutas propias). Luego: ficha del
+  HUD estable (hueco de barra reservado y objeto cercano con histéresis), visitantes con brillo procedural y colas
+  animadas, área más grande y planetas «Plano galáctico», «Burbuja» y «Polvo de Vela». Después, perfil de
+  rendimiento propio de Windows (`?perfil=`), colas con movimiento y planetas «Lazos galácticos», «Nebulosa de
+  Vela» y «Filamentos» con un área algo mayor.
 
 ## Qué habrá que portar en la sincronización final
 
