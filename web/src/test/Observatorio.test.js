@@ -62,6 +62,43 @@ it('abre el comparador desde el punto de entrada de Docker y lleva sus datos a l
     'src', `/api/v1/images/${readyFixture.frames[0].id}`,
   );
 
+  const { readWorkspace, writeWorkspace } = await import('../features/observatorio/workspace.js');
+  const frameId = readyFixture.frames[0].id;
+  const originalMarks = [
+    { type: 'draw', points: [[.2, .3], [.6, .4]] },
+    { type: 'crop', points: [[.7, .8], [.3, .4]] },
+  ];
+  const workspace = readWorkspace();
+  workspace.annotations[frameId] = originalMarks;
+  writeWorkspace(workspace);
+  window.dispatchEvent(new HashChangeEvent('hashchange'));
+  const frame = document.querySelector('.report-frame');
+  expect(JSON.parse(frame.dataset.reportMarks)).toEqual(originalMarks);
+  expect(frame.querySelector('.report-overlay')).toBeInTheDocument();
+  expect(frame.querySelector('.report-crop')).toHaveTextContent('Detalle del último recorte');
+  expect(frame.querySelector('a[aria-label="Anotar época A"]').getAttribute('href')).toContain('desde=manual');
+
+  const form = document.querySelector('#report-form');
+  form.elements.author.value = 'Observadora';
+  form.elements.title.value = 'Detalle de WISE 0855';
+  form.elements.notes.value = 'La marca indica la región que comparé.';
+  form.requestSubmit(form.querySelector('[data-intent="draft"]'));
+  await vi.waitFor(() => expect(document.querySelector('.report-confirmation')).toBeInTheDocument());
+  const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+  for (const image of document.querySelectorAll('.report-image img')) image.decode = vi.fn().mockResolvedValue();
+  document.querySelector('#print-report').click();
+  await vi.waitFor(() => expect(print).toHaveBeenCalledOnce());
+  print.mockRestore();
+  const saved = readWorkspace();
+  const draft = saved.reports.find((report) => report.title === 'Detalle de WISE 0855');
+  expect(draft.annotations[frameId]).toEqual(originalMarks);
+  saved.annotations[frameId] = [];
+  writeWorkspace(saved);
+
+  history.replaceState(null, '', `#ficha?borrador=${draft.id}`);
+  window.dispatchEvent(new HashChangeEvent('hashchange'));
+  expect(JSON.parse(document.querySelector('.report-frame').dataset.reportMarks)).toEqual(originalMarks);
+
   document.querySelector('#site-nav [data-view="explorar"]').click();
   await vi.waitFor(() => expect(document.querySelector('#explorer-root')).toHaveAttribute('aria-label', 'Mapa'));
   expect(location.hash).toBe('#explorar');

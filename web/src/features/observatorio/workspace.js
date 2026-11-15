@@ -7,6 +7,10 @@ const initialProfile = { alias: 'Explorador', active: false, public: false, paus
 let workspace = { profile: initialProfile, recent: [], reports: [], annotations: {} };
 let memoryOnly = false;
 
+export function isEditableReport(report) {
+  return report?.status === 'draft' || report?.status === 'rejected';
+}
+
 function recentEntries(recent) {
   if (typeof recent === 'string' && validDate(recent)) {
     return [{ viewedAt: recent, query: prepared.query, mode: 'prepared' }];

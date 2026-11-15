@@ -148,9 +148,10 @@ function comparisonLink(data) {
   return target?.id === 'wise-0855' ? '#visor/wise-0855' : `#visor?${coordinateParams(data.query)}`;
 }
 
-function imageLink(index, data, reportId) {
+function imageLink(index, data, reportId, from) {
   const params = coordinateParams(data.query);
   if (reportId) params.set('ficha', reportId);
+  if (from) params.set('desde', from);
   return `#imagen/${index}?${params}`;
 }
 

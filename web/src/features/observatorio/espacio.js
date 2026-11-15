@@ -1,10 +1,11 @@
 import {
   archiveNote, comparisonLink, comparisonMode, coordinateParams, dateMark, epoch, escapeHtml,
-  fieldLabel, fieldName, formatBand, imageLink, nasaVela, prepared, reportStatuses,
+  fieldLabel, fieldName, formatBand, fullDate, imageLink, nasaVela, prepared, reportStatuses,
 } from './datos.js';
-import { back, badge, dataRows, miniPair, missingView, pageHeading, toast } from './ui.js';
+import { frameMarks, lastMarkedArea } from './anotaciones.js';
+import { back, badge, dataRows, missingView, pageHeading, toast } from './ui.js';
 import { comparisonFor } from './visor.js';
-import { cacheImages, readWorkspace, reportFile, writeWorkspace } from './workspace.js';
+import { cacheImages, isEditableReport, readWorkspace, reportFile, writeWorkspace } from './workspace.js';
 
 let reportBuffer;
 
@@ -23,20 +24,55 @@ function avatar(profile, size = 'large') {
     : `<span class="avatar avatar-${size}" aria-hidden="true">${escapeHtml(initials(profile.alias))}</span>`;
 }
 
-function reportEvidence(data, annotations, editable = true, reportId) {
-  const annotationCount = data.frames.reduce((count, frame) => count + (annotations[frame.id]?.length ?? 0), 0);
+function reportEvidence(data, annotations, { reportId, from } = {}) {
+  const editable = from === 'manual' || from === 'pdf';
+  const frames = data.frames.map((frame, index) => ({
+    frame, index, marks: frameMarks(annotations, frame.id),
+  }));
   const releases = [...new Set(data.frames.map((frame) => frame.release.toUpperCase()))].join(' / ');
+  const markTypes = new Set(frames.flatMap(({ marks }) => marks.map(({ type }) => type)));
   return `<aside class="panel attachment-panel" aria-labelledby="attachment-title">
     <h2 id="attachment-title">Observaciones asociadas</h2>
     <p class="muted">${fieldName(data.query)} · SPHEREx ${releases}</p>
-    ${miniPair(true, data, reportId)}
+    ${editable && !markTypes.size ? '<p class="input-hint">Abre una época para dibujar o señalar un área.</p>' : ''}
+    <div class="report-frames">
+      ${frames.map(({ frame, index, marks }) => {
+        const label = `Época ${epoch(index)}`;
+        const action = `${editable ? 'Anotar' : 'Ampliar'} época ${epoch(index)}`;
+        const [date, time] = fullDate(frame.observed_at).split(' · ');
+        return `<figure class="report-frame"${marks.length ? ` data-report-marks="${escapeHtml(JSON.stringify(marks))}"` : ''}>
+          <figcaption class="report-frame-info">
+            <strong>${label}</strong>
+            <time datetime="${escapeHtml(frame.observed_at)}"><span>${date}</span><span>${time ?? ''}</span></time>
+          </figcaption>
+          <a class="report-frame-link" href="${escapeHtml(imageLink(index, data, reportId, from))}" aria-label="${action}">
+            <div class="report-image">
+              <img class="science-image" src="${escapeHtml(frame.src)}" data-frame-id="${escapeHtml(frame.id)}" alt="Recorte SPHEREx · ${label}" width="64" height="64">
+              ${marks.length ? '<canvas class="report-overlay" width="512" height="512" aria-hidden="true" hidden></canvas>' : ''}
+              <span class="image-error" role="alert" hidden>Imagen no disponible.</span>
+            </div>
+            <span class="report-annotate">${action} <span aria-hidden="true">→</span></span>
+          </a>
+          <div class="report-frame-meta">
+            ${marks.length ? `<span>${marks.length} ${marks.length === 1 ? 'marca' : 'marcas'}</span>` : ''}
+            ${frame.source_url ? `<a class="report-fits" href="${escapeHtml(frame.source_url)}" target="_blank" rel="noopener">FITS · ${escapeHtml(frame.observation_id)}</a>` : ''}
+          </div>
+          ${lastMarkedArea(marks) ? `<div class="report-crop" hidden>
+            <p>Detalle del último recorte</p>
+            <canvas class="science-image" width="512" height="512" aria-hidden="true"></canvas>
+          </div>` : ''}
+        </figure>`;
+      }).join('')}
+    </div>
+    ${markTypes.size ? `<p class="report-legend">
+      ${markTypes.has('draw') ? '<span class="legend-draw">Trazo de observación</span>' : ''}
+      ${markTypes.has('crop') ? '<span class="legend-crop">Área seleccionada</span>' : ''}
+    </p>` : ''}
     ${dataRows([
       ['Banda aproximada', formatBand(data.band)],
       ['Campo', fieldLabel(data.query)],
-      ['Procedencia', 'Cada fotograma conserva su fecha, ID y enlace FITS.'],
+      ['Centro ICRS', `RA ${data.query.ra_deg}° · Dec ${data.query.dec_deg}°`],
     ])}
-    ${editable ? `<a class="text-link" href="${escapeHtml(imageLink(0, data, reportId))}">Ampliar y anotar <span aria-hidden="true">→</span></a>` : ''}
-    ${annotationCount ? `<p class="input-hint">${editable ? 'Marcas locales disponibles' : 'Marcas en la ficha'}: ${annotationCount}</p>` : ''}
   </aside>`;
 }
 
@@ -47,7 +83,7 @@ function draftKey(params, data) {
 function reportView(id, params) {
   const state = readWorkspace();
   const reportId = params.get('borrador') ?? '';
-  const existing = state.reports.find((item) => item.id === reportId && ['draft', 'rejected'].includes(item.status));
+  const existing = state.reports.find((item) => item.id === reportId && isEditableReport(item));
   if (reportId && !existing) return missingView();
   const data = existing ? existing.comparison ?? prepared : comparisonFor(params);
   if (!data) return `${pageHeading('Vuelve a abrir la comparación', 'Abre las observaciones antes de preparar una ficha de este campo.')}
@@ -62,7 +98,7 @@ function reportView(id, params) {
   return `${back(comparisonLink(data), 'Volver al comparador')}
     ${pageHeading(existing ? 'Editar ficha de observación' : 'Ficha de observación',
       'Describe lo que observaste y conserva la evidencia del campo comparado.', '', true)}
-    <div class="split">
+    <div class="split report-layout">
       <section class="panel report-body">
         <nav class="segmented" aria-label="Formato del reporte">
           <a href="#ficha${search}" ${format === 'manual' ? 'aria-current="page"' : ''}>Escribir ficha</a>
@@ -92,7 +128,7 @@ function reportView(id, params) {
           <p class="input-hint">Las fichas y sus revisiones se guardan en este navegador.</p>
         </form>
       </section>
-      ${reportEvidence(data, { ...existing?.annotations, ...state.annotations }, true, existing?.id)}
+      ${reportEvidence(data, existing ? existing.annotations : state.annotations, { reportId: existing?.id, from: format })}
     </div>`;
 }
 
@@ -151,6 +187,18 @@ function exportButtons(report) {
 }
 
 document.addEventListener('click', async (event) => {
+  const printControl = event.target.closest('#print-report');
+  if (printControl) {
+    printControl.disabled = true;
+    try {
+      const images = [...document.querySelectorAll('.attachment-panel .report-image img')];
+      await Promise.allSettled(images.map((image) => image.decode()));
+      if (printControl.isConnected) window.print();
+    } finally {
+      printControl.disabled = false;
+    }
+    return;
+  }
   const exportControl = event.target.closest('[data-report-export]');
   if (exportControl) {
     const report = readWorkspace().reports.find((item) => item.id === exportControl.dataset.reportId);
@@ -230,22 +278,13 @@ function bindReport(_id, params) {
       }
     }
     if (!form.isConnected) return;
-    const annotations = { ...earlier?.annotations, ...readWorkspace().annotations };
+    const exporting = action === 'json' || action === 'md';
     const report = {
       id: existing || crypto.randomUUID(), author, title, notes, format, fileName, created,
       status: action === 'review' ? 'review' : 'draft',
       comparison: data,
-      annotations: Object.fromEntries(data.frames
-        .filter((frame) => Array.isArray(annotations[frame.id]))
-        .map((frame) => [frame.id, annotations[frame.id]])),
     };
-    if (action === 'json' || action === 'md') {
-      exportReport(report, action);
-      if (fileName) reportBuffer = { key, author, title, notes, created, fileName, file };
-      toast(`Ficha descargada en ${action === 'json' ? 'JSON' : 'Markdown'}.`);
-      return;
-    }
-    if (format === 'pdf') {
+    if (format === 'pdf' && !exporting) {
       form.setAttribute('aria-busy', 'true');
       try {
         if (file) await reportFile('readwrite', (store) => store.put(file, report.id));
@@ -259,9 +298,20 @@ function bindReport(_id, params) {
       }
     }
     const state = readWorkspace();
-    if (existing && !state.reports.some((item) => item.id === existing && ['draft', 'rejected'].includes(item.status))) {
+    const saved = state.reports.find((item) => item.id === existing);
+    if (existing && !isEditableReport(saved)) {
       error.textContent = 'El estado de esta ficha cambió. Vuelve a abrirla antes de guardar.';
       error.hidden = false;
+      return;
+    }
+    const annotations = saved ? saved.annotations : state.annotations;
+    report.annotations = Object.fromEntries(data.frames
+      .map((frame) => [frame.id, frameMarks(annotations, frame.id)])
+      .filter(([, marks]) => marks.length));
+    if (exporting) {
+      exportReport(report, action);
+      if (fileName) reportBuffer = { key, author, title, notes, created, fileName, file };
+      toast(`Ficha descargada en ${action === 'json' ? 'JSON' : 'Markdown'}.`);
       return;
     }
     state.reports = [report, ...state.reports.filter((item) => item.id !== report.id)];
@@ -280,7 +330,7 @@ function confirmationView(id) {
     : 'La ficha y sus referencias están disponibles en este navegador.';
   return `${back('#perfil', 'Mi espacio')}
     ${pageHeading(report.status === 'review' ? 'Ficha en revisión' : report.status === 'draft' ? 'Borrador guardado' : 'Estado de tu ficha', lead, '', true)}
-    <div class="split">
+    <div class="split report-layout">
     <section class="panel report-confirmation">
       <div class="row between"><h2>${escapeHtml(report.title)}</h2>${statusBadge(report)}</div>
       <p class="muted">${escapeHtml(report.author)} · ${dateMark(report.created, true)}</p>
@@ -293,9 +343,12 @@ function confirmationView(id) {
         ${report.status === 'review' ? `<a class="button secondary" href="#administracion/${report.id}">Ver bandeja de revisión</a>` : ''}
         ${report.status === 'published' ? `<a class="button secondary" href="#articulo/${report.id}">Ver publicación</a>` : ''}
       </div>
-      <div class="row">${exportButtons(report)}</div>
+      <div class="row">
+        <button class="button secondary" id="print-report" type="button">Imprimir ficha</button>
+        ${exportButtons(report)}
+      </div>
     </section>
-    ${reportEvidence(report.comparison ?? prepared, report.annotations ?? {}, false, report.id)}
+    ${reportEvidence(report.comparison ?? prepared, report.annotations, { reportId: report.id })}
     </div>`;
 }
 
@@ -508,10 +561,8 @@ function reviewPanel(report) {
     <div class="row between"><h2>${escapeHtml(report.title)}</h2>${statusBadge(report)}</div>
     <p class="list-meta">${escapeHtml(report.author)} · ${dateMark(report.created, true)}${report.example ? ' · Ficha de ejemplo' : ''}</p>
     <p class="muted preserve-lines">${escapeHtml(report.notes || `Documento de referencia: ${report.fileName}`)}</p>
-    <div class="row">
-      <a class="text-link" href="${escapeHtml(imageLink(0, report.comparison ?? prepared, report.id))}">Abrir las observaciones asociadas →</a>
-      ${pdfButton(report)}
-    </div>
+    ${pdfButton(report)}
+    ${reportEvidence(report.comparison ?? prepared, report.annotations, { reportId: report.id, from: 'administracion' })}
     ${report.status === 'review' ? `<form id="moderation-form" class="form-grid" data-report="${report.id}">
       <div><label for="review-note">Mensaje de revisión</label>
         <textarea name="note" id="review-note" placeholder="Explica la decisión si rechazas el reporte." maxlength="1200"></textarea>
