@@ -102,7 +102,10 @@ Además, baja de nivel por debajo de 50 FPS en vez de 46. En Linux y macOS no ca
   área** (200 px; 120 px en pantallas estrechas) es una vista cenital del rectángulo visitable con los objetos a
   escala y con nombre, la nave como flecha con su cono de visión, y una barra de altura.
 - **Sonido:** opcional, sintetizado con WebAudio (sin archivos). **Apagado por defecto.** No se crea el contexto de
-  audio hasta pulsar el botón «Silencio/Sonido», así que nunca suena solo.
+  audio hasta pulsar el botón «Silencio/Sonido», así que nunca suena solo. Al encenderlo suenan dos notas de
+  confirmación. Después se oyen el motor (zumbido y siseo de empuje que suben al acelerar), un tic al señalar una
+  región de la galaxia, el barrido del salto, el paso de estrellas fugaces, cometas y asteroides, y los impactos.
+  El motor usa armónicos por encima de ~150 Hz para que se oiga también en bocinas de laptop.
 
 ## Fidelidad a los bocetos
 
@@ -405,8 +408,9 @@ Detalle del sector en `src/sectors/beta/README.md`.
    «Estación», etc.).
 7. **Tarjeta de sector:** además de nombre y descripción muestra datos derivados de la configuración (puntos de
    ruta y objetos con nombre), sin inventar contenido.
-8. **Sonido:** zumbido grave del motor, un barrido de ruido en cada tramo y un barrido ascendente en el salto. No se
-   guarda la preferencia: siempre empieza apagado.
+8. **Sonido:** confirmación al encenderlo, motor con zumbido y siseo según el empuje, tic al señalar una región,
+   barrido ascendente en el salto, paso de visitantes e impactos. No se guarda la preferencia: siempre empieza
+   apagado.
 9. **Las 10 interpretaciones de la primera etapa** se revisaron contra las medidas. Las correcciones están en
    «Interpretaciones revisadas con los datos»; en particular, la estación (punto 4 de arriba) ahora lleva el asa en
    un extremo, no un anillo en el centro.
@@ -466,7 +470,7 @@ en Chrome y, ya cargada, **desconecta la red** (Wi-Fi apagado) y recarga.
 | 4d | Esperar unos 10–20 s en vuelo               | Un cometa cruza la vista; un meteorito que viene directo empuja la nave y ella se recupera |
 | 4c | Mirar hacia la estrella clave (arriba a la derecha) | Brillo y reflejos en la nave sin quemar la imagen |
 | 5  | Pulsar Esc                                  | Vuelve a la selección con el foco en β                                                     |
-| 6  | Botón «Silencio» → «Sonido»                 | Zumbido bajo; barrido en cada tramo y en el salto; vuelve a silencio al pulsarlo           |
+| 6  | Botón «Silencio» → «Sonido»                 | Dos notas al encender; tic al señalar regiones; motor que sube al acelerar; vuelve a silencio |
 | 7  | Pantalla completa (F11) y ventana estrecha  | El HUD no tapa la nave; en vertical, la cruceta crece y la nave se reduce                  |
 | 8  | Activar «reducir animaciones» en el sistema | Sin salto ni oscilación: fundido, tramos instantáneos, sin paralaje                        |
 | 9  | `?quality=low&debug`                        | «calidad low (fija)», sin bloom. Si «alta» no llega a 45 FPS, usa este modo en la demo     |

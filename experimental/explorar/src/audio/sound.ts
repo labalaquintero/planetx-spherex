@@ -15,7 +15,20 @@ export interface SoundEngine {
   engine(level: number): void
   /** Golpe sordo de un impacto (0..1). */
   impact(strength: number): void
+  /** Tic suave al señalar una región en la selección. */
+  hover(): void
+  /** Paso de un visitante: «fiu» corto de estrella fugaz, soplo largo de cometa, roce grave de asteroide. */
+  visitor(kind: 'comet' | 'meteor' | 'asteroid'): void
   dispose(): void
+}
+
+/**
+ * Niveles del motor según el empuje (0..1). Las bocinas de laptop casi no reproducen por debajo de
+ * ~150 Hz: el zumbido usa armónicos audibles y un siseo de empuje que sí se oye.
+ */
+export function engineMix(level: number): { pitch: number; cutoff: number; drone: number; air: number; airFreq: number } {
+  const k = Math.min(1, Math.max(0, Number.isFinite(level) ? level : 0))
+  return { pitch: 1 + 0.55 * k, cutoff: 520 + 1300 * k, drone: 0.09 + 0.09 * k, air: 0.018 + 0.1 * k, airFreq: 420 + 1100 * k }
 }
 
 type Ctx = AudioContext
@@ -42,7 +55,13 @@ export function createSound(factory: () => Ctx | null = defaultFactory): SoundEn
   let master: GainNode | null = null
   let hum: OscillatorNode[] = []
   let noise: AudioBuffer | null = null
+  let droneFilter: BiquadFilterNode | null = null
+  let droneGain: GainNode | null = null
+  let air: AudioBufferSourceNode | null = null
+  let airFilter: BiquadFilterNode | null = null
+  let airGain: GainNode | null = null
   let on = false
+  const HUM_BASE = [82, 82.7, 164]
 
   const ensure = (): Ctx | null => {
     if (ctx) return ctx
@@ -52,21 +71,35 @@ export function createSound(factory: () => Ctx | null = defaultFactory): SoundEn
     master.gain.value = 0
     master.connect(ctx.destination)
     noise = noiseBuffer(ctx, 1.5)
-    // Zumbido grave del motor: dos sierras desafinadas por un paso bajo.
-    const lp = ctx.createBiquadFilter()
-    lp.type = 'lowpass'
-    lp.frequency.value = 240
-    const humGain = ctx.createGain()
-    humGain.gain.value = 0.05
-    lp.connect(humGain).connect(master)
-    hum = [55, 55.6].map((f) => {
+    const idle = engineMix(0)
+    // Zumbido del motor: dos sierras desafinadas y una cuadrada una octava arriba, por un paso bajo
+    // que se abre con el empuje.
+    droneFilter = ctx.createBiquadFilter()
+    droneFilter.type = 'lowpass'
+    droneFilter.frequency.value = idle.cutoff
+    droneGain = ctx.createGain()
+    droneGain.gain.value = idle.drone
+    droneFilter.connect(droneGain).connect(master)
+    hum = HUM_BASE.map((f, i) => {
       const o = ctx!.createOscillator()
-      o.type = 'sawtooth'
+      o.type = i === 2 ? 'square' : 'sawtooth'
       o.frequency.value = f
-      o.connect(lp)
+      o.connect(droneFilter!)
       o.start()
       return o
     })
+    // Siseo de empuje: ruido en bucle por un paso banda que sube con la velocidad.
+    air = ctx.createBufferSource()
+    air.buffer = noise
+    air.loop = true
+    airFilter = ctx.createBiquadFilter()
+    airFilter.type = 'bandpass'
+    airFilter.Q.value = 0.8
+    airFilter.frequency.value = idle.airFreq
+    airGain = ctx.createGain()
+    airGain.gain.value = idle.air
+    air.connect(airFilter).connect(airGain).connect(master)
+    air.start()
     return ctx
   }
 
@@ -88,11 +121,22 @@ export function createSound(factory: () => Ctx | null = defaultFactory): SoundEn
     src.connect(bp).connect(g).connect(master)
     src.start(t)
     src.stop(t + duration + 0.05)
-    // El motor sube de tono durante el tramo.
-    for (const o of hum) {
-      o.frequency.setTargetAtTime(o.frequency.value * 1.3, t, duration * 0.2)
-      o.frequency.setTargetAtTime(o.frequency.value, t + duration * 0.6, duration * 0.2)
-    }
+  }
+
+  /** Nota corta (sinusoide con ataque y caída). */
+  const blip = (freq: number, at: number, duration: number, level: number) => {
+    if (!on || !ctx || !master) return
+    const t = ctx.currentTime + at
+    const o = ctx.createOscillator()
+    o.type = 'sine'
+    o.frequency.setValueAtTime(freq, t)
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(level, t + 0.015)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + duration)
+    o.connect(g).connect(master)
+    o.start(t)
+    o.stop(t + duration + 0.05)
   }
 
   return {
@@ -106,7 +150,10 @@ export function createSound(factory: () => Ctx | null = defaultFactory): SoundEn
         if (!c || !master) return
         on = true
         void c.resume?.()
-        master.gain.setTargetAtTime(0.5, c.currentTime, 0.08)
+        master.gain.setTargetAtTime(0.6, c.currentTime, 0.08)
+        // Confirmación audible: dos notas ascendentes.
+        blip(660, 0.05, 0.18, 0.14)
+        blip(990, 0.16, 0.26, 0.12)
       } else {
         on = false
         if (ctx && master) {
@@ -139,9 +186,21 @@ export function createSound(factory: () => Ctx | null = defaultFactory): SoundEn
     },
     engine(level: number) {
       if (!on || !ctx) return
-      const k = Math.min(1, Math.max(0, Number.isFinite(level) ? level : 0))
+      const m = engineMix(level)
       const t = ctx.currentTime
-      hum.forEach((o, i) => o.frequency.setTargetAtTime((i ? 55.6 : 55) * (1 + 0.6 * k), t, 0.15))
+      hum.forEach((o, i) => o.frequency.setTargetAtTime(HUM_BASE[i]! * m.pitch, t, 0.15))
+      droneFilter?.frequency.setTargetAtTime(m.cutoff, t, 0.15)
+      droneGain?.gain.setTargetAtTime(m.drone, t, 0.15)
+      airFilter?.frequency.setTargetAtTime(m.airFreq, t, 0.2)
+      airGain?.gain.setTargetAtTime(m.air, t, 0.2)
+    },
+    hover() {
+      blip(1320, 0, 0.09, 0.06)
+    },
+    visitor(kind) {
+      if (kind === 'meteor') swoosh(0.55, 1400, 5200, 0.09)
+      else if (kind === 'comet') swoosh(2.6, 300, 1600, 0.12)
+      else swoosh(1.4, 150, 520, 0.1)
     },
     impact(strength: number) {
       if (!on || !ctx || !master) return
@@ -164,6 +223,8 @@ export function createSound(factory: () => Ctx | null = defaultFactory): SoundEn
       on = false
       for (const o of hum) o.stop()
       hum = []
+      air?.stop()
+      air = null
       void ctx?.close?.()
       ctx = null
       master = null
